@@ -1,0 +1,78 @@
+#!/usr/bin/env perl -w
+use strict;
+use warnings;
+use 5.010;
+use utf8;
+use encoding 'utf8';
+use IO::All;
+use YAML;
+use Text::Trim;
+
+use HTML::TreeBuilder::XPath;
+use HTML::Selector::XPath qw(selector_to_xpath);
+sub _cssQuery {
+    my ($content, $selector) = @_;
+    my $tree = HTML::TreeBuilder::XPath->new;
+    $tree->parse($content);
+    $tree->findnodes( selector_to_xpath($selector) );
+}
+
+use Finance::Bank::SCSB::TW;
+
+my $config = YAML::LoadFile("$ENV{HOME}/.scsb.yml") or die "Need ~/scsb.yml";
+
+my $n = $ARGV[0] or die "Usage: $0 <n>";
+
+Finance::Bank::SCSB::TW::_login($config->{id},$config->{username},$config->{password}, "menu7");
+
+my $ua = Finance::Bank::SCSB::TW::ua;
+$ua->timeout(120);
+
+$ua->follow_link(text => "台幣轉外幣");
+
+io("/tmp/scsb-buy-jpy-1.html")->assert->utf8->print($ua->content);
+
+$ua->submit_form(
+    form_name => "nT2Foreign",
+    fields => {
+        'portlet_tran04_1wlw-select_key:{actionForm.selectedNTAcc}' => $config->{ntd_account},
+        'portlet_tran04_1{actionForm.transferAmt}' => $n,
+        'portlet_tran04_1wlw-select_key:{actionForm.selectedForeignAcc}' => $config->{foreign_account},
+        'portlet_tran04_1wlw-select_key:{actionForm.seletedCYY}' => 'JPY'
+    }
+);
+
+io("/tmp/scsb-buy-jpy-2.html")->assert->utf8->print($ua->content);
+
+if ($ua->content =~ /Sorry for this:/) {
+    my $txt = _cssQuery($ua->content, ".errtxt");
+    say $txt->to_literal();
+    Finance::Bank::SCSB::TW::logout();
+    exit;
+}
+
+$ua->submit_form(
+    form_name => "nT2Foreign",
+    fields => {
+        'portlet_tran04_1{actionForm.selectedNTAcc}' => $config->{ntd_account},
+        'portlet_tran04_1{actionForm.selectedForeignAcc}' => $config->{foreign_account},
+        'portlet_tran04_1{actionForm.seletedCYY}' => 'JPY',
+        'portlet_tran04_1{actionForm.transferAmt}' => $n
+    }
+);
+
+io("/tmp/scsb-buy-jpy-3.html")->assert->utf8->print($ua->content);
+
+if ($ua->content =~ /此筆轉帳交易已成功！/) {
+    say "Success";
+
+    my $div = "". _cssQuery($ua->content, ".bea-portal-window-content");
+
+    $div =~ s/(.+)(日期時間)/$2/;
+    my @x = map { trim($_) } split(/(日期時間|轉出帳號|轉出金額|帳戶餘額|可用餘額|轉入帳號|轉入金額)/, $div);
+    shift @x;
+
+    say YAML::Dump({ @x });
+}
+
+Finance::Bank::SCSB::TW::logout();

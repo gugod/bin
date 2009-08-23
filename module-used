@@ -1,7 +1,9 @@
 #!/usr/bin/env perl5g
+# -*- cperl -*-
 
 use Module::ExtractUse;
 use Data::Dump qw(pp);
+use Quantum::Superpositions;
 
 my $meu = Module::ExtractUse->new;
 my $used = [];
@@ -20,6 +22,7 @@ my $used_module_version = {};
 
 for my $module (@$used) {
     try {
+        next if $module eq any("strict", "inc::Module::Install");
         load $module;
         $used_module_version->{$module} = $module->VERSION;
     } catch($error) {
@@ -28,4 +31,3 @@ for my $module (@$used) {
 }
 
 say pp $used_module_version;
-

@@ -1,0 +1,30 @@
+#!/usr/bin/env perl -w
+use strict;
+use warnings;
+use 5.010;
+use AnyEvent::Superfeedr;
+use Encode;
+use Mac::Growl;
+use String::Truncate qw(elide);
+
+die "$0 <jid> <pass>" unless @ARGV >= 2;
+binmode STDOUT, ":utf8";
+
+my $AppName   = "Superfeedr-Growl";
+my $EventType = "Feeding You";
+Mac::Growl::RegisterNotifications($AppName, [ $EventType ], [ $EventType ]);
+
+my $end = AnyEvent->condvar;
+my $sf = AnyEvent::Superfeedr->new(
+    jid => shift,
+    password => shift,
+    on_notification => sub {
+        my $notification = shift;
+
+        for my $entry ($notification->entries) {
+            my $title = elide(Encode::decode_utf8($entry->title), 24);
+            Mac::Growl::PostNotification($AppName, $EventType, $title, elide($entry->content||"", 140), 0, 0);
+        }
+    },
+);
+$end->recv;

@@ -4,14 +4,15 @@ use warnings;
 use 5.010;
 use AnyEvent::Superfeedr;
 use Encode;
-use Mac::Growl;
 use String::Truncate qw(elide);
+use YAML;
+use Mac::Growl;
 
 die "$0 <jid> <pass>" unless @ARGV >= 2;
-binmode STDOUT, ":utf8";
 
 my $AppName   = "Superfeedr-Growl";
-my $EventType = "Feeding You";
+my $EventType = "Notified";
+
 Mac::Growl::RegisterNotifications($AppName, [ $EventType ], [ $EventType ]);
 
 my $end = AnyEvent->condvar;
@@ -22,8 +23,19 @@ my $sf = AnyEvent::Superfeedr->new(
         my $notification = shift;
 
         for my $entry ($notification->entries) {
-            my $title = elide(Encode::decode_utf8($entry->title), 24);
-            Mac::Growl::PostNotification($AppName, $EventType, $title, elide($entry->content||"", 140), 0, 0);
+            Mac::Growl::PostNotification(
+                $AppName,
+                $EventType,
+                $entry->title,
+                $entry->summary,
+                0, 0,
+                "/Users/gugod/local/images/superfeddr.png"
+            );
+
+            my $dump = {};
+            $dump->{$_} = $entry->$_ for qw(title author link content elem ns version);
+            say Dump $dump;
+            say "----";
         }
     },
 );

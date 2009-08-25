@@ -29,11 +29,11 @@ my $sf = AnyEvent::Superfeedr->new(
                 $entry->title,
                 $entry->summary,
                 0, 0,
-                "/Users/gugod/local/images/superfeddr.png"
+                "/Users/gugod/local/images/superfeedr.png"
             );
 
             my $dump = {};
-            $dump->{$_} = $entry->$_ for qw(title author link content elem ns version);
+            $dump->{$_} = $entry->$_ for qw(title author summary content link);
             say Dump $dump;
             say "----";
         }

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+dir=$1
+
+zip ${dir}.zip -r ${dir} -x '*.DS_Store'

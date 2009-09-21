@@ -1,0 +1,36 @@
+#!/usr/bin/env perl
+
+=head1 USAGE
+
+Launch in the command line, put it into background:
+
+    > shot-myself-every-60s &
+
+Requires the 'convert' program from ImageMagick, and 'imagesnap' program
+from http://iharder.net/current/macosx/imagesnap/.
+
+Photos are saved to ~/Pictures/shot-myself/.
+
+=cut
+
+use strict;
+use warnings;
+use IO::All;
+use 5.010;
+
+while(1) {
+    my $time = time;
+    my ($day, $month, $year) = (localtime($time))[3, 4, 5];
+    $year += 1900;
+
+    my $dir = "$ENV{HOME}/Pictures/shot-myself/$year-$month-$day";
+    io->dir($dir)->mkdir;
+
+    my $file = "$dir/$time";
+
+    system("imagesnap ${file}.tiff >/dev/null 2>/dev/null");
+    system("convert ${file}.tiff ${file}.jpg");
+    unlink("${file}.tiff");
+
+    sleep 60;
+}

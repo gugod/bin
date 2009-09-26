@@ -6,14 +6,14 @@ use AnyEvent::Superfeedr;
 use Encode;
 use String::Truncate qw(elide);
 use YAML;
-use Mac::Growl;
+use Mac::Growl qw(:all);
 
 die "$0 <jid> <pass>" unless @ARGV >= 2;
 
 my $AppName   = "Superfeedr-Growl";
 my $EventType = "Notified";
 
-Mac::Growl::RegisterNotifications($AppName, [ $EventType ], [ $EventType ]);
+RegisterNotifications($AppName, [ $EventType ], [ $EventType ]);
 
 my $end = AnyEvent->condvar;
 my $sf = AnyEvent::Superfeedr->new(
@@ -23,7 +23,7 @@ my $sf = AnyEvent::Superfeedr->new(
         my $notification = shift;
 
         for my $entry ($notification->entries) {
-            Mac::Growl::PostNotification(
+            PostNotification(
                 $AppName,
                 $EventType,
                 $entry->title,

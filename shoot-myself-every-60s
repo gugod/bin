@@ -4,12 +4,12 @@
 
 Launch in the command line, put it into background:
 
-    > shot-myself-every-60s &
+    > shoot-myself-every-60s &
 
 Requires the 'convert' program from ImageMagick, and 'imagesnap' program
 from http://iharder.net/current/macosx/imagesnap/.
 
-Photos are saved to ~/Pictures/shot-myself/.
+Photos are saved to ~/Pictures/shoot-myself/.
 
 =cut
 
@@ -23,7 +23,7 @@ while(1) {
     my ($day, $month, $year) = (localtime($time))[3, 4, 5];
     $year += 1900;
 
-    my $dir = "$ENV{HOME}/Pictures/shot-myself/$year-$month-$day";
+    my $dir = "$ENV{HOME}/Pictures/shoot-myself/$year-$month-$day";
     io->dir($dir)->mkdir;
 
     my $file = "$dir/$time";

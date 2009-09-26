@@ -6,9 +6,35 @@ use AnyEvent::Superfeedr;
 use Encode;
 use String::Truncate qw(elide);
 use YAML;
+use Getopt::Std;
+
 use Mac::Growl qw(:all);
 
-die "$0 <jid> <pass>" unless @ARGV >= 2;
+my $opts = {};
+# config, username, password
+getopts("c:u:p:", $opts);
+
+if ($$opts{c}) {
+    my $c = YAML::LoadFile($$opts{c});
+    if (!$$c{jid} || !$$c{password}) {
+        die "Config file should set jid and password.\n";
+    }
+    $$opts{u} = $$c{jid};
+    $$opts{p} = $$c{password};
+}
+elsif (!$$opts{u} || !$$opts{p}) {
+    die <<USAGE;
+
+Usage:
+
+    $0 -c <config_file>
+
+Or
+
+    $0 -u <jid> -p <password>
+
+USAGE
+}
 
 my $AppName   = "Superfeedr-Growl";
 my $EventType = "Notified";
@@ -17,8 +43,8 @@ RegisterNotifications($AppName, [ $EventType ], [ $EventType ]);
 
 my $end = AnyEvent->condvar;
 my $sf = AnyEvent::Superfeedr->new(
-    jid => shift,
-    password => shift,
+    jid => $$opts{u},
+    password => $$opts{p},
     on_notification => sub {
         my $notification = shift;
 
@@ -26,16 +52,18 @@ my $sf = AnyEvent::Superfeedr->new(
             PostNotification(
                 $AppName,
                 $EventType,
-                $entry->title,
-                $entry->summary,
+                $entry->title   || "(Untitled)",
+                $entry->summary || "(No Sumary)",
                 0, 0,
                 "/Users/gugod/local/images/superfeedr.png"
             );
 
-            my $dump = {};
-            $dump->{$_} = $entry->$_ for qw(title author summary content link);
-            say Dump $dump;
-            say "----";
+            if ($$opts{d}) {
+                my $dump = {};
+                $dump->{$_} = $entry->$_ for qw(title author summary content link);
+                say Dump $dump;
+                say "----";
+            }
         }
     },
 );

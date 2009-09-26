@@ -2,13 +2,29 @@
 use strict;
 use warnings;
 use 5.010;
+
+package SuperfeedrGrowl;
+
+my $AppName   = "Superfeedr-Growl";
+my $EventType = "Notified";
+
+sub notify {
+    my ($class, $title, $summary) = @_;
+
+    system(
+        "growlnotify",
+        '--name'  => $AppName,
+        '--image' => "/Users/gugod/local/images/superfeedr.png",
+        '-m' => $summary,
+        '-t' => $title
+    );
+}
+
+package main;
 use AnyEvent::Superfeedr;
-use Encode;
 use String::Truncate qw(elide);
 use YAML;
 use Getopt::Std;
-
-use Mac::Growl qw(:all);
 
 my $opts = {};
 # config, username, password
@@ -36,10 +52,7 @@ Or
 USAGE
 }
 
-my $AppName   = "Superfeedr-Growl";
-my $EventType = "Notified";
-
-RegisterNotifications($AppName, [ $EventType ], [ $EventType ]);
+SuperfeedrGrowl->notify("Superfeedr-Growl 程式啟動", "Program launched");
 
 my $end = AnyEvent->condvar;
 my $sf = AnyEvent::Superfeedr->new(
@@ -49,13 +62,9 @@ my $sf = AnyEvent::Superfeedr->new(
         my $notification = shift;
 
         for my $entry ($notification->entries) {
-            PostNotification(
-                $AppName,
-                $EventType,
-                $entry->title   || "(Untitled)",
-                $entry->summary || "(No Sumary)",
-                0, 0,
-                "/Users/gugod/local/images/superfeedr.png"
+            SuperfeedrGrowl->notify(
+                elide($entry->title   || "(Untitled)" , 40),
+                elide($entry->summary || "(No Sumary)", 140),
             );
 
             if ($$opts{d}) {

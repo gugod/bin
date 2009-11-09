@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use 5.010;
+
+package PlurkPoster;
+use Object::Tiny qw(username password);
+use WWW::Mechanize;
+
+sub post {
+    my ($self, $content) = @_;
+    my $ua = WWW::Mechanize->new;
+    $ua->get('http://www.plurk.com/m/login');
+    $ua->submit_form(with_fields => { username => $self->username, password => $self->password });
+    $ua->submit_form(with_fields => { content =>  $content });
+}
+
+package main;
+
+use YAML::Tiny qw(LoadFile);
+use Getopt::Std;
+use Finance::Bank::Esun::TW;
+
+my %opts;
+
+getopt('c', \%opts);
+
+die "Usage: $0 -c plurk.yml\n" unless $opts{c};
+
+my $config = LoadFile($opts{c}) or die "Fail to load plurk.yml\n";
+
+my $rates = Finance::Bank::Esun::TW->currency_exchange_rate;
+$_ = @$rates[ 5 ];
+
+my $content = "Esun: $_->{en_currency_name}: Buy: $_->{buy_at} / Sell: $_->{sell_at}. \nhttp://www.esunbank.com.tw/info/rate_spot_exchange.aspx";
+
+my $pp = PlurkPoster->new(
+    username => $config->{username},
+    password => $config->{password},
+);
+$pp->post($content);

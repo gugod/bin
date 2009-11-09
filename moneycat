@@ -1,0 +1,34 @@
+#!/usr/bin/env perl
+
+use strict;
+use feature 'say';
+use encoding 'utf8';
+use Perl6::Form;
+
+my $form = '{]]]]]]]]}: {>>>.<<<} {>>>.<<<}';
+
+{
+    use Finance::Bank::SCSB::TW;
+    my $rate = Finance::Bank::SCSB::TW->currency_exchange_rate;
+
+    print "SCSB\n====\n\n";
+    for (
+        @{ $rate->for_currency('jpy') },
+        @{ $rate->for_currency('zar') },
+        @{ $rate->for_currency('usd') }
+    ) {
+        print form $form, $_->{en_currency_name}, $_->{buy_at}, $_->{sell_at};
+    }
+    print "\n";
+}
+
+{
+    use Finance::Bank::Esun::TW;
+    my $rate = Finance::Bank::Esun::TW->currency_exchange_rate;
+
+    print "Esun\n====\n";
+    for ( @$rate[ 4, 5 ] ) {
+        print form $form, $_->{en_currency_name}, $_->{buy_at}, $_->{sell_at};
+    }
+    print "\n";
+}

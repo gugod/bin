@@ -1,0 +1,10 @@
+#!/usr/bin/env perl5g
+
+for my $module (@ARGV) {
+    try {
+        load $module;
+        say "$module => @{[$module->VERSION]}";
+    } catch($error) {
+        say "Failed to load $module: $error";
+    }
+}

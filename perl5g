@@ -1,0 +1,25 @@
+#!/usr/bin/env perl
+
+use perl5i;
+use Cwd;
+use File::Find;
+
+use Getopt::Std;
+use TryCatch;
+use Perl6::Perl;
+
+no warnings;
+use UNIVERSAL::to_yaml;
+use warnings;
+
+my %opts;
+getopt('e:', \%opts);
+
+if ($opts{e}) {
+    eval $opts{e} or die $@;
+    exit;
+}
+
+local $/ = undef;
+eval <>;
+die $@ if $@;

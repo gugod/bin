@@ -1,0 +1,28 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use 5.010;
+
+die "No dist.ini\n" unless -f "dist.ini";
+
+# Read dist.ini and list the prereqs
+use Config::INI::Reader;
+my $dist_config = Config::INI::Reader->read_file('dist.ini');
+
+# Decide the version of those
+use version;
+for (keys %{ $dist_config->{Prereq} }) {
+    my $version = `perl -M$_ -e 'print $_->VERSION' 2>/dev/null` || 0;
+    my $old_version = $dist_config->{Prereq}{$_};
+
+    if ( version->new($version) > version->new($old_version)) {
+        $dist_config->{Prereq}{$_} = $version;
+    }
+}
+
+# Update dist.init in-place
+use Config::INI::Writer;
+Config::INI::Writer->write_file($dist_config, 'dist.ini');
+
+say "Done";

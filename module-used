@@ -1,0 +1,33 @@
+#!/usr/bin/env perl5g
+# -*- cperl -*-
+
+use Module::ExtractUse;
+use Data::Dump qw(pp);
+use Quantum::Superpositions;
+
+my $meu = Module::ExtractUse->new;
+my $used = [];
+find(
+    sub {
+        return if $File::Find::dir =~ /\.git/;
+        $meu->extract_use($File::Find::name);
+        $used->push($meu->array);
+    },
+    cwd
+);
+
+$used = $used->sort->uniq;
+
+my $used_module_version = {};
+
+for my $module (@$used) {
+    try {
+        next if $module eq any("strict", "inc::Module::Install");
+        load $module;
+        $used_module_version->{$module} = $module->VERSION;
+    } catch($error) {
+        # say "Failed to load $module: $error";
+    }
+}
+
+say pp $used_module_version;

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -e $1 ]
+then
+    lipsum=`perl -l -MText::Greeking -e '$g=Text::Greeking->new; print $g->generate, "\n";' `
+else
+    lipsum=`perl -l -MText::Greeking::zh_TW -e 'print Text::Greeking::zh_TW->new->generate;' `
+fi
+
+echo $lipsum | pbcopy
+echo $lipsum

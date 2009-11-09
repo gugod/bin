@@ -1,15 +1,26 @@
-#!/usr/bin/env perl5g
+#!/usr/bin/env perl
 # -*- cperl -*-
+use strict;
+use warnings;
+use feature qw(say);
 
-use Module::ExtractUse;
+use Cwd;
 use Data::Dump qw(pp);
+use File::Find;
+use Module::CoreList;
+use Module::ExtractUse;
+use Module::Load;
 use Quantum::Superpositions;
+use Try::Tiny;
+use autobox::Core;
+use autobox;
 
 my $meu = Module::ExtractUse->new;
 my $used = [];
 find(
     sub {
         return if $File::Find::dir =~ /\.git/;
+        return unless -f $File::Find::name;
         $meu->extract_use($File::Find::name);
         $used->push($meu->array);
     },
@@ -20,13 +31,16 @@ $used = $used->sort->uniq;
 
 my $used_module_version = {};
 
+my @core_modules = keys %{ $Module::CoreList::version{"$]"} };
+
 for my $module (@$used) {
+    # next if $module eq @core_modules;
+
     try {
-        next if $module eq any("strict", "inc::Module::Install");
         load $module;
         $used_module_version->{$module} = $module->VERSION;
-    } catch($error) {
-        # say "Failed to load $module: $error";
+    } catch {
+        # say STDERR "Failed to load $module";
     }
 }
 

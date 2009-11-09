@@ -1,4 +1,11 @@
 #!/usr/bin/env perl
+#
+# Add to corntab:
+#
+#     0,35 9-16 * * 1-5 plurk-esun-jpy -c /path/to/plurk.yml
+#
+#
+
 use strict;
 use warnings;
 use 5.010;

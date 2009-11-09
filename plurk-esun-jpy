@@ -32,10 +32,13 @@ my $config = LoadFile($opts{c}) or die "Fail to load plurk.yml\n";
 my $rates = Finance::Bank::Esun::TW->currency_exchange_rate;
 $_ = @$rates[ 5 ];
 
-my $content = "Esun: $_->{en_currency_name}: Buy: $_->{buy_at} / Sell: $_->{sell_at}. \nhttp://www.esunbank.com.tw/info/rate_spot_exchange.aspx";
+my $content = "Esun $_->{en_currency_name}: Buy: $_->{buy_at} / Sell: $_->{sell_at}. \nhttp://www.esunbank.com.tw/info/rate_spot_exchange.aspx";
+
+print $content;
 
 my $pp = PlurkPoster->new(
     username => $config->{username},
     password => $config->{password},
 );
 $pp->post($content);
+

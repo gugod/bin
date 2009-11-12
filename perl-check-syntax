@@ -1,0 +1,4 @@
+#!/bin/zsh
+
+for f in $*
+perl -Ilib -cw $f

@@ -1,0 +1,4 @@
+#!/usr/bin/env perl
+use feature 'say';
+use Time::HiRes;
+say Time::HiRes::time;

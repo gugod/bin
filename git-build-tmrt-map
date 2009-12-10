@@ -1,0 +1,69 @@
+#!/bin/zsh
+
+function addStation {
+   touch $x
+   git add $x
+   git ci -m "$x"
+   git tag ${x:gs/ /_/}
+}
+
+git init
+
+mkdir Stations
+cd Stations
+
+x="Taipei Main Station"
+addStation
+
+# The Green (Xindian) line
+git co -b Xindian
+for x in "NTU Hospital" "CKS Memorial Hall" Guting "Taipower Building" Gongigan Wanlong Jingmei Dapinglin Qizhang "Xindian City Office" Xindian
+    addStation
+
+# The Red (Danshui) line
+git co -b Danshui Taipei_Main_Station
+
+for x in Zhongshang Shuanglian "Minquan W.Rd" Yuanshan Jiantan Shilin Zhishan Mingde Shipai Qilian Qiyan Beitou Fuxinggang Zhongyi Quandu Zhuwei Hongshulin Danshui
+    addStation
+
+# The blue line - to Nanggang
+git co -b Nangang Taipei_Main_Station
+for x in "Shangdao Temple" "Zhongxiao Xinsheng" "Zhongxiao Fuxing" "Zhongxiao Dunhua" "SYS Memorical Hall" "Taipei City Hall" "Yungchun" Houshanpi Kunyang Nangang
+    addStation
+
+# The blue line - to Yongning
+git co -b Yongning Taipei_Main_Station
+for x in Ximen "Longshan Tempo" Jianzicui Xinpu Banqiao Fuzhong "Far Eastern Hospital" Haishan Tucheng Yongning
+    addStation
+
+# The Nanshijiao line
+git co -b Nanshijiao Guting
+for x in Dinxi "Yungan Market" Jingan Nanshijiao
+    addStation
+
+# The Xinbeitou line
+git co -b Xinbeitou Beitou
+for x in Xinbeitou
+    addStation
+
+# The Xiaobitan line
+git co -b Xiaobitan Qizhang
+for x in Xiaobitan
+    addStation
+
+# The Xiaonanmen line
+git co -b Xiaonanmen Ximen
+git merge CKS_Memorial_Hall -m Xiaonanmen
+git tag Xiaonanmen
+
+# The Wenhu line - to Taipei zoo
+git co -b TaipeiZoo Zhongxiao_Fuxing
+for x in Daan "Technology Building" Liuzhangli Linguang Xinhai "Wangfang Hospital" "Wangfang Community" Muzha "Taipei Zoo"
+    addStation
+
+# The Wenhu line - to Nangang Exhibition Center
+git co -b Nangang_Exhibition_Center Zhongxiao_Fuxing
+for x in "Nanjing E. Rd" "Zhongshang Junior High School" "Songshan Airport" Dazhi "Jianan Rd" Xihu Gangcian Wende Neihu "Dahu Park" Huzhou Donghu "Nangang Software Park" "Taipet Nangang Exhibition Center"
+    addStation
+
+gitx

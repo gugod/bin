@@ -19,7 +19,7 @@ my $ua = LWP::UserAgent->new;
 
 my $r = $ua->post("http://closure-compiler.appspot.com/compile", {
     js_code           => $code,
-    compilation_level => "SIMPLE_OPTIMIZATIONS",
+    compilation_level => "WHITESPACE_ONLY",
     output_info       => "compiled_code",
     output_format     => "text"
 });

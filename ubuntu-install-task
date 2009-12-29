@@ -1,0 +1,9 @@
+#!/bin/sh
+
+aptitude install screen vim emacs git-core libjifty-perl
+
+wget http://rubyforge.org/frs/download.php/66164/ruby-enterprise_1.8.7-2009.10_i386.deb
+dpkg -i ruby-enterprise_1.8.7-2009.10_i386.deb
+
+deb http://apt.brightbox.net hardy main
+apt-get install nginx-brightbox

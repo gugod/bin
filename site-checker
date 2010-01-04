@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+use common::sense;
+use YAML::Tiny qw(LoadFile);
+
+my $config = LoadFile $ARGV[0] || die "Usage: $0 <config.yml>\n";
+
+require LWP::UserAgent;
+
+my %sites;
+
+while (my ($username, $sites) = each %$config) {
+    for my $url (@$sites) {
+        push @{ $sites{$url} ||=[] }, $username;
+    }
+}
+
+while (1) {
+    while (my ($site, $users) = each %sites) {
+        my $ua = LWP::UserAgent->new;
+        my $response = $ua->get($site);
+        unless ($response->is_success) {
+            for my $username (@$users) {
+                $ua->post("http://im.kayac.com/api/post/${username}", { message =>  "$site is down." });
+            }
+        }
+    }
+
+    sleep 600;
+}

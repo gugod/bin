@@ -14,10 +14,20 @@ if [ `gem -v` != "1.3.5" ]; then
     gem update
 fi
 
-# Install Nginx w/ Passenger
+# Use the latest passenger (2.2.8) and nginx (0.7.64)
+if [ ! -d /usr/local/lib/ruby/gems/1.8/gems/passenger-2.2.8 ]; then
+    gem install passenger -v=2.2.8 --no-ri --no-rdoc
+fi
+
+# Install Nginx w/ Passenger. SSL-enabled.
 if [ ! -e /opt/nginx/sbin/nginx ]; then
-    echo -e "\n1\n\n" | passenger-install-nginx-module
-    echo -e "\n2\n/tmp/nginx-0.7.61\n\n--with-http_ssl_module\n\n\n" | passenger-install-nginx-module
+    wget -O /tmp/nginx-0.7.64.tar.gz http://sysoev.ru/nginx/nginx-0.7.64.tar.gz
+
+    cd /tmp
+    tar xzf nginx-0.7.64.tar.gz
+    cd -
+
+    echo -e "\n2\n/tmp/nginx-0.7.64\n\n--with-http_ssl_module\n\n\n" | passenger-install-nginx-module
 fi
 
 if [ ! -e /etc/init.d/nginx ]; then

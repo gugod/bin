@@ -48,7 +48,7 @@ if [ ! -f /home/apps/.gems_installed ]; then
     gem source -a http://gemcutter.org
     gem source -a http://gems.github.com
 
-    gem install --no-ri --no-rdoc rmagick mysql ar_mailer sinatra datamapper do_sqlite3 do_mysql xspond-xapian-ruby ZenTest rspec rspec-rails factory_girl cucumber nokogiri mixology aws-s3 fastercsv icalendar newrelic_rpm webrat Selenium
+    gem install --no-ri --no-rdoc rmagick mysql ar_mailer sinatra datamapper do_sqlite3 do_mysql xspond-xapian-ruby ZenTest rspec rspec-rails factory_girl cucumber nokogiri mixology aws-s3 fastercsv icalendar newrelic_rpm webrat Selenium database_cleaner
 
     gem install --no-ri --no-rdoc rails -v=2.3.5
     gem install --no-ri --no-rdoc rails -v=2.3.2

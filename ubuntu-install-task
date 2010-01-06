@@ -37,5 +37,5 @@ fi
 
 # Create the user for rails apps
 if [ ! -d /home/apps ]; then
-    yes | adduser --quiet --disabled-password --disabled-login apps
+    yes | adduser --quiet --disabled-password apps
 fi

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-yes | aptitude install screen vim emacs23-nox git-core build-essential zlib1g-dev libssl-dev
+yes | aptitude install curl screen vim emacs23-nox git-core build-essential zlib1g-dev libssl-dev libreadline5-dev
 
 # Install Ruby Enterprise Edition
 if [ ! -e /usr/local/bin/ruby ]; then
@@ -17,6 +17,12 @@ fi
 # Install Nginx w/ Passenger
 if [ ! -e /opt/nginx/sbin/nginx ]; then
     echo -e "\n1\n\n" | passenger-install-nginx-module
+    echo -e "\n2\n/tmp/nginx-0.7.61\n\n--with-http_ssl_module\n\n\n" | passenger-install-nginx-module
+fi
+
+if [ ! -e /etc/init.d/nginx ]; then
+    curl http://github.com/jnstq/rails-nginx-passenger-ubuntu/raw/master/nginx/nginx > /etc/init.d/nginx
+    chmod +x /etc/init.d/nginx
 fi
 
 # Create the user for rails apps

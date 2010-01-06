@@ -1,6 +1,9 @@
 #!/bin/sh
 
-yes | aptitude install curl screen vim emacs23-nox git-core build-essential zlib1g-dev libssl-dev libreadline5-dev
+# This step ask you to give a password for mysql root account.
+yes | aptitude install mysql-server-5.1 mysql-client-5.1 
+
+yes | aptitude install curl screen vim emacs23-nox git-core build-essential zlib1g-dev libssl-dev libreadline5-dev imagemagick libmagickcore-dev libmagickwand-dev libxapian-dev libxapian15 xapian-tools
 
 # Install Ruby Enterprise Edition
 if [ ! -e /usr/local/bin/ruby ]; then
@@ -38,4 +41,16 @@ fi
 # Create the user for rails apps
 if [ ! -d /home/apps ]; then
     yes | adduser --quiet --disabled-password apps
+fi
+
+# Install massive number of ruby gems
+if [ ! -f /home/apps/.gems_installed ]; then
+    gem source -a http://gemcutter.org
+    gem source -a http://gems.github.com
+
+    gem install --no-ri --no-rdoc rmagick 
+    gem install --no-ri --no-rdoc ar_mailer sinatra datamapper do_sqlite3 do_mysql xspond-xapian-ruby ZenTest rspec rspec-rails factory_girl cucumber
+    gem install --no-ri --no-rdoc rails -v=2.3.5
+
+    gem list --local > /home/apps/.gems_installed
 fi

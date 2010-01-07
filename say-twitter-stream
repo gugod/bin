@@ -27,7 +27,7 @@ my $listener = AnyEvent::Twitter::Stream->new(
         system "clear";
         say "$tweet->{user}{screen_name}:\n\n\t $tweet->{text}";
         my $voice = $voices->next;
-        system "/usr/bin/say -v $voice \tterQ$text\E";
+        system "/usr/bin/say -v $voice \Q$text\E";
     },
     on_keepalive => sub {
         warn "ping\n";

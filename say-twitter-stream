@@ -9,7 +9,7 @@ my $keywords = join ",", @ARGV;
 
 my $done = AnyEvent->condvar;
 
-my $voices = Data::RoundRobin->new(qw(Alex Victoria Bruce Vicki Fred Kathy Ralph ));
+my $voice = Data::RoundRobin->new(qw(Alex Victoria Bruce Vicki Fred Kathy Ralph ));
 
 my $twitter_config = YAML::LoadFile("$ENV{HOME}/.twitterrc");
 
@@ -24,10 +24,9 @@ my $listener = AnyEvent::Twitter::Stream->new(
         $text =~ s/$RE{URI}//;
 
         return unless $text =~ /^\p{IsASCII}+$/;
-        system "clear";
         say "$tweet->{user}{screen_name}:\n\n\t $tweet->{text}";
-        my $voice = $voices->next;
         system "/usr/bin/say -v $voice \Q$text\E";
+        say "-" x 40;
     },
     on_keepalive => sub {
         warn "ping\n";

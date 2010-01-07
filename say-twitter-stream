@@ -23,14 +23,11 @@ my $listener = AnyEvent::Twitter::Stream->new(
         my $text = $tweet->{text};
         $text =~ s/$RE{URI}//;
 
-        $text =~ s/\b#(\w+)\b/pound $1,/;
-        $text =~ s/\b@(\w+)\b/To $1,/;
-
         return unless $text =~ /^\p{IsASCII}+$/;
         system "clear";
-        say "$tweet->{user}{screen_name}: $tweet->{text}";
+        say "$tweet->{user}{screen_name}:\n\n\t $tweet->{text}";
         my $voice = $voices->next;
-        system "/usr/bin/say -v $voice \Q$tweet->{user}{screen_name} says: $text\E;";
+        system "/usr/bin/say -v $voice \tterQ$text\E";
     },
     on_keepalive => sub {
         warn "ping\n";

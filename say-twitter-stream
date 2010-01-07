@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+use common::sense;
+use AnyEvent::Twitter::Stream;
+use YAML;
+use Regexp::Common qw /URI/;
+use Data::RoundRobin;
+
+my $keywords = join ",", @ARGV;
+
+my $done = AnyEvent->condvar;
+
+my $voices = Data::RoundRobin->new(qw(Alex Victoria Bruce Vicki Fred Kathy Ralph ));
+
+my $twitter_config = YAML::LoadFile("$ENV{HOME}/.twitterrc");
+
+my $listener = AnyEvent::Twitter::Stream->new(
+    username => $twitter_config->{username},
+    password => $twitter_config->{password},
+    method   => "filter",
+    track    => "$twitter_config->{username},$keywords",
+    on_tweet => sub {
+        my $tweet = shift;
+        my $text = $tweet->{text};
+        $text =~ s/$RE{URI}//;
+
+        $text =~ s/\b#(\w+)\b/pound $1,/;
+        $text =~ s/\b@(\w+)\b/To $1,/;
+
+        return unless $text =~ /^\p{IsASCII}+$/;
+        system "clear";
+        say "$tweet->{user}{screen_name}: $tweet->{text}";
+        my $voice = $voices->next;
+        system "/usr/bin/say -v $voice \Q$tweet->{user}{screen_name} says: $text\E;";
+    },
+    on_keepalive => sub {
+        warn "ping\n";
+    },
+    timeout => 45,
+);
+
+$done->recv;

@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+use common::sense;
+use URI;
+use Mac::PropertyList;
+use Net::DNS;
+use YAML qw(Dump);
+use Time::HiRes qw(time);
+
+local $/ = undef;
+my @nameserver = split "\n", <DATA>;
+say Dump({"Testing Servers" => \@nameserver});
+
+my @urls;
+my @hosts;
+my $plist = Mac::PropertyList::parse_plist_file("$ENV{HOME}/Library/Safari/History.plist");
+
+for($plist->value->{WebHistoryDates}->value) {
+    unshift @urls, $_->{''}->value;
+}
+
+my %time_for;
+
+for my $ns (@nameserver) {
+    $time_for{$ns} = 0;
+    my $res = Net::DNS::Resolver->new(nameservers => [$ns]);
+    for (@urls) {
+        my $host = URI->new($_)->host;
+
+        my $t = time;
+        my $answer = $res->query($host);
+        $time_for{$ns} += time - $t;
+    }
+}
+
+say YAML::Dump(\%time_for);
+
+__DATA__
+8.8.8.8
+168.95.1.1
+168.95.192.1

@@ -1,0 +1,50 @@
+#!/usr/bin/env perl
+use common::sense;
+
+package PlurkPoster;
+use Object::Tiny qw(username password);
+use WWW::Mechanize;
+
+sub post {
+    my ($self, $content) = @_;
+    my $ua = WWW::Mechanize->new;
+    $ua->get('http://www.plurk.com/m/login');
+    $ua->submit_form(with_fields => { username => $self->username, password => $self->password });
+    $ua->submit_form(with_fields => { content =>  $content });
+}
+
+package main;
+
+die "Define *both* PLURK_USERNAME and PLURK_PASSWORD env var"
+    unless $ENV{PLURK_USERNAME} && $ENV{PLURK_PASSWORD};
+
+my $content = <>;
+
+my $pp = PlurkPoster->new(
+    username => $ENV{PLURK_USERNAME},
+    password => $ENV{PLURK_PASSWORD}
+);
+
+$pp->post($content);
+
+=head1 NAME / USAGE / SYNOPSIS / DESCRIPTION
+
+This program send whaever read from STDIN to plurk.com:
+
+   export PLURK_USERNAME=foobar
+   export PLURK_PASSWORD=f00b4r
+
+   echo "Lorem ipsum is good" | to-plurk
+
+Best for shell scripting.
+
+=head1 COPYRIGHT
+
+Copyright 2010 by Kang-min Liu, <gugod@gugod.org>
+
+This program is free software; you can redistribute it a nd/or modify
+it under the same terms as Perl itself.
+
+See L<http://www.perl.com/perl/misc/Artistic.html>
+
+=cut

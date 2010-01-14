@@ -1,28 +1,27 @@
 #!/usr/bin/env perl
 use common::sense;
 use List::MoreUtils qw(uniq);
-
-local $/ = undef;
-
-my @db =
-    uniq sort
-    map {
-        s/^(，|。|？)+//;
-        $_;
-    }
-    map {
-        /( （.+） | 「.+」 | .+?(?:，|。|？)+ )/gsmx
-    }
-    map {
-        s/^(.+?) //;
-        $_;
-    }
-    split "\n", <DATA>;
+use utf8;
+use encoding 'utf8';
 
 my %phrase;
-for(@db) {
-    my $p = substr($_, -1);
-    push @{$phrase{$p} ||=[]}, $_;
+sub init_phrase {
+    my $corpus = shift;
+    my @db = uniq sort
+        map {
+            s/^(，|。|？)+//;
+            $_;
+        } map {
+            /( （.+） | 「.+」 | .+?(?:，|。|？)+ )/gsmx;
+        } map {
+            s/^(.+?) //;
+            $_;
+        } split /\n+/, $corpus;
+
+    for (@db) {
+        my $p = substr($_, -1);
+        push @{$phrase{$p} ||=[]}, $_;
+    }
 }
 
 sub rand_phrase {
@@ -47,19 +46,40 @@ sub rand_sentence {
     }
 }
 
-say rand_sentence for 1..25;
+use Getopt::Std;
+
+my %opts = (n => 1);
+
+getopts("c:n:", \%opts);
+
+local $/ = undef;
+my $corpus = <DATA>;
+
+if ($opts{c}) {
+    open CORPUS, "<:utf8", $opts{c};
+    $corpus = <CORPUS>;
+    close CORPUS;
+}
+
+init_phrase($corpus);
+say rand_sentence for 1..$opts{n};
 
 =head1 NAME / USAGE / SYNOPSIS / DESCRIPTION
 
-  # Generate 25 random sentence
+  # Generate 1 random sentence
   rand-sentence
 
-This program does no more then that. Warning: It has non-zero chance
-entering an infinte loop.
+  # Generate 25 random sentences
+  rand-sentence -n 25
 
-It uses the corpus data from L<OurNet::ChatBot>, all the generate
-sentences are remixes of the corpus. Alternating to a new corpus is
-possible, however, unimplemented.
+  # Generate 42 random sentences form a given corpus
+  rand-sentence -n 42 -c corpus.txt
+
+Warning: It has non-zero chance entering an infinte loop.
+
+It uses the corpus data from L<OurNet::ChatBot> by default. All
+generate sentences are remixes of the corpus. The corpus should use
+full-width punction characters.
 
 =head1 COPYRIGHT
 

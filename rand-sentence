@@ -4,25 +4,46 @@ use List::MoreUtils qw(uniq);
 use utf8;
 use encoding 'utf8';
 
+my @phrase_db;
 my %phrase;
 sub init_phrase {
     my $corpus = shift;
-    my @db = uniq sort
+    @phrase_db = uniq sort
         map {
-            s/^(，|。|？)+//;
+            s/^(，|。|？|\s)+//;
             $_;
         } map {
-            /( （.+） | 「.+」 | .+?(?:，|。|？)+ )/gsmx;
+            @_ = ();
+            s/(（.+?）|「.+?」)//gsm;
+            push @_, $1;
+
+            s/(.+?(?:，|。|？)+)//gsm;
+            push @_, $1;
+
+            # Discard un-reconized phrases left in $_
+            @_;
         } map {
+            s/^\s+//;
+            s/\s+$//;
             s/^(.+?) //;
             $_;
         } split /\n+/, $corpus;
 
-    for (@db) {
+    for (@phrase_db) {
         my $p = substr($_, -1);
         push @{$phrase{$p} ||=[]}, $_;
     }
 }
+
+use Memoize;
+
+sub phrase_ratio {
+    my $type = shift;
+    # say 0+ @{$phrase{$type}};
+    return @{$phrase{$type}} / @phrase_db
+}
+
+memoize("phrase_ratio");
 
 sub rand_phrase {
     my $type = shift;
@@ -34,16 +55,24 @@ sub rand_sentence {
 
     while($str eq "") {
         for ('」',  '，' ,'，' , '）', '，') {
-            $str .= rand_phrase($_) if rand > 0.75;
+            $str .= rand_phrase($_) if rand() < phrase_ratio($_);
         }
     }
 
+    my $ending;
     if (rand > 0.5) {
-        $str .= rand_phrase("。")
+        $ending = rand_phrase("。")
     }
     else {
-        $str .= rand_phrase("？");
+        $ending = rand_phrase("？");
     }
+
+    unless($ending) {
+        $str =~ s/，$//;
+        $ending = "...";
+    }
+
+    $str .= $ending;
 }
 
 use Getopt::Std;

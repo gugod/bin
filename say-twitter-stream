@@ -4,6 +4,8 @@ use AnyEvent::Twitter::Stream;
 use YAML;
 use Regexp::Common qw /URI/;
 use Data::RoundRobin;
+use Lingua::Han::PinYin;
+use HTML::Entities;
 
 my $keywords = join ",", @ARGV;
 
@@ -13,6 +15,8 @@ my $voice = Data::RoundRobin->new(qw(Alex Victoria Bruce Vicki Fred Kathy Ralph 
 
 my $twitter_config = YAML::LoadFile("$ENV{HOME}/.twitterrc");
 
+my $h2p = Lingua::Han::PinYin->new;
+
 my $listener = AnyEvent::Twitter::Stream->new(
     username => $twitter_config->{username},
     password => $twitter_config->{password},
@@ -21,12 +25,17 @@ my $listener = AnyEvent::Twitter::Stream->new(
     on_tweet => sub {
         my $tweet = shift;
         my $text = $tweet->{text};
+
+        say "$tweet->{user}{screen_name}:\n\n\t $tweet->{text}";
+        say "-" x 40;
+
         $text =~ s/$RE{URI}//;
+        $text = decode_entities($text);
+
+        $text = $h2p->han2pinyin($text);
 
         return unless $text =~ /^\p{IsASCII}+$/;
-        say "$tweet->{user}{screen_name}:\n\n\t $tweet->{text}";
         system "/usr/bin/say -v $voice \Q$text\E";
-        say "-" x 40;
     },
     on_keepalive => sub {
         warn "ping\n";

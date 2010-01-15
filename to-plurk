@@ -14,6 +14,8 @@ sub post {
 }
 
 package main;
+use common::sense;
+use encoding 'utf8';
 
 die "Define *both* PLURK_USERNAME and PLURK_PASSWORD env var"
     unless $ENV{PLURK_USERNAME} && $ENV{PLURK_PASSWORD};

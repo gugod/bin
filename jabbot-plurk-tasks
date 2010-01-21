@@ -1,10 +1,4 @@
 #!/usr/bin/env perl
-#
-# Add to corntab:
-#
-#     0,35 9-16 * * 1-5 plurk-esun-jpy -c /path/to/plurk.yml
-#
-#
 
 use strict;
 use warnings;
@@ -47,11 +41,8 @@ getopt('c', \%opts);
 die "Usage: $0 -c plurk.yml\n" unless $opts{c};
 
 my $config = LoadFile($opts{c}) or die "Fail to load plurk.yml\n";
-my $plurker = PlurkPoster->new(
-    username => $config->{username},
-    password => $config->{password},
-);
-$plurker->login;
+my $plurker;
+my %tasks;
 
 sub post_currency_exchange_rate {
     my $rates = Finance::Bank::Esun::TW->currency_exchange_rate;
@@ -60,31 +51,46 @@ sub post_currency_exchange_rate {
     $plurker->post($content);
 }
 
-my $global_cv = AE::cv;
+sub post_feed_entry {
+    my ($feed_reader, $new_entries, $feed, $error) = @_;
 
-my @tasks;
+    if (defined $error) {
+        warn "ERROR: $error\n";
+        return;
+    }
 
-for my $feed_url (@{$config->{feeds}}) {
-    push @tasks, AnyEvent::Feed->new(
-        url      => $feed_url,
-        interval => 300,
-        on_fetch => sub {
-            my ($feed_reader, $new_entries, $feed, $error) = @_;
-
-            if (defined $error) {
-                warn "ERROR: $error\n";
-                return;
-            }
-
-            for (@$new_entries) {
-                my ($hash, $entry) = @$_;
-                my $content =  $entry->link . " (" .$entry->title . ")";
-                $plurker->post($content);
-            }
-        }
-    );
+    for (@$new_entries) {
+        my ($hash, $entry) = @$_;
+        my $content =  $entry->link . " (" .$entry->title . ")";
+        $plurker->post($content);
+    }
 }
 
-push @tasks, AE::timer(10, 600, \&post_currency_exchange_rate);
+sub on_config_loaded {
+    $plurker = PlurkPoster->new(
+        username => $config->{username},
+        password => $config->{password},
+    );
+    $plurker->login;
+
+    for my $feed_url (@{$config->{feeds}}) {
+        unless ($tasks{feeds}->{$feed_url}) {
+            $tasks{feeds}->{$feed_url} = AnyEvent::Feed->new(
+                url      => $feed_url,
+                interval => 300,
+                on_fetch => \&post_feed_entry
+            );
+        }
+    }
+    $tasks{exchange_rate} ||= AE::timer(10, 600, \&post_currency_exchange_rate);
+}
+
+my $global_cv = AE::cv;
+
+on_config_loaded();
+
+$SIG{HUP} = sub {
+    on_config_loaded();
+};
 
 $global_cv->recv;

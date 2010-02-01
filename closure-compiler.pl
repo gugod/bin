@@ -4,7 +4,13 @@
 #
 #    closure-complier.pl < file1.js file2.js file3.js ... > out.js
 #
+# The defalut optimization level is "Simple", and can be altered with
+# the following argument flags:
 #
+#    -w   Use "Whitespace Only" optimization
+#    -a   Use "Advadced" optimization
+#
+
 use common::sense;
 use LWP::UserAgent;
 use Getopt::Std;
@@ -12,9 +18,8 @@ use Getopt::Std;
 my %opts;
 getopts("sa", \%opts);
 
-my $level = "WHITESPACE_ONLY";
-
-$level = "SIMPLE_OPTIMIZATIONS"   if $opts{s};
+my $level = "SIMPLE_OPTIMIZATIONS";
+$level = "WHITESPACE_ONLY"        if $opts{w};
 $level = "ADVANCED_OPTIMIZATIONS" if $opts{a};
 
 local $\ = "\n";
@@ -35,5 +40,5 @@ if ($r->is_success) {
     print $r->decoded_content;
 }
 else {
-    print "Error";
+    print "/* Error */";
 }

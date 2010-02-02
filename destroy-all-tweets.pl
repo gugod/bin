@@ -13,7 +13,7 @@ my $t = Net::Twitter->new(
     password => $password
 );
 
-while (my $statuses = $t->user_timeline) {
+while (my $statuses = $t->user_timeline({ count => 200})) {
     for (@$statuses) {
         my $id = $_->{id};
         try {

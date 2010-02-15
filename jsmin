@@ -1,4 +1,3 @@
-#!/Users/gugod/local/bin/perl
 #!/usr/bin/env perl
 use JavaScript::Minifier::XS qw(minify);
 undef $/;

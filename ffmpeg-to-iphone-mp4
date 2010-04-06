@@ -1,0 +1,5 @@
+#!/bin/sh
+
+for $i in $*; do
+   ffmpeg -i $i -f mp4 -vcodec mpeg4 -maxrate 1000 -b 700 -qmin 3 -qmax 5-bufsize 4096 -g 300 -acodec aac -ab 192 -s 480x320 -aspect 4:3 ${i:r}.mp4
+done

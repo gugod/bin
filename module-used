@@ -2,46 +2,27 @@
 # -*- cperl -*-
 use strict;
 use warnings;
-use feature qw(say);
 
-use Cwd;
-use Data::Dump qw(pp);
+use File::Spec;
 use File::Find;
 use Module::CoreList;
 use Module::ExtractUse;
-use Module::Load;
-use Quantum::Superpositions;
-use Try::Tiny;
-use autobox::Core;
-use autobox;
+use List::MoreUtils qw(uniq);
+
+my @dir = map { File::Spec->rel2abs($_) } @ARGV;
+push @dir, File::Spec->rel2abs(File::Spec->curdir) unless @dir;
 
 my $meu = Module::ExtractUse->new;
-my $used = [];
+my @used = ();
 find(
     sub {
         return if $File::Find::dir =~ /\.git/;
+        return if $File::Find::dir =~ /\.sv[nk]/;
         return unless -f $File::Find::name;
         $meu->extract_use($File::Find::name);
-        $used->push($meu->array);
+        push @used, $meu->array;
     },
-    cwd
+    @dir
 );
 
-$used = $used->sort->uniq;
-
-my $used_module_version = {};
-
-my @core_modules = keys %{ $Module::CoreList::version{"$]"} };
-
-for my $module (@$used) {
-    # next if $module eq @core_modules;
-
-    try {
-        load $module;
-        $used_module_version->{$module} = $module->VERSION;
-    } catch {
-        # say STDERR "Failed to load $module";
-    }
-}
-
-say pp $used_module_version;
+print "$_\n" for grep { !$Module::CoreList::version{"$]"}->{$_}  } uniq sort @used;

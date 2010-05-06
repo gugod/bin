@@ -5,7 +5,7 @@ use IO::All;
 my @branches = map { s/^\*?\s*//; $_ } io('git branch |')->chomp->getlines;
 
 say "digraph G {";
-for(io('git log --pretty=format:"%d %h %p" ' . join(" ", map { "\"\Q$_\E\"" } @branches) . "|")->chomp->getlines) {
+for(io('git log --pretty=format:"%d %h %p" ' . join(" ", map { "\"$_\"" } @branches) . " -- |")->chomp->getlines) {
     my $label;
     if (s[^ (\(.+\))][]) {
         $label = $1;

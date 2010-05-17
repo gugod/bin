@@ -1,0 +1,7 @@
+#!/usr/bin/env perl
+use common::sense;
+use Lingua::JA::Romanize::Japanese;
+$, = " ";
+say map {defined($_->[1]) ? "$_->[0]($_->[1])" : "$_->[0]" }
+Lingua::JA::Romanize::Japanese->new->string( join("",@ARGV) );
+

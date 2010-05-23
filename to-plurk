@@ -6,37 +6,43 @@ use Object::Tiny qw(username password);
 use WWW::Mechanize;
 
 sub post {
-    my ($self, $content) = @_;
+    my ($self, @content) = @_;
     my $ua = WWW::Mechanize->new;
     $ua->get('http://www.plurk.com/m/login');
     $ua->submit_form(with_fields => { username => $self->username, password => $self->password });
-    $ua->submit_form(with_fields => { content =>  $content });
+    for(@content) {
+        $ua->submit_form(with_fields => { content =>  $_ });
+    }
 }
 
 package main;
 use common::sense;
 use encoding 'utf8';
+use YAML qw(LoadFile);
+use Getopt::Std;
 
-die "Define *both* PLURK_USERNAME and PLURK_PASSWORD env var"
-    unless $ENV{PLURK_USERNAME} && $ENV{PLURK_PASSWORD};
+my %opts;
+getopt('c', \%opts);
 
-my $content = <>;
+die "Usage: $0 -c plurk.yml\n" unless $opts{c};
+my $config = LoadFile($opts{c}) or die "Fail to load plurk.yml\n";
 
 my $pp = PlurkPoster->new(
-    username => $ENV{PLURK_USERNAME},
-    password => $ENV{PLURK_PASSWORD}
+    username => $config->{username},
+    password => $config->{password},
 );
 
-$pp->post($content);
+local undef $/;
+my @content = split(/\n+/, <>);
+$pp->post(@content);
+
+# $pp->post($content);
 
 =head1 NAME / USAGE / SYNOPSIS / DESCRIPTION
 
-This program send whaever read from STDIN to plurk.com:
+This program send whatever read from STDIN to plurk.com:
 
-   export PLURK_USERNAME=foobar
-   export PLURK_PASSWORD=f00b4r
-
-   echo "Lorem ipsum is good" | to-plurk
+   echo "Lorem ipsum is good" | to-plurk -c plurk.yml
 
 Best for shell scripting.
 

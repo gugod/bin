@@ -1,3 +1,4 @@
 #!/bin/sh
 
-plackup -MPlack::App::Directory -e 'Plack::App::Directory->new(root => ".")->to_app;'
+plackup -s Twiggy -MPlack::App::Directory -e 'Plack::App::Directory->new(root => ".")->to_app;'
+

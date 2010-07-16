@@ -1,0 +1,31 @@
+#!/usr/bin/env perl
+use strict;
+use Flickr::API;
+use Encode::Base58;
+
+my $photoset_id = shift @ARGV or die <<USAGE;
+
+Usage: $0 <photoset_id>
+
+USAGE
+
+my $api = Flickr::API->new({'key' => '7149369e9b30a1605fe63c0ce49c5d70'});
+
+my $response = $api->execute_method('flickr.photosets.getPhotos', {'photoset_id' => $photoset_id});
+
+my $x = $response->{tree};
+
+my @urls = map {
+    my %a = %{$_->{attributes}};
+    {
+        img  => "http://farm$a{farm}.static.flickr.com/$a{server}/$a{id}_$a{secret}_s.jpg",
+        page => "http://flic.kr/p/" . encode_base58($a{id})
+    }
+} grep { $_->{type} eq "element" } @{$x->{children}[1]{children}};
+
+$\ = "\n";
+print qq{<div class="flickr-photoset">};
+for(@urls) {
+    print qq{    <div class="flickr-photo"><a href="$_->{page}"><img src="$_->{img}"></a></div>}
+}
+print qq{</div>};

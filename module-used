@@ -25,4 +25,4 @@ find(
     @dir
 );
 
-print "$_\n" for grep { !$Module::CoreList::version{"$]"}->{$_}  } uniq sort @used;
+print "$_\n" for grep { !$Module::CoreList::version{"$]"}->{$_}  } grep { !/^[\.0-9]+$/ } uniq sort @used;

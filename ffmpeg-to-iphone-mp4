@@ -1,5 +1,6 @@
 #!/bin/zsh
 
 for i in $*; do
-   ffmpeg -i $i -f mp4 -vcodec mpeg4 -maxrate 1000 -b 700 -qmin 3 -qmax 5 -bufsize 4096 -g 300 -acodec libmp3lame -ab 192 -s 480x320 -aspect 4:3 ${i:r}.mp4
+   ffmpeg -vcodec mpeg4 -b 1200kb -mbd 2 -cmp 2 -subcmp 2 -r 20 -acodec aac -ab 160000 -s 480x320 -i $i ${i:r}.mp4
+#   ffmpeg -i $i -f mp4 -vcodec mpeg4 -maxrate 1000 -b 700 -qmin 3 -qmax 5 -bufsize 4096 -g 300 -acodec libmp3lame -ab 192 -s 480x320 -aspect 4:3 ${i:r}.mp4
 done

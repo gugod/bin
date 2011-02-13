@@ -1,10 +1,16 @@
-#!/usr/bin/env perl5g
+#!/usr/bin/env perl
+# -*- cperl -*-
+use perl5i::2;
+use Module::Load;
+
+die "Need module names from arugments.\n" unless @ARGV;
 
 for my $module (@ARGV) {
     try {
         load $module;
         say "$module => @{[$module->VERSION]}";
-    } catch($error) {
+    } catch {
+        my $error = $_;
         say "Failed to load $module: $error";
     }
 }

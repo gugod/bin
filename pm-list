@@ -1,0 +1,4 @@
+#!/bin/sh
+# From http://blog.kiftwi.net/2011/08/02/os-x-lionにperlbrewとcpanmをインストールしてperl環境を整える/
+
+cat `perldoc -l perllocal` | perl -nle '/C<Module> L<([^\|]*?)\|.*?>/ and print "$1"' | sort -u

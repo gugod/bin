@@ -1,0 +1,39 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use 5.012;
+use utf8::all;
+
+package PlurkPoster;
+use Object::Tiny qw(username password);
+use WWW::Mechanize;
+
+sub post {
+    my ($self, $content) = @_;
+    my $ua = WWW::Mechanize->new;
+    $ua->get('http://www.plurk.com/m/login');
+    $ua->submit_form(with_fields => { username => $self->username, password => $self->password });
+    $ua->submit_form(with_fields => { content =>  $content });
+}
+
+package main;
+
+use YAML::Tiny qw(LoadFile);
+use Getopt::Std;
+
+my %opts;
+
+getopt('c', \%opts);
+
+die "Usage: $0 -c plurk.yml\n" unless $opts{c};
+
+my $config = LoadFile($opts{c}) or die "Fail to load plurk.yml\n";
+
+my $pp = PlurkPoster->new(
+    username => $config->{username},
+    password => $config->{password},
+);
+
+for(@ARGV) {
+    $pp->post("!TW $_");
+}

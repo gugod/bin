@@ -1,0 +1,47 @@
+#!/usr/bin/env perl
+
+#!/bin/sh
+#! -*-perl-*-
+#eval 'exec perl -x -wS $0 ${1+"$@"}'
+#    if 0;
+
+use v5.12;
+use URI;
+use WWW::Mechanize::Firefox;
+use XML::Feed;
+use Digest::SHA qw(sha256_hex);
+use Try::Tiny;
+use YAML;
+
+sub url_to_png {
+    my $uri = shift;
+    my $out = shift;
+
+    state $mech = WWW::Mechanize::Firefox->new;
+
+    try {
+        $mech->get("$uri");
+        my $png = $mech->content_as_png();
+        open OUT, ">", $out;
+        print OUT $png;
+        close OUT;
+    }
+}
+
+## main
+
+my $feed = XML::Feed->parse(URI->new('http://trunk.ly/api/v1/timeline/?api_key=4400-e7e85bd4-a5c1-4627-851d-abfdf3fd3a5d&format=rss'))
+    or die XML::Feed->errstr;
+
+my $i = 1;
+for my $entry ($feed->entries) {
+    my $sha = sha256_hex($entry->link);
+    my $attr = {
+        title       => $entry->title,
+        url         => $entry->link
+    };
+
+    url_to_png $entry->link,  "$sha.png";
+
+    YAML::DumpFile("$sha.yml", $attr);
+}

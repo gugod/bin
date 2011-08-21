@@ -7,77 +7,34 @@ use Text::Markdown qw(markdown);
 use IO::All -utf8;
 use YAML;
 
-my $cwd = io->curdir->rel2abs;
-
-sub github_markup {
-    my $text = shift;
-
-    $text =~ s{(?<!`)\[\[([^\n]+?)\]\](?!`)}{
-        my $label = $1;
-        my $page = $1;
-        $page =~ s{ }{-}g;
-        $page =~ s{/}{-}g;
-
-        "[$label]($page.html)"
-    }eg;
-
-    return $text;
-}
-
 sub build_markdown {
-    my ($name, $fullname, $dir) = @_;
-
-    my $out  = $_;
-    $out =~ s/\.md\z/.html/;
-
-    my $outdir = $dir;
-    $outdir =~ s/^content/_build/;
-    $outdir = $cwd . "/" . $outdir;
-
-    my $outfile = $outdir . "/$out";
-
-    my $text = io($name)->all;
-
-    $text = github_markup($text);
-
-    my $body = <<TX;
-: cascade default;
-: override content -> {
-    @{[ markdown( $text, { empty_element_suffix => '>' } ) ]}
-: }
-TX
-    io->file($outfile)->assert->print($body);
+    my ($markdown_file) = @_;
+    system "sitebrew-one", $markdown_file;
 }
 
 sub build_all {
     find +{
         wanted => sub {
-            return unless -f $_;
-            return if /\.DS_Store/;
-            return if /\.git/;
-            return if $File::Find::dir =~ /(sass|\.git)/;
+            return if !-f || /\.DS_Store/ || /\.git/ || $File::Find::dir =~ /(sass|\.git)/;
 
             if (/\.md\z/s) {
-                build_markdown($_, $File::Find::name, $File::Find::dir)
+                build_markdown($File::Find::name);
             }
             else {
                 my $dest = $File::Find::name;
                 if ($dest =~ s/^content/public/) {
-                    $dest = $cwd . "/" . $dest;
 
                     unless ( io->file($dest)->exists && io->file($dest)->mtime > io($_)->mtime ) {
                         say "$File::Find::name => $dest";
-                        io($_) > io->file($dest)->assert->print("");
+                        io($File::Find::name) > io->file($dest)->assert->print("");
                     }
                 }
             }
         },
-        no_chdir => 0,
-        follow => 1
-    },"content";
-    system("xslate -I layouts -o public -t html _build");
-    io("_build")->rmtree;
-    say 'Done';
+        no_chdir => 1
+    }, "content";
+
+    say 'DONE';
 }
 
 if (@ARGV && $ARGV[0] eq '--watch') {

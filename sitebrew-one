@@ -1,0 +1,67 @@
+#!/bin/sh
+#! -*- perl -*-
+eval 'exec perl -x -wS $0 ${1+"$@"}'
+    if 0;
+
+use v5.14;
+
+use strict;
+use warnings;
+use File::Find;
+use Text::Markdown qw(markdown);
+use Text::Xslate;
+use IO::All -utf8;
+use YAML;
+
+sub github_markup {
+    my $text = shift;
+
+    $text =~ s{(?<!`)\[\[([^\n]+?)\]\](?!`)}{
+        my $label = $1;
+        my $page = $1;
+        $page =~ s{ }{-}g;
+        $page =~ s{/}{-}g;
+
+        "[$label]($page.html)"
+    }eg;
+
+    return $text;
+}
+
+sub build_one {
+    my ($markdown_file, $html_file) = @_;
+    my $text = github_markup(io($markdown_file)->all);
+
+    my $template_body = <<TX;
+: cascade default;
+: override content -> {
+    @{[ markdown( $text, { empty_element_suffix => '>' } ) ]}
+: }
+TX
+    my $title = io($markdown_file)->getline =~ s/^# //r;
+
+    my $tx = Text::Xslate->new( path => ['views', 'layouts']);
+    my $html = $tx->render_string($template_body);
+
+    io($html_file)->print($html);
+}
+
+my $markdown_file = shift @ARGV or die <<USAGE;
+
+sitebrew-one <path-to-markdown-file>
+
+USAGE
+
+die "File does not exist\n" unless -f $markdown_file;
+
+my $html_file = $markdown_file =~ s/\.md$/.html/r =~ s/^content/public/r;
+
+say $markdown_file, " => ", $html_file;
+
+if (-f $html_file && io($html_file)->mtime > io($markdown_file)->mtime) {
+    say "    " . "SKIP: HTML file is newer.";
+    exit 0;
+}
+
+build_one($markdown_file, $html_file);
+say "    DONE";

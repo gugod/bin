@@ -18,9 +18,7 @@ sub github_markup {
 
     $text =~ s{(?<!`)\[\[([^\n]+?)\]\](?!`)}{
         my $label = $1;
-        my $page = $1;
-        $page =~ s{ }{-}g;
-        $page =~ s{/}{-}g;
+        my $page = $1 =~ s{ }{-}gr =~ s{/}{-}gr;
 
         "[$label]($page.html)"
     }eg;

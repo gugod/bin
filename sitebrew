@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use 5.012;
+use v5.14;
 use strict;
 use warnings;
 use File::Find;

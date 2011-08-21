@@ -7,9 +7,22 @@ use Text::Markdown qw(markdown);
 use IO::All -utf8;
 use YAML;
 
+sub markdown_file :lvalue {
+    state $markdown_file
+}
+
+sub html_file {
+    markdown_file =~ s/\.md$/.html/r =~ s/^content/public/r;
+}
+
 sub build_markdown {
-    my ($markdown_file) = @_;
-    system "sitebrew-one", $markdown_file;
+    markdown_file = shift;
+
+    if (-f html_file && io(html_file)->mtime > io(markdown_file)->mtime) {
+        return;
+    }
+
+    system "sitebrew-one", markdown_file;
 }
 
 sub build_all {
@@ -37,6 +50,10 @@ sub build_all {
     say 'DONE';
 }
 
+sub build_index {
+    system "sitebrew-index";
+}
+
 if (@ARGV && $ARGV[0] eq '--watch') {
     use File::ChangeNotify;
     my $watcher = File::ChangeNotify->instantiate_watcher(
@@ -47,8 +64,10 @@ if (@ARGV && $ARGV[0] eq '--watch') {
     while (my @events = $watcher->wait_for_events() ) {
         say("+-+ " . $_->path) for (@events);
         build_all;
+        build_index;
     }
 }
 else {
     build_all;
+    build_index;
 }

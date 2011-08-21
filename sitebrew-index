@@ -1,0 +1,45 @@
+#!/bin/sh
+#! -*- perl -*-
+eval 'exec perl -x -wS $0 ${1+"$@"}'
+    if 0;
+
+use v5.14;
+use strict;
+use warnings;
+use File::Find;
+use IO::All -utf8;
+use YAML;
+use DateTimeX::Easy;
+use Text::Xslate;
+
+my @articles;
+
+find({
+    wanted => sub {
+        return unless -f $_ && /attributes\.yml/;
+
+        my $content_file = $_;
+        $content_file =~ s/attributes\.yml$/index.md/;
+
+        my $href = $_;
+        $href =~ s/attributes\.yml$/index.html/;
+        $href =~ s/^content\///;
+
+        my $attrs = YAML::LoadFile($_);
+        $attrs->{DATE} = DateTimeX::Easy->parse_datetime($attrs->{DATE});
+        $attrs->{href} = $href;
+
+        $attrs->{title} = io($content_file)->getline;
+        $attrs->{title} =~ s/^# //;
+
+        push @articles, $attrs;
+    },
+    no_chdir => 1
+}, 'content');
+
+@articles = sort { $b->{DATE} <=> $a->{DATE} } @articles;
+
+my $tx = Text::Xslate->new( path => ['templates', 'layouts'] );
+my $index_html = $tx->render("index.tx", { articles => \@articles });
+
+io("public/index.html")->print($index_html);

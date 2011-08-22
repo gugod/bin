@@ -18,19 +18,15 @@ find({
     wanted => sub {
         return unless -f $_ && /attributes\.yml/;
 
-        my $content_file = $_;
-        $content_file =~ s/attributes\.yml$/index.md/;
+        my $content_file = $_ =~ s/attributes\.yml$/index.md/r;
 
-        my $href = $_;
-        $href =~ s/attributes\.yml$/index.html/;
-        $href =~ s/^content\///;
+        my $href = $_ =~ s/attributes\.yml$//r =~ s{^content/}{}r;
 
         my $attrs = YAML::LoadFile($_);
         $attrs->{DATE} = DateTimeX::Easy->parse_datetime($attrs->{DATE});
         $attrs->{href} = $href;
 
-        $attrs->{title} = io($content_file)->getline;
-        $attrs->{title} =~ s/^# //;
+        $attrs->{title} = io($content_file)->getline =~ s/^# //r;
 
         push @articles, $attrs;
     },

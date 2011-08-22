@@ -37,16 +37,14 @@ sub github_markup {
 sub build_one {
     my $text = github_markup(io(markdown_file)->all);
 
-    my $template_body = <<TX;
-: cascade default;
-: override content -> {
-    @{[ markdown( $text, { empty_element_suffix => '>' } ) ]}
-: }
-TX
-    my $title = io(markdown_file)->getline =~ s/^# //r;
+    my $title = "Untitled";
+    $text =~ s/^# (.+)$//m and $title = $1;
 
     my $tx = Text::Xslate->new( path => ['views', 'layouts']);
-    my $html = $tx->render_string($template_body);
+    my $html = $tx->render("article.tx", {
+        article_content => Text::Xslate::mark_raw(markdown( $text, { empty_element_suffix => '>' } )),
+        title => $title
+    });
 
     io(html_file)->print($html);
 }

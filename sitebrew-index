@@ -39,7 +39,7 @@ find({
 
 @articles = sort { $b->{DATE} <=> $a->{DATE} } @articles;
 
-my $tx = Text::Xslate->new( path => ['templates', 'layouts'] );
+my $tx = Text::Xslate->new( path => ['views', 'layouts'] );
 my $index_html = $tx->render("index.tx", { articles => \@articles });
 
 io("public/index.html")->print($index_html);

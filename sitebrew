@@ -18,7 +18,9 @@ sub html_file {
 sub build_markdown {
     markdown_file = shift;
 
-    if (-f html_file && io(html_file)->mtime > io(markdown_file)->mtime) {
+    if (-f html_file
+        && io(html_file)->mtime > io(markdown_file)->mtime
+        && io(html_file)->mtime > io("views/article.tx")->mtime) {
         return;
     }
 
@@ -47,11 +49,12 @@ sub build_all {
         no_chdir => 1
     }, "content";
 
-    say 'DONE';
+    say 'DONE build_all';
 }
 
 sub build_index {
     system "sitebrew-index";
+    say 'DONE build_index';
 }
 
 if (@ARGV && $ARGV[0] eq '--watch') {

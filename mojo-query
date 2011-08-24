@@ -1,0 +1,25 @@
+#!/usr/bin/env perl
+use v5.14;
+use encoding 'utf8';
+use Mojo::DOM;
+use Mojo::UserAgent;
+use JSON;
+
+my ($url, $query, $out) = @ARGV;
+die "Need url and query" unless $url && $query;
+
+my $ua = Mojo::UserAgent->new;
+
+$ua->get($url)->res->dom($query)->each(
+    sub {
+        local $_ = $_[0];
+
+        if ($out) {
+            eval "$out";
+        }
+        else {
+            local $, = ", ";
+            say $_->text, $_->type, encode_json($_->attrs);
+        }
+    }
+);

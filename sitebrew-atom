@@ -3,10 +3,11 @@ use v5.14;
 use strict;
 use warnings;
 use File::Find;
-use IO::All -utf8;
+use utf8;
+use IO::All;
 use YAML;
 use DateTimeX::Easy;
-use XML::Atom::SimpleFeed;
+use XML::Feed;
 
 my @articles;
 
@@ -22,7 +23,7 @@ find({
         $attrs->{DATE} = DateTimeX::Easy->parse_datetime($attrs->{DATE});
         $attrs->{href} = $href;
 
-        $attrs->{title} = io($content_file)->getline =~ s/^# //r;
+        $attrs->{title} = io($content_file)->getline =~ s/^# //r =~ s/\n$//sr;
 
         push @articles, $attrs;
     },
@@ -31,22 +32,26 @@ find({
 
 @articles = sort { $b->{DATE} <=> $a->{DATE} } @articles;
 
-my $feed = XML::Atom::SimpleFeed->new(
-    title   => "gugod's blog",
-    link    => "http://gugod.org",
-    updated => DateTimeX::Easy->new("now"),
-    author  => "Kang-min Liu",
-);
+my $feed = XML::Feed->new("Atom", version => 1.0);
 
-for (@articles) {
-    $feed->add_entry(
-        title   => $_->{title},
-        link    => $_->{href},
-        updated => $_->{DATE}
-    );
+$feed->title("gugod's blog");
+$feed->link("http://gugod.org");
+$feed->self_link("http://gugod.org/atom.xml");
+$feed->modified(DateTime->now);
+
+for my $article (@articles) {
+    $feed->add_entry(do {
+        my $x = XML::Feed::Entry->new;
+        $x->link($article->{href});
+        $x->title($article->{title});
+        $x->modified($x->{DATE});
+        $x->author($ENV{USER});
+
+        $x;
+    });
 }
 
-io("public/atom.xml")->print( $feed->as_string );
+io("public/atom.xml")->print( $feed->as_xml );
 
 say "DONE: public/atom.xml";
 

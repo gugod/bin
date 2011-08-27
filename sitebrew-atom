@@ -1,0 +1,52 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+use File::Find;
+use IO::All -utf8;
+use YAML;
+use DateTimeX::Easy;
+use XML::Atom::SimpleFeed;
+
+my @articles;
+
+find({
+    wanted => sub {
+        return unless -f $_ && /attributes\.yml/;
+
+        my $content_file = $_ =~ s/attributes\.yml$/index.md/r;
+
+        my $href = $_ =~ s/attributes\.yml$//r =~ s{^content/}{}r;
+
+        my $attrs = YAML::LoadFile($_);
+        $attrs->{DATE} = DateTimeX::Easy->parse_datetime($attrs->{DATE});
+        $attrs->{href} = $href;
+
+        $attrs->{title} = io($content_file)->getline =~ s/^# //r;
+
+        push @articles, $attrs;
+    },
+    no_chdir => 1
+}, 'content');
+
+@articles = sort { $b->{DATE} <=> $a->{DATE} } @articles;
+
+my $feed = XML::Atom::SimpleFeed->new(
+    title   => "gugod's blog",
+    link    => "http://gugod.org",
+    updated => DateTimeX::Easy->new("now"),
+    author  => "Kang-min Liu",
+);
+
+for (@articles) {
+    $feed->add_entry(
+        title   => $_->{title},
+        link    => $_->{href},
+        updated => $_->{DATE}
+    );
+}
+
+io("public/atom.xml")->print( $feed->as_string );
+
+say "DONE: public/atom.xml";
+

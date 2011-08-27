@@ -46,7 +46,7 @@ sub build_one {
         title => $title
     });
 
-    io(html_file)->print($html);
+    io(html_file)->assert->print($html);
 }
 
 markdown_file = shift @ARGV or die <<USAGE;

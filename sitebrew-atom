@@ -1,13 +1,18 @@
 #!/usr/bin/env perl
 use v5.14;
-use strict;
-use warnings;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use File::Find;
 use utf8;
 use IO::All;
 use YAML;
 use DateTimeX::Easy;
 use XML::Feed;
+
+use Sitebrew;
+
+my $brewer = Sitebrew->new(app_root => io->curdir->absolute->name);
 
 my @articles;
 
@@ -34,9 +39,9 @@ find({
 
 my $feed = XML::Feed->new("Atom", version => 1.0);
 
-$feed->title("gugod's blog");
-$feed->link("http://gugod.org");
-$feed->self_link("http://gugod.org/atom.xml");
+$feed->title($brewer->config->title);
+$feed->link($brewer->config->url_base);
+$feed->self_link($brewer->config->url_base . "/atom.xml");
 $feed->modified(DateTime->now);
 
 for my $article (@articles) {

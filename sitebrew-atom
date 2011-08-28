@@ -11,31 +11,13 @@ use DateTimeX::Easy;
 use XML::Feed;
 
 use Sitebrew;
+use Sitebrew::Article;
 
-my $brewer = Sitebrew->new(app_root => io->curdir->absolute->name);
+Sitebrew->initialize(app_root => io->curdir->absolute->name);
 
-my @articles;
+my $brewer = Sitebrew->instance;
 
-find({
-    wanted => sub {
-        return unless -f $_ && /attributes\.yml/;
-
-        my $content_file = $_ =~ s/attributes\.yml$/index.md/r;
-
-        my $href = $_ =~ s/attributes\.yml$//r =~ s{^content/}{}r;
-
-        my $attrs = YAML::LoadFile($_);
-        $attrs->{DATE} = DateTimeX::Easy->parse_datetime($attrs->{DATE});
-        $attrs->{href} = $href;
-
-        $attrs->{title} = io($content_file)->getline =~ s/^# //r =~ s/\n$//sr;
-
-        push @articles, $attrs;
-    },
-    no_chdir => 1
-}, 'content');
-
-@articles = sort { $b->{DATE} <=> $a->{DATE} } @articles;
+my @articles = sort { $b->{published_at} <=> $a->{published_at} } Sitebrew::Article->all;
 
 my $feed = XML::Feed->new("Atom", version => 1.0);
 
@@ -47,11 +29,11 @@ $feed->modified(DateTime->now);
 for my $article (@articles) {
     $feed->add_entry(do {
         my $x = XML::Feed::Entry->new;
-        $x->link($article->{href});
-        $x->title($article->{title});
-        $x->modified($x->{DATE});
+        $x->link($brewer->config->url_base . $article->href);
+        $x->title($article->title);
+        $x->modified($article->published_at);
         $x->author($ENV{USER});
-
+        $x->content($article->body);
         $x;
     });
 }

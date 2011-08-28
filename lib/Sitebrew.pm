@@ -1,5 +1,6 @@
 package Sitebrew;
 use Moose;
+use MooseX::Singleton;
 use IO::All;
 
 has app_root => (
@@ -11,13 +12,6 @@ has app_root => (
 has config => (
     is => "rw",
     isa => "Sitebrew::Config",
-    lazy_build => 1
-);
-
-
-has articles => (
-    is => "rw",
-    isa => "ArrayRef[Sitebrew::Article]",
     lazy_build => 1
 );
 

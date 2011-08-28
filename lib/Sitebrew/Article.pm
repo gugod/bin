@@ -6,6 +6,7 @@ use Sitebrew;
 use File::Find;
 use IO::All;
 use YAML;
+use Text::Markdown qw(markdown);
 
 has content_file => (
     is => "rw",
@@ -31,6 +32,12 @@ has body => (
     lazy_build => 1
 );
 
+has body_html => (
+    is => "ro",
+    isa => "Str",
+    lazy_build => 1
+);
+
 has published_at => (
     is => "rw",
     isa => "DateTime",
@@ -42,7 +49,6 @@ has href => (
     isa => "Str",
     lazy_build => 1
 );
-
 
 sub _build_title {
     my ($self) =  @_;
@@ -70,6 +76,11 @@ sub _build_published_at {
 sub _build_href {
     my $self = shift;
     return $self->attributes_file =~ s/attributes\.yml$//r =~ s{^content/}{/}r;
+}
+
+sub _build_body_html {
+    my $self = shift;
+    return markdown($self->body);
 }
 
 sub all {

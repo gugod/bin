@@ -52,25 +52,4 @@ sub build_all {
     say 'DONE build_all';
 }
 
-sub build_index {
-    system "sitebrew-index";
-    say 'DONE build_index';
-}
-
-if (@ARGV && $ARGV[0] eq '--watch') {
-    use File::ChangeNotify;
-    my $watcher = File::ChangeNotify->instantiate_watcher(
-        directories => ['content', 'layouts'],
-        filter      => qr/\.(html|md|tx)$/
-    );
-
-    while (my @events = $watcher->wait_for_events() ) {
-        say("+-+ " . $_->path) for (@events);
-        build_all;
-        build_index;
-    }
-}
-else {
-    build_all;
-    build_index;
-}
+build_all;

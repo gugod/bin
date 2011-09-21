@@ -41,14 +41,12 @@ for my $file (@org_files) {
 my $growl = Growl::Any->new(appname => "org-growl", events => ["todo"]);
 
 my $now = DateTime->now;
-$now->set_time_zone("Asia/Taipei");
 
 for(@scheduled) {
     my ($t, $title) = @$_;
-    my $d = $t - $now;
+    next unless $t > $now;
 
-    if ( $d->is_positive && $d->minutes <= 15 ) {
-        $growl->notify("todo", "To do" => $title);
+    if ( $t->epoch - $now->epoch < 900 ) {
+        $growl->notify("todo", "@{[ $t->hms ]}", $title, "/Users/gugod/Icons/Things.png");
     }
 }
-

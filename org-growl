@@ -1,0 +1,54 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use Org::Parser;
+use Growl::Any;
+
+binmode STDOUT, ":utf8";
+
+my @org_files = @ARGV;
+
+die <<USAGE unless @org_files;
+
+Usage: org-growl files1.org [ files2.org files3.org ... ]
+
+USAGE
+
+my @scheduled;
+for my $file (@org_files) {
+    open my $fh, "<:utf8", $file;
+    my $op = Org::Parser->new;
+    my $doc = $op->parse($fh);
+
+    $doc->walk(
+        sub {
+            my ($el) = @_;
+
+            if ($el->isa("Org::Element::Headline") && $el->is_todo && ! $el->is_done) {
+                for($el->find("Timestamp")) {
+                    if ($_->field_name eq 'SCHEDULED') {
+                        push @scheduled, [ $_->datetime, $el->title->as_string ];
+                    }
+                }
+            }
+        }
+    );
+
+    close $fh;
+}
+
+
+my $growl = Growl::Any->new(appname => "org-growl", events => ["todo"]);
+
+my $now = DateTime->now;
+$now->set_time_zone("Asia/Taipei");
+
+for(@scheduled) {
+    my ($t, $title) = @$_;
+    my $d = $t - $now;
+
+    if ( $d->is_positive && $d->minutes <= 15 ) {
+        $growl->notify("todo", "To do" => $title);
+    }
+}
+

@@ -46,7 +46,8 @@ sub build_all {
                 }
             }
         },
-        no_chdir => 1
+        no_chdir => 1,
+        follow => 1
     }, "content";
 
     say 'DONE build_all';

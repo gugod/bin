@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 
 use v5.14;
+use DateTime;
 use Org::Parser;
 use Growl::Any;
 
@@ -13,6 +14,8 @@ die <<USAGE unless @org_files;
 Usage: org-growl files1.org [ files2.org files3.org ... ]
 
 USAGE
+
+my $now = DateTime->now(time_zone => 'local');
 
 my @scheduled;
 for my $file (@org_files) {
@@ -27,7 +30,12 @@ for my $file (@org_files) {
             if ($el->isa("Org::Element::Headline") && $el->is_todo && ! $el->is_done) {
                 for($el->find("Timestamp")) {
                     if ($_->field_name eq 'SCHEDULED') {
-                        push @scheduled, [ $_->datetime, $el->title->as_string ];
+
+                        my $t = $_->datetime;
+                        $t->set_time_zone($now->time_zone)
+                            if $t->time_zone->name eq 'floating';
+
+                        push @scheduled, [ $t, $el->title->as_string ];
                     }
                 }
             }
@@ -37,16 +45,17 @@ for my $file (@org_files) {
     close $fh;
 }
 
+local $, = ", ";
 
 my $growl = Growl::Any->new(appname => "org-growl", events => ["todo"]);
-
-my $now = DateTime->now;
+my $now_t = $now->epoch;
 
 for(@scheduled) {
     my ($t, $title) = @$_;
+
     next unless $t > $now;
 
-    if ( $t->epoch - $now->epoch < 900 ) {
+    if ( $t->epoch - $now_t < 900 ) {
         $growl->notify("todo", "@{[ $t->hms ]}", $title, "/Users/gugod/Icons/Things.png");
     }
 }

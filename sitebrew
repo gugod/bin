@@ -30,7 +30,7 @@ sub build_markdown {
 sub build_all {
     find +{
         wanted => sub {
-            return if !-f || /\.DS_Store/ || /\.git/ || $File::Find::dir =~ /(sass|\.git)/;
+            return if !-f || /\.DS_Store/ || /\.git/ || /_attributes\.yml/z || $File::Find::dir =~ /(sass|\.git)/;
 
             if (/\.md\z/s) {
                 build_markdown($File::Find::name);

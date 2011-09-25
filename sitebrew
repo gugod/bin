@@ -35,8 +35,6 @@ sub build_markdown {
     }
 
     system "sitebrew-one", markdown_file;
-
-    say "BUILD " . markdown_file . " => " . html_file;
 }
 
 sub copy_assets {

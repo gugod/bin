@@ -8,7 +8,10 @@ use File::Find;
 use IO::All -utf8;
 use YAML;
 use Text::Markdown qw(markdown);
+
 use DateTimeX::Easy;
+use DateTime::TimeZone;
+
 use File::stat;
 
 has content_file => (
@@ -81,6 +84,8 @@ sub _build_attributes {
             published_at => DateTime->from_epoch( epoch => stat($self->content_file)->mtime )
         };
     }
+
+    $attrs->{published_at}->set_time_zone( Sitebrew->local_time_zone );
 
     $self->published_at( $attrs->{published_at} );
 }

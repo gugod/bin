@@ -7,10 +7,10 @@ use v5.14;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
-use Text::Markdown qw(markdown);
 use Text::Xslate;
 use IO::All -utf8;
 use YAML;
+use DateTime::Format::Mail;
 
 use Sitebrew;
 use Sitebrew::Article;
@@ -40,16 +40,16 @@ sub github_markup {
 
 sub build_one {
     my $article = Sitebrew::Article->new( content_file => markdown_file );
-
-    my $text = github_markup( $article->body );
     my $title = $article->title;
 
     my $tx = Text::Xslate->new( path => ['views', 'layouts']);
     my $html = $tx->render("article.tx", {
         article => {
-            published_at => $article->published_at,
+            published_at => DateTime::Format::Mail->format_datetime($article->published_at),
             title => $article->title,
-            body_html => Text::Xslate::mark_raw( markdown( $text, { empty_element_suffix => '>' } ) )
+            body_html => Text::Xslate::mark_raw(
+                Sitebrew->markdown( $article->body, { empty_element_suffix => '>' } )
+            )
         },
         title => $title
     });
@@ -67,4 +67,4 @@ die "File does not exist\n" unless -f markdown_file;
 
 build_one;
 
-say "DONE " . html_file;
+say "BUILD " . html_file;

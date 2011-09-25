@@ -33,7 +33,7 @@ for my $article (@articles) {
         $x->title($article->title);
         $x->modified($article->published_at);
         $x->author($ENV{USER});
-        $x->content($article->body_html);
+        $x->content( Sitebrew->markdown($article->body) );
 
         $x;
     });

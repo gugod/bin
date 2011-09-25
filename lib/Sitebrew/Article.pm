@@ -7,14 +7,10 @@ use File::Find;
 use IO::All;
 use YAML;
 use Text::Markdown qw(markdown);
+use DateTimeX::Easy;
+use File::stat;
 
 has content_file => (
-    is => "rw",
-    isa => "Str",
-    required => 1
-);
-
-has attributes_file => (
     is => "rw",
     isa => "Str",
     required => 1
@@ -63,8 +59,20 @@ sub _build_body {
 
 sub _build_attributes {
     my $self = shift;
-    my $attrs = YAML::LoadFile($self->attributes_file);
-    $self->published_at( DateTimeX::Easy->parse_datetime($attrs->{DATE}) );
+    my $attr_file = $self->content_file =~ s{(/[^/]+)\.md}{$1_attributes.yml}r;
+
+    my $attrs = {};
+    if (-f $attr_file) {
+        $attrs = YAML::LoadFile($self->attributes_file);
+        $attrs->{published_at} = DateTimeX::Easy->parse_datetime( $attrs->{DATE} );
+    }
+    else {
+        $attrs = {
+            published_at => DateTime->from_epoch( epoch => stat($self->content_file)->mtime )
+        };
+    }
+
+    $self->published_at( $attrs->{published_at} );
 }
 
 sub _build_published_at {
@@ -75,7 +83,7 @@ sub _build_published_at {
 
 sub _build_href {
     my $self = shift;
-    return $self->attributes_file =~ s/attributes\.yml$//r =~ s{^content/}{/}r;
+    return $self->content_file =~ s{^content/}{/}r =~ s/.md$/.html/r =~ s/\/index.html$/\//r;
 }
 
 sub _build_body_html {
@@ -92,14 +100,12 @@ sub all {
 
     find({
         wanted => sub {
-            return unless -f $_ && /attributes\.yml/;
+            return unless -f $_ && /\.md$/;
 
-            push @articles, $class->new(
-                content_file => $_ =~ s/attributes\.yml$/index.md/r,
-                attributes_file => $_
-            );
+            push @articles, $class->new(content_file => $_);
         },
-        no_chdir => 1
+        no_chdir => 1,
+        follow => 1
     }, io->catdir($app_root, 'content')->name);
 
     return @articles;

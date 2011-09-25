@@ -1,11 +1,18 @@
 #!/usr/bin/env perl
 use v5.14;
-use strict;
-use warnings;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use File::Find;
 use Text::Markdown qw(markdown);
 use IO::All -utf8;
+use File::Copy;
 use YAML;
+
+use Sitebrew;
+use Sitebrew::Article;
+
+Sitebrew->initialize(app_root => io->curdir->absolute->name);
 
 sub markdown_file :lvalue {
     state $markdown_file
@@ -21,36 +28,50 @@ sub build_markdown {
     if (-f html_file
         && io(html_file)->mtime > io(markdown_file)->mtime
         && io(html_file)->mtime > io("views/article.tx")->mtime) {
+
+        say "SKIP " . markdown_file . " => " . html_file;
         return;
     }
 
     system "sitebrew-one", markdown_file;
+
+    say "BUILD " . markdown_file . " => " . html_file;
+}
+
+sub copy_assets {
+    my $source = shift;
+    my $destination = $source =~ s/^content/public/r;
+
+    my $x = io->file($destination);
+    if ($x->exists && $x->mtime > io($source)->mtime ) {
+        say "SKIP $source => $destination";
+    }
+    else {
+        copy($source, $destination)
+            or die "copy failed: $!";
+
+        say "COPY $source => $destination";
+    }
 }
 
 sub build_all {
     find +{
         wanted => sub {
-            return if !-f || /\.DS_Store/ || /\.git/ || /_attributes\.yml/z || $File::Find::dir =~ /(sass|\.git)/;
-
-            if (/\.md\z/s) {
-                build_markdown($File::Find::name);
-            }
-            else {
-                my $dest = $File::Find::name;
-                if ($dest =~ s/^content/public/) {
-
-                    unless ( io->file($dest)->exists && io->file($dest)->mtime > io($_)->mtime ) {
-                        say "$File::Find::name => $dest";
-                        io($File::Find::name) > io->file($dest)->assert->print("");
-                    }
-                }
-            }
+            return if !-f || /\.DS_Store/ || /\.git/ || /(\.md|_attributes\.yml)\z/ || $File::Find::dir =~ /(sass|\.git)/;
+            copy_assets($File::Find::name);
         },
         no_chdir => 1,
         follow => 1
     }, "content";
 
-    say 'DONE build_all';
+    Sitebrew::Article->each(
+        sub {
+            my ($article) = @_;
+            build_markdown( $article->content_file );
+        }
+    );
+
+    say 'ALL DONE';
 }
 
 build_all;

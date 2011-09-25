@@ -63,7 +63,7 @@ sub _build_attributes {
 
     my $attrs = {};
     if (-f $attr_file) {
-        $attrs = YAML::LoadFile($self->attributes_file);
+        $attrs = YAML::LoadFile($attr_file);
         $attrs->{published_at} = DateTimeX::Easy->parse_datetime( $attrs->{DATE} );
     }
     else {
@@ -91,22 +91,37 @@ sub _build_body_html {
     return markdown($self->body);
 }
 
-sub all {
-    my ($class) = @_;
-
+sub each {
+    my ($class, $cb) = @_;
     my $app_root = Sitebrew->instance->app_root;
 
-    my @articles;
+    my @content_files;
 
     find({
         wanted => sub {
             return unless -f $_ && /\.md$/;
-
-            push @articles, $class->new(content_file => $_);
+            push @content_files, $_;
         },
         no_chdir => 1,
         follow => 1
     }, io->catdir($app_root, 'content')->name);
+
+    for my $content_file (@content_files) {
+        my $article = $class->new(content_file => $content_file);
+        $cb->($article);
+    }
+}
+
+sub all {
+    my ($class) = @_;
+
+    my @articles;
+
+    $class->each(
+        sub {
+            push @articles, $_[0]
+        }
+    );
 
     return @articles;
 }

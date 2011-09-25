@@ -27,6 +27,7 @@ sub build_markdown {
 
     if (-f html_file
         && io(html_file)->mtime > io(markdown_file)->mtime
+        && io(html_file)->mtime > io("views/default-layout.tx")->mtime
         && io(html_file)->mtime > io("views/article.tx")->mtime) {
 
         say "SKIP " . markdown_file . " => " . html_file;

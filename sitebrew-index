@@ -4,38 +4,23 @@ eval 'exec perl -x -wS $0 ${1+"$@"}'
     if 0;
 
 use v5.14;
-use strict;
-use warnings;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use File::Find;
 use IO::All -utf8;
 use YAML;
 use DateTimeX::Easy;
 use Text::Xslate;
 
-my @articles;
+use Sitebrew;
+use Sitebrew::Article;
 
-find({
-    wanted => sub {
-        return unless -f $_ && /attributes\.yml/;
+Sitebrew->initialize(app_root => io->curdir->absolute->name);
 
-        my $content_file = $_ =~ s/attributes\.yml$/index.md/r;
+my @articles = sort { $b->published_at <=> $a->published_at } Sitebrew::Article->all;
 
-        my $href = $_ =~ s/attributes\.yml$//r =~ s{^content/}{}r;
-
-        my $attrs = YAML::LoadFile($_);
-        $attrs->{DATE} = DateTimeX::Easy->parse_datetime($attrs->{DATE});
-        $attrs->{href} = $href;
-
-        $attrs->{title} = io($content_file)->getline =~ s/^# //r;
-
-        push @articles, $attrs;
-    },
-    no_chdir => 1
-}, 'content');
-
-@articles = sort { $b->{DATE} <=> $a->{DATE} } @articles;
-
-my $tx = Text::Xslate->new( path => ['views', 'layouts'] );
+my $tx = Text::Xslate->new( input_layer => ":utf8", path => ['views', 'layouts'] );
 my $index_html = $tx->render("index.tx", { articles => \@articles });
 
 io("public/index.html")->print($index_html);

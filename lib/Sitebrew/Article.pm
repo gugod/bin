@@ -1,10 +1,11 @@
 package Sitebrew::Article;
 use v5.14;
+use utf8;
 use namespace::autoclean;
 use Moose;
 use Sitebrew;
 use File::Find;
-use IO::All;
+use IO::All -utf8;
 use YAML;
 use Text::Markdown qw(markdown);
 use DateTimeX::Easy;
@@ -28,12 +29,6 @@ has body => (
     lazy_build => 1
 );
 
-has body_html => (
-    is => "ro",
-    isa => "Str",
-    lazy_build => 1
-);
-
 has published_at => (
     is => "rw",
     isa => "DateTime",
@@ -46,15 +41,30 @@ has href => (
     lazy_build => 1
 );
 
+sub _build_title_and_body {
+    my ($self) = @_;
+    my $content_text = io($self->content_file)->utf8->all;
+    my ($first_line) = $content_text =~ m/\A(.+)\n/;
+
+    my $title = $first_line =~ s/^# //r;
+
+    $content_text =~ s/\A(.+)\n//;
+    $content_text =~ s/\A(=+)\n//;
+
+    $self->title($title);
+    $self->body($content_text);
+}
+
 sub _build_title {
     my ($self) =  @_;
-    my $title = io($self->content_file)->getline =~ s/^# //r =~ s/\n$//sr;
-    return $title;
+    $self->_build_title_and_body;
+    return $self->title;
 }
 
 sub _build_body {
     my ($self) =  @_;
-    return io($self->content_file)->all;
+    $self->_build_title_and_body;
+    return $self->body;
 }
 
 sub _build_attributes {
@@ -84,11 +94,6 @@ sub _build_published_at {
 sub _build_href {
     my $self = shift;
     return $self->content_file =~ s{^content/}{/}r =~ s/.md$/.html/r =~ s/\/index.html$/\//r;
-}
-
-sub _build_body_html {
-    my $self = shift;
-    return markdown($self->body);
 }
 
 sub each {

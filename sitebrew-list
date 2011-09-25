@@ -11,6 +11,7 @@ use IO::All;
 use Sitebrew;
 use Sitebrew::Article;
 
+binmode(STDOUT, ":utf8");
 
 Sitebrew->initialize(app_root => io->curdir->absolute->name);
 my $brewer = Sitebrew->instance;

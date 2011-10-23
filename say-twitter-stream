@@ -11,10 +11,6 @@ sub random {
     $_[ rand(@_) ]
 }
 
-die "Need keywords in \@ARGV\n" unless @ARGV;
-
-my $keywords = join ",", @ARGV;
-
 my $done = AnyEvent->condvar;
 
 my $twitter_config = YAML::LoadFile("$ENV{HOME}/.twitterrc");
@@ -27,13 +23,16 @@ $SIG{INT} = sub {
 my $voice = "Alex";
 
 my $listener = AnyEvent::Twitter::Stream->new(
-    username => $twitter_config->{username},
-    password => $twitter_config->{password},
-    method   => "filter",
-    track    => "$twitter_config->{username},$keywords",
+    consumer_key => $twitter_config->{consumer_key},
+    consumer_secret => $twitter_config->{consumer_secret},
+    token    => $twitter_config->{access_token},
+    token_secret => $twitter_config->{access_token_secret},
+    method   => "userstream",
     on_tweet => sub {
         my $tweet = shift;
         my $text = $tweet->{text};
+
+        next unless $text && $text =~ /\S/;
 
         say "$tweet->{user}{screen_name}:\n\n\t $tweet->{text}";
         say "-" x 40;

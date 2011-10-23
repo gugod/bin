@@ -1,0 +1,25 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use Net::Twitter;
+use YAML;
+
+my $config = YAML::LoadFile( "$ENV{HOME}/.twitterrc" );
+
+my $twitter = Net::Twitter->new(
+    traits => [ 'API::REST', 'OAuth' ],
+    consumer_key => $config->{consumer_key},
+    consumer_secret => $config->{consumer_secret}
+);
+
+system "open" => $twitter->get_authorization_url;
+
+print "Enter the PIN#\n";
+
+my $pin = <STDIN>;
+chomp($pin);
+
+my($access_token, $access_token_secret, $user_id, $screen_name) = $twitter->request_access_token(verifier => $pin);
+say;
+say "access_token: $access_token";
+say "access_token_secret: $access_token_secret";

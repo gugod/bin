@@ -1,21 +1,30 @@
 #!/usr/bin/env perl
 use common::sense;
+use AnyEvent;
 use AnyEvent::Twitter::Stream;
 use YAML;
 use Regexp::Common qw /URI/;
 use Data::RoundRobin;
-use Lingua::Han::PinYin;
 use HTML::Entities;
+
+sub random {
+    $_[ rand(@_) ]
+}
+
+die "Need keywords in \@ARGV\n" unless @ARGV;
 
 my $keywords = join ",", @ARGV;
 
 my $done = AnyEvent->condvar;
 
-my $voice = Data::RoundRobin->new(qw(Alex Victoria Bruce Vicki Fred Kathy Ralph ));
-
 my $twitter_config = YAML::LoadFile("$ENV{HOME}/.twitterrc");
 
-my $h2p = Lingua::Han::PinYin->new;
+binmode STDOUT, ":utf8";
+
+$SIG{INT} = sub {
+    exit;
+};
+my $voice = "Alex";
 
 my $listener = AnyEvent::Twitter::Stream->new(
     username => $twitter_config->{username},
@@ -32,15 +41,27 @@ my $listener = AnyEvent::Twitter::Stream->new(
         $text =~ s/$RE{URI}//;
         $text = decode_entities($text);
 
-        $text = $h2p->han2pinyin($text);
+        if ( @{[ $text =~ /@/g ]} > 4 ) {
+            return;
+        }
 
-        return unless $text =~ /^\p{IsASCII}+$/;
-        system "/usr/bin/say -v $voice \Q$text\E";
+        if ($text =~ /^\p{ASCII}+$/) {
+            $voice = random("Daniel", "Jill");
+        }
+        elsif ($text =~ /(\p{Hiragana}|\p{Katakana})/) {
+            $voice = "Kyoko";
+        } elsif ($text =~ /\p{Han}/) {
+            $voice = "Ya-Ling";
+        } else {
+            return;
+        }
+
+        system "/usr/bin/say", -v => $voice, "$text";
     },
     on_keepalive => sub {
         warn "ping\n";
     },
-    timeout => 45,
+    timeout => 600,
 );
 
 $done->recv;

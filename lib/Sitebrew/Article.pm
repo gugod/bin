@@ -1,18 +1,17 @@
 package Sitebrew::Article;
 use v5.14;
-use utf8;
-use namespace::autoclean;
+
 use Moose;
-use Sitebrew;
+use utf8;
 use File::Find;
 use IO::All -utf8;
 use YAML;
 use Text::Markdown qw(markdown);
-
-use DateTimeX::Easy;
-use DateTime::TimeZone;
-
 use File::stat;
+
+use Sitebrew;
+use DateTime;
+use DateTimeX::Easy;
 
 has content_file => (
     is => "rw",
@@ -23,25 +22,29 @@ has content_file => (
 has title => (
     is => "rw",
     isa => "Str",
-    lazy_build => 1
+    lazy => 1,
+    builder => "_build_title"
 );
 
 has body => (
     is => "rw",
     isa => "Str",
-    lazy_build => 1
+    lazy => 1,
+    builder => "_build_body"
 );
 
 has published_at => (
     is => "rw",
     isa => "DateTime",
-    lazy_build => 1
+    lazy => 1,
+    builder => "_build_published_at"
 );
 
 has href => (
     is => "rw",
     isa => "Str",
-    lazy_build => 1
+    lazy => 1,
+    builder => "_build_href"
 );
 
 sub _build_title_and_body {
@@ -49,7 +52,7 @@ sub _build_title_and_body {
     my $content_text = io($self->content_file)->utf8->all;
     my ($first_line) = $content_text =~ m/\A(.+)\n/;
 
-    my $title = $first_line =~ s/^# //r;
+    my $title = $first_line =~ s/^#+ //r;
 
     $content_text =~ s/\A(.+)\n//;
     $content_text =~ s/\A(=+)\n//;
@@ -70,30 +73,23 @@ sub _build_body {
     return $self->body;
 }
 
-sub _build_attributes {
+sub _build_published_at {
     my $self = shift;
     my $attr_file = $self->content_file =~ s{(/[^/]+)\.md}{$1_attributes.yml}r;
 
     my $attrs = {};
+
     if (-f $attr_file) {
         $attrs = YAML::LoadFile($attr_file);
         $attrs->{published_at} = DateTimeX::Easy->parse_datetime( $attrs->{DATE} );
     }
     else {
-        $attrs = {
-            published_at => DateTime->from_epoch( epoch => stat($self->content_file)->mtime )
-        };
+        $attrs->{published_at} = DateTime->from_epoch( epoch => stat($self->content_file)->mtime );
     }
 
     $attrs->{published_at}->set_time_zone( Sitebrew->local_time_zone );
 
-    $self->published_at( $attrs->{published_at} );
-}
-
-sub _build_published_at {
-    my $self = shift;
-    $self->_build_attributes;
-    $self->published_at;
+    return $attrs->{published_at};
 }
 
 sub _build_href {

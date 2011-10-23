@@ -1,9 +1,9 @@
 package Sitebrew;
-use Moose;
 use MooseX::Singleton;
 use IO::All;
 use Text::Markdown ();
 use DateTime::TimeZone;
+use Sitebrew::Config;
 
 has app_root => (
     is => "rw",
@@ -23,19 +23,13 @@ has local_time_zone => (
     lazy_build => 1
 );
 
-sub _build_articles {
-    my ($self) = @_;
-    return [];
-}
-
 sub _build_config {
-    my ($self) = @_;
-    require Sitebrew::Config;
+    my $self = shift;
     Sitebrew::Config->load( io->catfile($self->app_root, ".sitebrew", "config.yml") );
 }
 
 sub _build_local_time_zone {
-    return DateTime::TimeZone->new(name => 'local');
+    DateTime::TimeZone->new(name => 'local');
 }
 
 sub markdown {

@@ -1,0 +1,62 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use YAML ();
+use News::NNTPClient;
+use Email::MIME;
+use IO::All;
+
+binmode(STDOUT, ":utf8");
+
+my $last_read = do {
+    my $file = $ENV{HOME} . "/.newsgroup-bt-download.yml";
+
+    -f $file ? YAML::LoadFile($file) : {};
+};
+
+my ($server, @groups) = @ARGV;
+
+if (!$server || !@groups) {
+    die "Usage: " . io($0)->filename . " SERVER GROUP1 GROUP2 ...\n";
+}
+
+my $nntp = News::NNTPClient->new($server);
+
+for my $group (@groups) {
+    my ($first, $last) = $nntp->group($group);
+
+    $last_read->{$group} ||= $last - 100;
+    $last_read->{$group} = $first if $last_read->{$group} < $first;
+
+    if ($last_read->{$group} >= $last) {
+        say "ALL READ: $group";
+        last;
+    }
+
+    say "DOWNLOAD: $group:$last_read->{$group}..$last";
+    for my $msg_id ($last_read->{$group} .. $last) {
+        my @article = $nntp->article($msg_id);
+
+        $last_read->{$group} = $msg_id;
+
+        my $parsed = Email::MIME->new(join "", @article);
+        $parsed->walk_parts(
+            sub {
+                my ($part) = @_;
+                return if $part->subparts;
+                if ($part->content_type =~ m{application/x-bittorrent}) {
+                    my $io = io->catfile($ENV{HOME}, "Downloads", $part->filename);
+                    if ($io->exists) {
+                        say "SKIP: " . $part->filename . " exists";
+                    }
+                    else {
+                        $io->print($part->body);
+                        say "SAVE: " . $part->filename;
+                    }
+                }
+            }
+        );
+    }
+}
+
+YAML::DumpFile("$ENV{HOME}/.newsgroup-bt-download.yml", $last_read);

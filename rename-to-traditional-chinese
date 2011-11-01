@@ -1,0 +1,18 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use utf8;
+use encoding 'utf8';
+use File::Basename;
+use Encode::HanConvert qw(trad);
+
+my @files = map { utf8::decode($_); $_ } @ARGV
+    or die "\nUsage: @{[ basename($0) ]} file1 file2 file3...\n\n";
+
+for my $old (@files) {
+    my $new = trad($old);
+    next if $new eq $old || -e $new;
+
+    say basename($old), " => ", basename($new);
+    rename $old, $new;
+}

@@ -1,0 +1,8 @@
+#!/usr/bin/env perl
+use Pod::Strip;
+local $/ = undef;
+my $p = Pod::Strip->new;
+my $podless;
+$p->output_string(\$podless);
+$p->parse_string_document(<>);
+print $podless;

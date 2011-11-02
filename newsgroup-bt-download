@@ -5,6 +5,10 @@ use YAML ();
 use News::NNTPClient;
 use Email::MIME;
 use IO::All;
+use Getopt::Std;
+
+my %opts;
+getopt("o:", \%opts);
 
 binmode(STDOUT, ":utf8");
 
@@ -13,6 +17,11 @@ my $last_read = do {
 
     -f $file ? YAML::LoadFile($file) : {};
 };
+
+my $download_dir = $opts{o} ? io($opts{o}) : io->catdir($ENV{HOME}, "Downloads");
+
+die "Download dir (@{[ $download_dir->name ]}) does not exist\n"
+    unless $download_dir->exists;
 
 my ($server, @groups) = @ARGV;
 
@@ -45,7 +54,8 @@ for my $group (@groups) {
                 my ($part) = @_;
                 return if $part->subparts;
                 if ($part->content_type =~ m{application/x-bittorrent}) {
-                    my $io = io->catfile($ENV{HOME}, "Downloads", $part->filename);
+                    my $io = $download_dir->catfile($part->filename);
+
                     if ($io->exists) {
                         say "SKIP: " . $part->filename . " exists";
                     }

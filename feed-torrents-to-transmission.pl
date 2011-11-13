@@ -5,6 +5,8 @@
 #
 
 use v5.14;
+use encoding 'utf8';
+
 package TransmissionFeeder;
 use Moose;
 use Moose::Util::TypeConstraints;
@@ -32,12 +34,10 @@ has transmission_client => (
     lazy => 1
 );
 
-has transmission_client_attributes => (
+has options => (
     is => "rw",
-    isa => "HashRef",
-    default => sub { {} }
+    isa => "HashRef"
 );
-
 
 sub run {
     my $self = shift;
@@ -53,39 +53,58 @@ sub run {
         }
     }
 
+    for my $pattern (@{ $self->options->{exclude} ||[] }) {
+        @todays = grep { $_->[0] !~ /$pattern/ } @todays;
+    }
+
     for (@todays) {
-        try {
-            $self->transmission_client->add(filename => $_->[1]);
+        if ($self->options->{'dont-run'}) {
+            say "Add: " . $_->[0];
+        }
+        else {
+            try {
+                $self->transmission_client->add(filename => $_->[1]);
+            }
         }
     }
 }
 
 sub _build_transmission_client {
     my $self = shift;
-    my %attr = %{$self->transmission_client_attributes};
+    my %opts = ( autodie => 1 );
 
-    return Transmission::Client->new(%attr, autodie => 1);
+    for (grep { defined($_->[1]) } map { [$_, $self->options->{$_}] } qw(url username password)) {
+        $opts{$_->[0]} = $_->[1];
+    }
+
+    return Transmission::Client->new(%opts);
 }
 
 package main;
+use utf8;
 use Getopt::Long;
 use Pod::Usage;
 
-my ($url, $username, $password);
+utf8::decode($_) for @ARGV;
+
+my %options;
+
 GetOptions(
-    "url=s"      => \$url,
-    "username=s" => \$username,
-    "password=s" => \$password,
+    \%options,
+    'dont-run',
+    'url=s',
+    'username=s',
+    'password=s',
+    'exclude=s@',
 );
+
+require YAML;
+say YAML::Dump(\%options);
 
 my $feed_url = shift @ARGV or pod2usage({ -verbose => 1, -exitval => 1 });
 
 my $feeder = TransmissionFeeder->new(
-    transmission_client_attributes => {
-        @{$url      ? [ url      => $url      ] : []},
-        @{$username ? [ username => $username ] : []},
-        @{$password ? [ password => $password ] : []},
-    },
+    options => \%options,
     feed => $feed_url
 );
 
@@ -97,6 +116,24 @@ __END__
 
 feed-torrents-to-transmission.pl [options] <URL>
 
---url <url>      Transmission RPC URL
---username <xxx> Transmission RPC Username
---password <yyy> Transmission RPC Password
+--dont-run
+
+    Do not really add torrents into Transmission. Print their name instead.
+
+--url <url>
+
+    Transmission RPC URL
+
+--username <xxx>
+
+    Transmission RPC Username
+
+--password <yyy>
+
+    Transmission RPC Password
+
+--exclude <regex>
+
+    A regex (without the surrounding //) to match against feed entry names to exclude.
+    This option can be given multiple times. Feed entry name match any one of the regexes
+    is excluded.

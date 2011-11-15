@@ -25,7 +25,7 @@ my %opts;
 
 getopt('c', \%opts);
 
-die "Usage: $0 -c plurk.yml\n" unless $opts{c};
+die "Usage: $0 -c plurk.yml\n 'Bli blah Hogehoge'" unless $opts{c};
 
 my $config = LoadFile($opts{c}) or die "Fail to load plurk.yml\n";
 

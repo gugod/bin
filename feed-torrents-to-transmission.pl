@@ -53,6 +53,10 @@ sub run {
         }
     }
 
+    for my $pattern (@{ $self->options->{only} ||[] }) {
+        @todays = grep { $_->[0] =~ /$pattern/ } @todays;
+    }
+
     for my $pattern (@{ $self->options->{exclude} ||[] }) {
         @todays = grep { $_->[0] !~ /$pattern/ } @todays;
     }
@@ -95,6 +99,7 @@ GetOptions(
     'url=s',
     'username=s',
     'password=s',
+    'only=s@',
     'exclude=s@',
 );
 

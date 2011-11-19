@@ -2,7 +2,7 @@ use v5.14;
 
 package FileOrganizer 1.00 {
     use Moose;
-    use IO::All;
+    use IO::All -utf8;
     use File::Copy qw(move);
 
     has root => (
@@ -28,7 +28,10 @@ package FileOrganizer 1.00 {
 
         my $x = [];
         for (io($self->root)->all_dirs) {
-            push @$x, FileOrganizer::Collection->new(path => $_->name, organizer => $self)
+	    my $fname = $_->name;
+	    utf8::decode($fname) unless utf8::is_utf8($fname);
+
+            push @$x, FileOrganizer::Collection->new(path => $fname, organizer => $self)
                 unless $_->filename =~ /^\./;
         }
 
@@ -71,6 +74,8 @@ package FileOrganizer 1.00 {
 package FileOrganizer::File 1.00 {
     use Moose;
     use File::Basename;
+    use Encode::HanConvert ();
+    use File::Copy qw(move);
 
     has organizer => (
         isa => "FileOrganizer",
@@ -80,19 +85,33 @@ package FileOrganizer::File 1.00 {
 
     has path => (
         isa => "Str",
-        is  => "ro",
+        is  => "rw",
         required => 1
     );
 
     has name => (
         isa => "Str",
-        is  => "ro",
+        is  => "rw",
         lazy_build => 1
     );
 
     sub _build_name {
         my $self = shift;
         return basename($self->path);
+    }
+
+    sub rename_to_traditional_chinese {
+	my $self = shift;
+	my $new_name = Encode::HanConvert::trad( $self->name );
+	return if $new_name eq $self->name;
+
+	my $new_path = dirname($self->path) . "/" . $new_name;
+	return if -f $new_path;
+
+	move($self->path, $new_path);
+
+	$self->path( $new_path );
+	$self->name( $self->_build_name );
     }
 
     sub guessed_collection {

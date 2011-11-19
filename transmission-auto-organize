@@ -10,7 +10,6 @@ use Getopt::Long;
 
 use TransmissionOrganizer;
 
-utf8::decode($_) for @ARGV;
 binmode(STDOUT, ":utf8");
 
 my $options = {};

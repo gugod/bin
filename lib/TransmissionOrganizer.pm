@@ -3,8 +3,9 @@ use v5.14;
 package TransmissionOrganizer 1.0 {
     use Moose;
     use Transmission::Client;
-    use VideoOrganizer;
+    use FileOrganizer;
     use File::Basename;
+    use File::Copy qw(move);
 
     has options => (
         is => "rw",
@@ -55,16 +56,18 @@ package TransmissionOrganizer 1.0 {
 		push @{ $mess{ $torrent->download_dir } ||=[] }, ($torrent->download_dir . "/" . $file->name);
             }
 
-	    ## $self->transmission_client->stop( $torrent_id );
+	    $self->transmission_client->stop( $torrent->id );
         }
 
 	for my $root (keys %mess) {
-	    my $organizer = VideoOrganizer->new(root => $root);
-	    $organizer->mess([ map { VideoOrganizer::Video->new(path => $_, organizer => $organizer ) } @{ $mess{$root} } ]);
+	    my $organizer = FileOrganizer->new(root => $root);
+	    $organizer->mess([ map { FileOrganizer::File->new(path => $_, organizer => $organizer ) } @{ $mess{$root} } ]);
 
 	    for (@{ $organizer->mess }) {
+		$_->rename_to_traditional_chinese;
+
 		if ($_->guessed_collection) {
-		    say $_->name . " => " . $_->guessed_collection->name;
+		    move($_->name, $_->guessed_collection->name);
 		}
 	    }
 	}

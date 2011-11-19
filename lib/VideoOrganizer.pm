@@ -1,8 +1,7 @@
 use v5.14;
 
-
 package VideoOrganizer 1.00 {
-    use Mouse;
+    use Moose;
     use IO::All;
     use File::Copy qw(move);
 
@@ -20,7 +19,7 @@ package VideoOrganizer 1.00 {
 
     has mess => (
         isa => "ArrayRef[VideoOrganizer::Video]",
-        is  => "ro",
+        is  => "rw",
         lazy_build => 1
     );
 
@@ -70,7 +69,7 @@ package VideoOrganizer 1.00 {
 };
 
 package VideoOrganizer::File 1.00 {
-    use Mouse;
+    use Moose;
     use File::Basename;
 
     has organizer => (
@@ -98,7 +97,7 @@ package VideoOrganizer::File 1.00 {
 }
 
 package VideoOrganizer::Video 1.00 {
-    use Mouse;
+    use Moose;
     extends 'VideoOrganizer::File';
 
     sub guessed_collection {
@@ -119,7 +118,7 @@ package VideoOrganizer::Video 1.00 {
 };
 
 package VideoOrganizer::Collection 1.00 {
-    use Mouse;
+    use Moose;
     extends 'VideoOrganizer::File';
 };
 

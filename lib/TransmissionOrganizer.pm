@@ -3,6 +3,8 @@ use v5.14;
 package TransmissionOrganizer 1.0 {
     use Moose;
     use Transmission::Client;
+    use VideoOrganizer;
+    use File::Basename;
 
     has options => (
         is => "rw",
@@ -47,13 +49,25 @@ package TransmissionOrganizer 1.0 {
     sub run {
         my $self = shift;
 
+	my %mess;
         for my $torrent (@{ $self->finished_torrents }) {
-            say $torrent->name;
             for my $file (@{ $torrent->files }) {
-                say $torrent->download_dir . "/" . $file->name;
+		push @{ $mess{ $torrent->download_dir } ||=[] }, ($torrent->download_dir . "/" . $file->name);
             }
-            say "-" x 42;
+
+	    ## $self->transmission_client->stop( $torrent_id );
         }
+
+	for my $root (keys %mess) {
+	    my $organizer = VideoOrganizer->new(root => $root);
+	    $organizer->mess([ map { VideoOrganizer::Video->new(path => $_, organizer => $organizer ) } @{ $mess{$root} } ]);
+
+	    for (@{ $organizer->mess }) {
+		if ($_->guessed_collection) {
+		    say $_->name . " => " . $_->guessed_collection->name;
+		}
+	    }
+	}
     }
 };
 

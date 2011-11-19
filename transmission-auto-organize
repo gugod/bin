@@ -1,0 +1,27 @@
+#!/usr/bin/env perl
+use v5.14;
+exit unless $ENV{HOME};
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
+use utf8;
+use Getopt::Long;
+
+use TransmissionOrganizer;
+
+utf8::decode($_) for @ARGV;
+binmode(STDOUT, ":utf8");
+
+my $options = {};
+
+GetOptions(
+    $options,
+    'dont-run',
+    'url=s',
+    'username=s',
+    'password=s',
+    'exclude=s@',
+);
+
+TransmissionOrganizer->new(options => $options)->run;

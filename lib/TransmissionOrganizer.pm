@@ -56,7 +56,7 @@ package TransmissionOrganizer 1.0 {
 		push @{ $mess{ $torrent->download_dir } ||=[] }, ($torrent->download_dir . "/" . $file->name);
             }
 
-	    $self->transmission_client->stop( $torrent->id );
+	    $self->transmission_client->remove($torrent->id)
         }
 
 	for my $root (keys %mess) {

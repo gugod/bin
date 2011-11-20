@@ -137,8 +137,15 @@ feed-torrents-to-transmission.pl [options] <URL>
 
     Transmission RPC Password
 
+--only <regex>
+
+    A regex (without the surrounding //) to match against feed entry names to
+    narrow down the items to feed to transmission.  This option may be given
+    multiple times. Feed entry names matching all of the regexes are fed to
+    transmission.
+
 --exclude <regex>
 
-    A regex (without the surrounding //) to match against feed entry names to exclude.
-    This option can be given multiple times. Feed entry name match any one of the regexes
-    is excluded.
+    A regex (without the surrounding //) to match against feed entry names to
+    exclude.  This option can be given multiple times. Feed entry names matching
+    any one of the regexes are excluded.

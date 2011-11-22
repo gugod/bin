@@ -30,7 +30,7 @@ sub build_markdown {
         && io(html_file)->mtime > io("views/default-layout.tx")->mtime
         && io(html_file)->mtime > io("views/article.tx")->mtime) {
 
-        say "SKIP " . markdown_file . " => " . html_file;
+        # say "SKIP " . markdown_file . " => " . html_file;
         return;
     }
 
@@ -43,7 +43,7 @@ sub copy_assets {
 
     my $x = io->file($destination);
     if ($x->exists && $x->mtime > io($source)->mtime ) {
-        say "SKIP $source => $destination";
+        # say "SKIP $source => $destination";
     }
     else {
         copy($source, $destination)

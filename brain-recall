@@ -1,0 +1,22 @@
+#!/Users/gugod/perl5/perlbrew/perls/perl-5.14.1/bin/perl
+
+use v5.14;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use utf8;
+
+use Brain;
+use Encode;
+use List::MoreUtils qw(natatime);
+
+binmode STDOUT, ":utf8";
+
+my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
+
+my $brain = Brain->new;
+
+my @result = $brain->recall(@units);
+
+for(@result) {
+    say "- $_";
+}

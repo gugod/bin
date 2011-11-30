@@ -21,7 +21,7 @@ $ua->get($url)->res->dom($query)->each(
         }
         else {
             local $, = ", ";
-            say $_->text, $_->type, encode_json($_->attrs);
+            say $_->all_text, $_->type, encode_json($_->attrs);
         }
     }
 );

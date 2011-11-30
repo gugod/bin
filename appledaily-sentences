@@ -20,7 +20,7 @@ sub sentences {
     $ua->get($url)->res->dom("p, .article_paragraph h1, .article_paragraph h2")->each(
         sub {
             $i++;
-            local $_ = $_[0]->text;
+            local $_ = $_[0]->all_text;
             return if /\A\s*\Z/ || /(讚一個|版權所有)/;
             s/[\r\n]//g;
 

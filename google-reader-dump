@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+use v5.14;
+use YAML;
+use Path::Class;
+use WebService::Google::Reader;
+
+my $cred = YAML::LoadFile( file($ENV{HOME}, "etc", "password.yml" ) )->{'google-reader'};
+
+my $reader = WebService::Google::Reader->new(%$cred);
+
+my $feed = $reader->unread(count => 100);
+
+my @entries = $feed->entries;
+
+for my $entry (@entries) {
+    say $entry->title . "        " . $entry->link->href . "\n";;
+}
+
+$reader->mark_read_entry(@entries);

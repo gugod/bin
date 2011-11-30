@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+
+use v5.14;
+BEGIN {
+    die "Usage: $0 -q <css3_query> URL [URL ...]"
+        unless @ARGV;
+}
+
+use utf8;
+binmode STDOUT, ":utf8";
+
+use Getopt::Std;
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Ceis::Extractor;
+
+my $opts = {q => "p"};
+
+getopts('q:', $opts);
+
+for (@ARGV) {
+    my $extractor = Ceis::Extractor->new(
+        url     => $_,
+        wanted  => $opts->{q}
+    );
+
+    say for $extractor->sentences;
+}

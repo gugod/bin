@@ -1,0 +1,42 @@
+#!/usr/bin/env perl
+
+use v5.14;
+
+use encoding 'utf8';
+use Mojo::DOM;
+use Mojo::UserAgent;
+use JSON;
+use List::MoreUtils qw(natatime);
+
+sub sentences {
+    my $url = shift;
+    return unless $url =~ qr{tw\.nextmedia\.com/applenews/article};
+
+    my $ua = Mojo::UserAgent->new;
+
+    my @result;
+
+    my $i = 0;
+    $ua->get($url)->res->dom("p, .article_paragraph h1, .article_paragraph h2")->each(
+        sub {
+            $i++;
+            local $_ = $_[0]->text;
+            return if /\A\s*\Z/ || /(讚一個|版權所有)/;
+            s/[\r\n]//g;
+
+            my $iter = natatime 2, split(/(？\」|。\」|！\」|。(?!\」))/, $_);
+            while (my @vals = $iter->()) {
+                $_ = join "", @vals;
+                push @result, $_;
+            }
+        }
+    );
+
+    return @result;
+}
+
+die "Need appledaily article URLs" unless @ARGV;
+
+for (@ARGV) {
+    say for (sentences($_));
+}

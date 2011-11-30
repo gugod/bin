@@ -4,16 +4,23 @@ use utf8;
 binmode STDIN, ":utf8";
 binmode STDOUT, ":utf8";
 
-undef $/;
-
 my @urls;
 @urls = @ARGV if @ARGV;
+
+if ($urls[0] eq '-') {
+    local $/ = undef;
+    @urls = split /\n/, <STDIN>;
+}
 
 die <<USAGE unless @urls;
 
 Pass URLs from argv:
 
    $0 URL URL...
+
+Or pass URLs from STDIN:
+
+   cat one-url-per-line.txt | $0 -
 
 USAGE
 
@@ -27,8 +34,7 @@ my %queries = (
 );
 my @url_regexes = keys %queries;
 
-
-for my $url (@ARGV) {
+for my $url (@urls) {
     my $query = "p";
 
     for my $re (@url_regexes) {

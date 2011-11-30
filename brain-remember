@@ -3,26 +3,20 @@
 use v5.14;
 use FindBin;
 use lib "$FindBin::Bin/lib";
-
+use utf8;
 use Brain;
-use List::MoreUtils qw(natatime);
 
 binmode STDIN, ":utf8";
 binmode STDOUT, ":utf8";
 
-undef $/;
-$_ = <STDIN>;
-s/\n//g;
-
-my @sentences;
-my $iter = natatime 2, split(/(:?。\」|！\」|。(?!\」))\n*/, $_);
-while(my @vals = $iter->()) {
-    push @sentences, join "", @vals;
-}
-
 my $brain = Brain->new;
+while(my $x = <STDIN>) {
+    $x =~ s/\n//g;
+    next if $x =~ /\A\s*\Z/;
 
-for my $x (@sentences) {
     my $k = $brain->remember($x);
-    say "Added: $k => $x";
+
+    local $_ = "Remember $k => $x";
+    $_ = substr($_, 0, 77) . "..." if length > 80;
+    say;
 }

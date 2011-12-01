@@ -53,14 +53,9 @@ package Ceis::Extractor {
 
     sub _build_ua {
         state $ua = do {
-            # my $cache = CHI->new(
-            #     driver    => "Redis",
-            #     namespace => "ceis_extractor",
-            # );
-
             my $cache = CHI->new(
-                driver    => "File",
-                root_dir  => "/tmp/mech-ceis-extractor"
+                driver    => "Redis",
+                namespace => "ceis_extractor",
             );
 
             WWW::Mechanize::Cached->new( cache => $cache );

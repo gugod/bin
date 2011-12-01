@@ -37,7 +37,7 @@ package Ceis::Extractor {
     };
 
     sub _build_response {
-        state $ua = Mojo::UserAgent->new;
+        state $ua = Mojo::UserAgent->new->max_redirects(5);
 
         my ($self) = @_;
         die unless $self->url;
@@ -46,6 +46,7 @@ package Ceis::Extractor {
 
     sub _build_wanted {
         state $queries = {
+            qr{boingboing\.net/}                 => '.post h2, .post p',
             qr{blogspot\.com/}                   => '.post-title, .post-body',
             qr{theverge\.com/}                   => 'h1.headline, .article-body p',
             qr{gizmag\.com/}                     => 'title, .article_body p',

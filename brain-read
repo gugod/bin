@@ -30,21 +30,26 @@ use Brain;
 use Ceis::Extractor;
 
 my $brain = Brain->new;
+my $rel_origin = $brain->relation("original_of");
+my $rel_appear = $brain->relation("appear_in");
 
 for my $url (@urls) {
     my $extractor = Ceis::Extractor->new(url => $url);
 
-    my $original_rel = $brain->relation("original_of");
-
     my $k_url = $brain->remember($url);
+
+    my @sentences = $extractor->sentences;
+
+    my $fulltext = join "\n", @sentences;
+    my $k_fulltext = $brain->blob->add($fulltext);
+    $rel_origin->add($k_fulltext, $k_url);
 
     for my $x ($extractor->sentences) {
         my $k = $brain->remember($x);
 
-        $original_rel->add($k, $k_url);
-
-        local $_ = "Remember $k => $x";
-        $_ = substr($_, 0, 77) . "..." if length > 80;
-        say;
+        $rel_origin->add($k, $k_url);
+        $rel_appear->add($k, $k_fulltext);
     }
+
+    say "Read: URL:$k_url Fulltext:$k_fulltext";
 }

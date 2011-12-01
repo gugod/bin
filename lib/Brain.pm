@@ -84,7 +84,7 @@ package Brain {
             @results = sort { $result{$b} <=> $result{$a} } @results;
         }
 
-        return map { $self->blob->get($_) } @results;
+        return @results;
     }
 };
 

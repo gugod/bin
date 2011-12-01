@@ -9,6 +9,7 @@ my ($url, $query, $out) = @ARGV;
 die "Need url and query" unless $url && $query;
 
 my $ua = Mojo::UserAgent->new;
+$ua->max_redirects(5);
 
 my $i = 0;
 $ua->get($url)->res->dom($query)->each(

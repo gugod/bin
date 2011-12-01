@@ -14,9 +14,11 @@ binmode STDOUT, ":utf8";
 my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
 
 my $brain = Brain->new;
+my $rel_original = $brain->relation("original_of");
 
-my @result = $brain->recall(@units);
-
-for(@result) {
-    say "- $_";
+for my $k ($brain->recall(@units)) {
+    say "- " . $brain->blob->get($k);
+    say "  # " . join " ", map { $brain->blob->get($_) } @{$rel_original->get($k)};
+    say "";
 }
+

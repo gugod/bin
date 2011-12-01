@@ -17,8 +17,8 @@ my $brain = Brain->new;
 my $rel_original = $brain->relation("original_of");
 
 for my $k ($brain->recall(@units)) {
-    say "- " . $brain->blob->get($k);
-    say "  # " . join " ", map { $brain->blob->get($_) } @{$rel_original->get($k)};
+    say "digest: $k";
+    say "origin: " . join " ", map { $brain->blob->get($_) } @{$rel_original->get($k)};
+    say "\n" . $brain->blob->get($k);
     say "";
 }
-

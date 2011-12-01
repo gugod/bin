@@ -1,0 +1,16 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use XML::Feed;
+use URI;
+
+my @feed_urls = @ARGV;
+
+die "Put feed urls in ARGV\n"
+    unless @feed_urls;
+
+for my $feed_url (@feed_urls) {
+    my $feed = XML::Feed->parse( URI->new( $feed_url ));
+
+    say $_->link for $feed->entries;
+}

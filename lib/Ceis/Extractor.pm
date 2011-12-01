@@ -69,6 +69,7 @@ package Ceis::Extractor {
 
     sub _build_wanted {
         state $queries = {
+            qw{mobile01\.com}                    => 'title, .single-post-content',
             qw{\.wordpress\.com/}                => 'h2.entry-title, .post p',
             qw{wretch\.cc/blog}                  => 'h3.title, .innertext p',
             qw{pansci\.tw/}                      => 'h2.posttitle, .entry p',

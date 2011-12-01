@@ -28,9 +28,10 @@ package Ceis::Extractor {
     );
 
     has ua => (
-        is => "rw",
+        is => "ro",
         isa => "WWW::Mechanize",
-        builder => '_build_ua'
+        builder => '_build_ua',
+        lazy => 1
     );
 
     has response => (
@@ -51,14 +52,21 @@ package Ceis::Extractor {
     };
 
     sub _build_ua {
-        my $cache = CHI->new(
-            driver    => "Redis",
-            namespace => "ceis_extractor",
-            server    => "127.0.0.1:6379",
-            debug     => 0
-        );
+        state $ua = do {
+            # my $cache = CHI->new(
+            #     driver    => "Redis",
+            #     namespace => "ceis_extractor",
+            # );
 
-        return WWW::Mechanize::Cached->new( cache => $cache );
+            my $cache = CHI->new(
+                driver    => "File",
+                root_dir  => "/tmp/mech-ceis-extractor"
+            );
+
+            WWW::Mechanize::Cached->new( cache => $cache );
+        };
+
+        return $ua;
     }
 
     sub _build_response {

@@ -32,15 +32,20 @@ use Brain;
 use Ceis::Extractor;
 
 my $brain = Brain->new;
+my $extractor = Ceis::Extractor->new();
+
 my $rel_origin  = $brain->relation("original_of");
 my $rel_appear  = $brain->relation("appear_in");
 my $rel_precede = $brain->relation("precede");
 my $rel_follow  = $brain->relation("follow");
 
 for my $url (@urls) {
-    my $extractor = Ceis::Extractor->new(url => $url);
+    $extractor->url($url);
+
     my @sentences = $extractor->sentences;
     my $fulltext = join "\n", @sentences;
+
+    $brain->storage->multi;
 
     my $k_url      = $brain->blob->add($extractor->url);
     my $k_fulltext = $brain->blob->add($fulltext);
@@ -61,5 +66,7 @@ for my $url (@urls) {
         $pre_x = $k;
     }
 
-    say "Read: URL:$k_url Fulltext:$k_fulltext";
+    $brain->storage->exec;
+
+    say "read: $url";
 }

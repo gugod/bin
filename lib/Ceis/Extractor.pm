@@ -5,7 +5,8 @@ package Ceis::Extractor {
     use Moose;
     use Mojo::DOM;
     use List::MoreUtils qw(natatime);
-    use WWW::Mechanize;
+    use WWW::Mechanize::Cached;
+    use CHI;
 
     has url => (
         is => "rw",
@@ -50,7 +51,14 @@ package Ceis::Extractor {
     };
 
     sub _build_ua {
-        return WWW::Mechanize->new;
+        my $cache = CHI->new(
+            driver    => "Redis",
+            namespace => "ceis_extractor",
+            server    => "127.0.0.1:6379",
+            debug     => 0
+        );
+
+        return WWW::Mechanize::Cached->new( cache => $cache );
     }
 
     sub _build_response {
@@ -65,6 +73,8 @@ package Ceis::Extractor {
 
     sub _build_wanted {
         state $queries = {
+            qw{\.wordpress\.com/}                => 'h2.entry-title, .post p',
+            qw{wretch\.cc/blog}                  => 'h3.title, .innertext p',
             qw{pansci\.tw/}                      => 'h2.posttitle, .entry p',
             qw{\.cna\.com\.tw/}                  => '.new_mid_headline_orange, .new_mid_word_large',
             qr{wikipedia\.org}                   => 'p, h1, h2>span.mw-headline, h3>span.mw-headline',

@@ -47,6 +47,7 @@ package Ceis::Extractor {
     sub _build_wanted {
         state $queries = {
             qr{blogspot\.com/}                   => '.post-title, .post-body',
+            qr{theverge\.com/}                   => 'h1.headline, .article-body p',
             qr{http://tw\.news\.yahoo\.com/}     => 'h1, .yom-art-content p',
             qr{tw\.nextmedia\.com/[^/]+/article} => "p, .article_paragraph h1, .article_paragraph h2",
         };

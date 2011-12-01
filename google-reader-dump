@@ -7,6 +7,7 @@ use YAML;
 use Path::Class;
 use WebService::Google::Reader;
 use Getopt::Long;
+use Try::Tiny;
 
 my $urls = 0;
 my $all = 0;
@@ -23,7 +24,9 @@ do {
     my @entries = $feed->entries;
 
     for my $entry (@entries) {
-        say $entry->link->href . ($urls ? "" : "\n" . $entry->title . "\n");
+        try {
+            say $entry->link->href . ($urls ? "" : "\n" . $entry->title . "\n");
+        }
     }
 
     $reader->mark_read_entry(@entries);

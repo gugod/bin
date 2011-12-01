@@ -48,6 +48,8 @@ package Ceis::Extractor {
         state $queries = {
             qr{blogspot\.com/}                   => '.post-title, .post-body',
             qr{theverge\.com/}                   => 'h1.headline, .article-body p',
+            qr{gizmag\.com/}                     => 'title, .article_body p',
+            qr{http://tw\.myblog\.yahoo\.com/}   => 'h2 span, .msgcontent > :not(.wsharing):not(style):not(script)',
             qr{http://tw\.news\.yahoo\.com/}     => 'h1, .yom-art-content p',
             qr{tw\.nextmedia\.com/[^/]+/article} => "p, .article_paragraph h1, .article_paragraph h2",
         };

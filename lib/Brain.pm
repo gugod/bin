@@ -22,13 +22,6 @@ package Brain {
         builder => '_build_blob'
     );
 
-    has relation_gram_of => (
-        is => "ro",
-        isa => "Brain::Relation",
-        lazy => 1,
-        builder => '_build_relation_gram_of'
-    );
-
     sub _build_storage {
         return Redis->new;
     }
@@ -38,9 +31,11 @@ package Brain {
         return Brain::Blob->new(storage => $self->storage);
     }
 
-    sub _build_relation_gram_of {
-        my $self = shift;
-        return Brain::Relation->new(storage => $self->storage, name => "gram_of");
+    sub relation {
+        my ($self, $name) = @_;
+        die unless $name;
+
+        return Brain::Relation->new(storage => $self->storage, name => $name);
     }
 
     sub remember {
@@ -49,11 +44,13 @@ package Brain {
         my $dx = $self->blob->add($x);
         my $lg = Lingua::Gram->new($x);
 
+        my $gramrel = $self->relation('gram_of');
+
         for my $n (1..4) {
             for my $y ($lg->gram($n)) {
                 my $dy = $self->blob->add($y);
 
-                $self->relation_gram_of->add($dy, $dx);
+                $gramrel->add($dy, $dx);
             }
         }
 
@@ -68,10 +65,12 @@ package Brain {
             $opt = pop @units;
         }
 
+        my $gramrel = $self->relation('gram_of');
+
         my %result;
         for my $unit (@units) {
             my $k = sha1_hex($unit);
-            for (@{ $self->relation_gram_of->get($k) }) {
+            for (@{ $gramrel->get($k) }) {
                 $result{$_} += 1;
             }
         }

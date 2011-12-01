@@ -1,0 +1,50 @@
+#!/usr/bin/env perl
+use v5.14;
+use utf8;
+binmode STDIN, ":utf8";
+binmode STDOUT, ":utf8";
+
+my @urls;
+@urls = @ARGV if @ARGV;
+
+if ($urls[0] eq '-') {
+    local $/ = undef;
+    @urls = split /\n/, <STDIN>;
+}
+
+die <<USAGE unless @urls;
+
+Pass URLs from argv:
+
+   $0 URL URL...
+
+Or pass URLs from STDIN:
+
+   cat one-url-per-line.txt | $0 -
+
+USAGE
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Brain;
+use Ceis::Extractor;
+
+my $brain = Brain->new;
+
+for my $url (@urls) {
+    my $extractor = Ceis::Extractor->new(url => $url);
+
+    my $original_rel = $brain->relation("original_of");
+
+    my $k_url = $brain->remember($url);
+
+    for my $x ($extractor->sentences) {
+        my $k = $brain->remember($x);
+
+        $original_rel->add($k, $k_url);
+
+        local $_ = "Remember $k => $x";
+        $_ = substr($_, 0, 77) . "..." if length > 80;
+        say;
+    }
+}

@@ -28,26 +28,8 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 use Ceis::Extractor;
 
-my %queries = (
-    qr{http://tw\.news\.yahoo\.com/}     => 'h1, .yom-art-content p',
-    qr{tw\.nextmedia\.com/[^/]+/article} => "p, .article_paragraph h1, .article_paragraph h2",
-);
-my @url_regexes = keys %queries;
-
 for my $url (@urls) {
-    my $query = "p";
-
-    for my $re (@url_regexes) {
-        if ($url =~ m/$re/) {
-            $query = $queries{$re};
-            last;
-        }
-    }
-
-    my $extractor = Ceis::Extractor->new(
-        url     => $url,
-        wanted  => $query
-    );
+    my $extractor = Ceis::Extractor->new(url => $url);
 
     say "$_\n" for $extractor->sentences;
     say "-" x 42 . "\n\n";

@@ -13,7 +13,9 @@ package Ceis::Extractor {
     has wanted => (
         is => "rw",
         isa => "Str",
-        required => 1
+        lazy => 1,
+        builder => '_build_wanted',
+        clearer => 'clear_wanted'
     );
 
     has exclude => (
@@ -31,6 +33,7 @@ package Ceis::Extractor {
     after 'url' => sub {
         my $self = shift;
         $self->clear_response;
+        $self->clear_wanted;
     };
 
     sub _build_response {
@@ -39,6 +42,30 @@ package Ceis::Extractor {
         my ($self) = @_;
         die unless $self->url;
         return $ua->get($self->url)->res;
+    }
+
+    sub _build_wanted {
+        state $queries = {
+            qr{blogspot\.com/}                   => '.post-title, .post-body',
+            qr{http://tw\.news\.yahoo\.com/}     => 'h1, .yom-art-content p',
+            qr{tw\.nextmedia\.com/[^/]+/article} => "p, .article_paragraph h1, .article_paragraph h2",
+        };
+        state $url_regexes = [keys %$queries];
+
+        my ($self) = @_;
+        die unless $self->url;
+
+
+        my $query = "p";
+
+        for my $re (@$url_regexes) {
+            if ($self->url =~ m/$re/) {
+                $query = $queries->{$re};
+                last;
+            }
+        }
+
+        return $query;
     }
 
     sub __split_to_sentences {
@@ -64,13 +91,15 @@ package Ceis::Extractor {
                 return if /\A\s*\Z/;
                 return if $exclude && /$exclude/;
 
-                s/[\r\n]//g;
-                push @result, __split_to_sentences( $_ );
+                for(split /[\r\n]+/) {
+                    push @result, __split_to_sentences( $_ );
+                }
+
             }
         );
 
         return @result;
     }
 };
-1;
 
+1;

@@ -12,6 +12,8 @@ if ($urls[0] eq '-') {
     @urls = split /\n/, <STDIN>;
 }
 
+utf8::decode($_) for(@urls);
+
 die <<USAGE unless @urls;
 
 Pass URLs from argv:

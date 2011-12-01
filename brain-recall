@@ -1,5 +1,4 @@
 #!/Users/gugod/perl5/perlbrew/perls/perl-5.14.1/bin/perl
-
 use v5.14;
 use FindBin;
 use lib "$FindBin::Bin/lib";
@@ -15,10 +14,13 @@ my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
 
 my $brain = Brain->new;
 my $rel_original = $brain->relation("original_of");
+my $rel_precede  = $brain->relation("precede");
+my $rel_follow   = $brain->relation("follow");
 
 for my $k ($brain->recall(@units)) {
     say "digest: $k";
-    say "origin: " . join " ", map { $brain->blob->get($_) } @{$rel_original->get($k)};
-    say "\n" . $brain->blob->get($k);
-    say "";
+    say "precede: " . join " ", @{$rel_precede->get($k)};
+    say "follow: "  . join " ", @{$rel_follow->get($k)};
+    say "origin: "  . join " ", map { $brain->blob->get($_) } @{$rel_original->get($k)};
+    say "\n" . $brain->blob->get($k) . "\n\n";
 }

@@ -3,6 +3,7 @@ use v5.14;
 package Ceis::Extractor {
     use Moose;
     use Mojo::UserAgent;
+    use Mojo::DOM;
     use List::MoreUtils qw(natatime);
 
     has url => (
@@ -52,7 +53,7 @@ package Ceis::Extractor {
             qr{blogspot\.com/}                   => '.post-title, .post-body',
             qr{theverge\.com/}                   => 'h1.headline, .article-body p',
             qr{gizmag\.com/}                     => 'title, .article_body p',
-            qr{http://tw\.myblog\.yahoo\.com/}   => 'h2 span, .msgcontent > :not(.wsharing):not(style):not(script)',
+            qr{http://tw\.myblog\.yahoo\.com/}   => 'h2 span, .msgcontent > :not(.wsharing)',
             qr{http://tw\.news\.yahoo\.com/}     => 'h1, .yom-art-content p',
             qr{tw\.nextmedia\.com/[^/]+/article} => "p, .article_paragraph h1, .article_paragraph h2",
         };
@@ -91,7 +92,11 @@ package Ceis::Extractor {
 
         my $exclude = $self->exclude;
 
-        $self->response->dom($self->wanted)->each(
+        my $dom = $self->response->dom;
+
+        $dom->find("style, script")->each(sub { $_[0]->replace("<div></div>") });
+
+        $dom->find($self->wanted)->each(
             sub {
                 local $_ = $_[0]->all_text;
                 return if /\A\s*\Z/;

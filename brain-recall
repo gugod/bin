@@ -21,6 +21,9 @@ for my $k ($brain->recall(@units)) {
     say "digest: $k";
     say "precede: " . join " ", @{$rel_precede->get($k)};
     say "follow: "  . join " ", @{$rel_follow->get($k)};
-    say "origin: "  . join " ", map { $brain->blob->get($_) } @{$rel_original->get($k)};
+    for(map { $brain->blob->get($_) } @{$rel_original->get($k)}) {
+        say "origin: $_";
+    }
+
     say "\n" . $brain->blob->get($k) . "\n\n";
 }

@@ -17,7 +17,8 @@ package Ceis::Extractor {
         isa => "Str",
         lazy => 1,
         builder => '_build_wanted',
-        clearer => 'clear_wanted'
+        clearer => 'clear_wanted',
+        predicate => 'has_wanted'
     );
 
     has exclude => (
@@ -25,29 +26,46 @@ package Ceis::Extractor {
         isa => "Regexp"
     );
 
+    has ua => (
+        is => "rw",
+        isa => "WWW::Mechanize",
+        builder => '_build_ua'
+    );
+
     has response => (
         is        => "rw",
         lazy      => 1,
         builder   => '_build_response',
-        clearer   => "clear_response"
+        clearer   => "clear_response",
+        predicate => 'has_response'
     );
 
     after 'url' => sub {
         my $self = shift;
-        $self->clear_response;
-        $self->clear_wanted;
+        $self->clear_response
+            if $self->has_response;
+
+        $self->clear_wanted
+            if $self->has_wanted;
     };
 
-    sub _build_response {
-        state $ua = WWW::Mechanize->new;
+    sub _build_ua {
+        return WWW::Mechanize->new;
+    }
 
+    sub _build_response {
         my ($self) = @_;
         die unless $self->url;
-        return $ua->get($self->url);
+
+        my $response = $self->ua->get($self->url);
+        $self->url("". $self->ua->uri);
+
+        return $response;
     }
 
     sub _build_wanted {
         state $queries = {
+            qw{pansci\.tw/}                      => 'h2.posttitle, .entry p',
             qw{\.cna\.com\.tw/}                  => '.new_mid_headline_orange, .new_mid_word_large',
             qr{wikipedia\.org}                   => 'p, h1, h2>span.mw-headline, h3>span.mw-headline',
             qr{www\.techbang\.com\.tw/}          => 'header h2 a, .content h2, .content h3, .content p',

@@ -39,13 +39,12 @@ my $rel_follow  = $brain->relation("follow");
 
 for my $url (@urls) {
     my $extractor = Ceis::Extractor->new(url => $url);
-
-    my $k_url = $brain->remember($url);
-
     my @sentences = $extractor->sentences;
-
     my $fulltext = join "\n", @sentences;
+
+    my $k_url      = $brain->blob->add($extractor->url);
     my $k_fulltext = $brain->blob->add($fulltext);
+
     $rel_origin->add($k_fulltext, $k_url);
 
     my $pre_x;

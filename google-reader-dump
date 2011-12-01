@@ -13,7 +13,7 @@ my $feed = $reader->unread(count => 100);
 my @entries = $feed->entries;
 
 for my $entry (@entries) {
-    say $entry->title . "        " . $entry->link->href . "\n";;
+    say $entry->link->href . "\n" . $entry->title . "\n";
 }
 
 $reader->mark_read_entry(@entries);

@@ -1,10 +1,11 @@
 use v5.14;
 
 package Ceis::Extractor {
+    use utf8;
     use Moose;
-    use Mojo::UserAgent;
     use Mojo::DOM;
     use List::MoreUtils qw(natatime);
+    use WWW::Mechanize;
 
     has url => (
         is => "rw",
@@ -38,15 +39,16 @@ package Ceis::Extractor {
     };
 
     sub _build_response {
-        state $ua = Mojo::UserAgent->new->max_redirects(5);
+        state $ua = WWW::Mechanize->new;
 
         my ($self) = @_;
         die unless $self->url;
-        return $ua->get($self->url)->res;
+        return $ua->get($self->url);
     }
 
     sub _build_wanted {
         state $queries = {
+            qw{\.cna\.com\.tw/}                  => '.new_mid_headline_orange, .new_mid_word_large',
             qr{wikipedia\.org}                   => 'p, h1, h2>span.mw-headline, h3>span.mw-headline',
             qr{www\.techbang\.com\.tw/}          => 'header h2 a, .content h2, .content h3, .content p',
             qr{pcworld\.com/}                    => '#articleHead h1, .articleBodyContent p',
@@ -79,12 +81,16 @@ package Ceis::Extractor {
 
     sub __split_to_sentences {
         my ($text) = @_;
+
         my @result;
-        my $iter = natatime 2, split(/(？\」|。\」|！\」|。(?!\」))/, $_);
+        my $iter = natatime 2, split(/(？\」|。\」|！\」|。(?!\」))/, $text);
+
         while (my @vals = $iter->()) {
-            $_ = join "", @vals;
+            local $_ = join "", @vals;
+            s/( \A\s+ | \s+\Z )//x;
             push @result, $_;
         }
+
         return @result;
     }
 
@@ -94,14 +100,13 @@ package Ceis::Extractor {
 
         my $exclude = $self->exclude;
 
-        my $dom = $self->response->dom;
-        $dom->charset("UTF-8") unless $dom->charset;
+        my $dom = Mojo::DOM->new( $self->response->decoded_content);
 
         $dom->find("style, script")->each(sub { $_[0]->replace("<div></div>") });
 
         $dom->find($self->wanted)->each(
             sub {
-                local $_ = $_[0]->all_text;
+                local $_ = $_[0]->all_text(0);
                 return if /\A\s*\Z/;
                 return if $exclude && /$exclude/;
 

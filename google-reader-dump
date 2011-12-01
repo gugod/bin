@@ -1,19 +1,31 @@
 #!/usr/bin/env perl
 use v5.14;
+use strict;
+use warnings;
+
 use YAML;
 use Path::Class;
 use WebService::Google::Reader;
+use Getopt::Long;
+
+my $urls = 0;
+my $all = 0;
+
+GetOptions("urls" => \$urls, "all" => \$all);
 
 my $cred = YAML::LoadFile( file($ENV{HOME}, "etc", "password.yml" ) )->{'google-reader'};
 
 my $reader = WebService::Google::Reader->new(%$cred);
 
-my $feed = $reader->unread(count => 100);
+my $feed = $reader->unread;
 
-my @entries = $feed->entries;
+do {
+    my @entries = $feed->entries;
 
-for my $entry (@entries) {
-    say $entry->link->href . "\n" . $entry->title . "\n";
-}
+    for my $entry (@entries) {
+        say $entry->link->href . ($urls ? "" : "\n" . $entry->title . "\n");
+    }
 
-$reader->mark_read_entry(@entries);
+    $reader->mark_read_entry(@entries);
+
+} while ($all && $reader->more($feed));

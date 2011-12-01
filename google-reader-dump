@@ -18,7 +18,7 @@ my $cred = YAML::LoadFile( file($ENV{HOME}, "etc", "password.yml" ) )->{'google-
 
 my $reader = WebService::Google::Reader->new(%$cred);
 
-my $feed = $reader->unread;
+my $feed = $reader->unread(count => 100);
 
 do {
     my @entries = $feed->entries;

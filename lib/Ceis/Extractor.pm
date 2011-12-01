@@ -93,6 +93,7 @@ package Ceis::Extractor {
         my $exclude = $self->exclude;
 
         my $dom = $self->response->dom;
+        $dom->charset("UTF-8") unless $dom->charset;
 
         $dom->find("style, script")->each(sub { $_[0]->replace("<div></div>") });
 

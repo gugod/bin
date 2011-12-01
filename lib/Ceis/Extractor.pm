@@ -47,6 +47,7 @@ package Ceis::Extractor {
 
     sub _build_wanted {
         state $queries = {
+            qr{www\.techbang\.com\.tw/}          => 'header h2 a, .content h2, .content h3, .content p',
             qr{pcworld\.com/}                    => '#articleHead h1, .articleBodyContent p',
             qr{ameblo\.jp/}                      => 'h3.title, .subContents',
             qr{boingboing\.net/}                 => '.post h2, .post p',
@@ -63,8 +64,7 @@ package Ceis::Extractor {
         my ($self) = @_;
         die unless $self->url;
 
-
-        my $query = "p";
+        my $query = "h1, h2, h3, p";
 
         for my $re (@$url_regexes) {
             if ($self->url =~ m/$re/) {

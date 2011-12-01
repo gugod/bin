@@ -47,6 +47,7 @@ package Ceis::Extractor {
 
     sub _build_wanted {
         state $queries = {
+            qr{wikipedia\.org}                   => 'p, h1, h2>span.mw-headline, h3>span.mw-headline',
             qr{www\.techbang\.com\.tw/}          => 'header h2 a, .content h2, .content h3, .content p',
             qr{pcworld\.com/}                    => '#articleHead h1, .articleBodyContent p',
             qr{ameblo\.jp/}                      => 'h3.title, .subContents',

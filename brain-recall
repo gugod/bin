@@ -1,4 +1,4 @@
-#!/Users/gugod/perl5/perlbrew/perls/perl-5.14.1/bin/perl
+#!/usr/bin/env perl
 use v5.14;
 use FindBin;
 use lib "$FindBin::Bin/lib";

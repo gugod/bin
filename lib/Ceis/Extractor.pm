@@ -46,6 +46,7 @@ package Ceis::Extractor {
 
     sub _build_wanted {
         state $queries = {
+            qr{ameblo\.jp/}                      => 'h3.title, .subContents',
             qr{boingboing\.net/}                 => '.post h2, .post p',
             qr{typepad\.com/}                    => '.entry-header, .entry-body p',
             qr{blogspot\.com/}                   => '.post-title, .post-body',

@@ -15,7 +15,19 @@ my @units = map { utf8::decode($_); $_ } @ARGV
 
 my $brain = Brain->new;
 my @origins = ();
-for my $k ($brain->recall(@units)) {
+my @digests;
+
+for (@units) {
+    if (/^[0-9a-f]+$/) {
+        push @digests, $_;
+        undef $_;
+    }
+}
+@units = grep { defined($_) } @units;
+
+push @digests, $brain->recall(@units);
+
+for my $k (@digests) {
     my $prop = $brain->relations($k);
     push @origins, @{ $prop->{origin} };
 

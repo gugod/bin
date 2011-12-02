@@ -7,24 +7,16 @@ binmode STDOUT, ":utf8";
 my @urls;
 @urls = @ARGV if @ARGV;
 
-if ($urls[0] eq '-') {
+if (@urls == 0) {
+    use Regexp::Common qw/URI/;
+
     local $/ = undef;
-    @urls = split /\n/, <STDIN>;
+    my $in = <STDIN>;
+    @urls = $in =~ m/($RE{URI}{HTTP}{-scheme=>"https?"})/g;
 }
-
-utf8::decode($_) for(@urls);
-
-die <<USAGE unless @urls;
-
-Pass URLs from argv:
-
-   $0 URL URL...
-
-Or pass URLs from STDIN:
-
-   cat one-url-per-line.txt | $0 -
-
-USAGE
+else {
+    utf8::decode($_) for(@urls);
+}
 
 use FindBin;
 use lib "$FindBin::Bin/lib";
@@ -46,3 +38,18 @@ for my $url (@urls) {
 
     say "read: $url";
 }
+
+__END__
+
+=begin USAGE
+
+Pass URLs from argv:
+
+   $0 URL URL...
+
+Or pass URLs from STDIN:
+
+   cat file-with-urls.txt | $0
+
+=cut
+

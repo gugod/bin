@@ -34,12 +34,15 @@ sub properties {
 sub render_properties {
     my ($prop) = @_;
 
-    for (qw(appear origin)) {
-        $prop->{$_} = join " ", @{ $prop->{$_} }
-    }
-
-    for (grep { $prop->{$_} } qw(digest origin)) {
-        say colored($_, "yellow") . " $prop->{$_}";
+    for my $k (qw(digest origin)) {
+        if (ref($prop->{$k}) eq 'ARRAY') {
+            for my $v (@{ $prop->{$k} }) {
+                say colored($k, "yellow") . " $v";
+            }
+        }
+        else {
+            say colored($k, "yellow") . " " . $prop->{$k};
+        }
     }
 }
 

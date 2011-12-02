@@ -9,7 +9,6 @@ use WebService::Google::Reader;
 use Getopt::Long;
 use Try::Tiny;
 use Brain;
-use Ceis::Extractor;
 
 my $urls = 0;
 my $all = 0;
@@ -21,7 +20,6 @@ my $reader = WebService::Google::Reader->new(%$cred);
 my $feed = $reader->unread(count => 100);
 
 my $brain = Brain->new;
-my $extractor = Ceis::Extractor->new();
 
 do {
     my @urls;
@@ -35,13 +33,6 @@ do {
 
     for my $url (@urls) {
         say "Studying $url";
-        $extractor->url($url);
-
-        my $fulltext = $extractor->fulltext;
-
-        my $k_url      = $brain->blob->add($extractor->url);
-        my $k_fulltext = $brain->study($fulltext);
-
-        $brain->relation("origin")->add($k_fulltext, $k_url);
+        $brain->study($url);
     }
 } while ($reader->more($feed));

@@ -7,6 +7,7 @@ use utf8;
 use Brain;
 use Encode;
 use List::MoreUtils qw(natatime);
+use YAML;
 
 binmode STDOUT, ":utf8";
 
@@ -17,13 +18,20 @@ my $rel_original = $brain->relation("original_of");
 my $rel_precede  = $brain->relation("precede");
 my $rel_follow   = $brain->relation("follow");
 
-for my $k ($brain->recall(@units)) {
-    say "digest: $k";
-    say "precede: " . join " ", @{$rel_precede->get($k)};
-    say "follow: "  . join " ", @{$rel_follow->get($k)};
-    for(map { $brain->blob->get($_) } @{$rel_original->get($k)}) {
-        say "origin: $_";
+sub properties {
+    my ($k) = @_;
+    my $prop = { digest => $k };
+    for (qw(appear_in original_of precede follow)) {
+        $prop->{$_} = join " ", @{ $brain->relation($_)->get($k) };
+
+        delete $prop->{$_} unless $prop->{$_};
     }
+    return $prop;
+}
+
+
+for my $k ($brain->recall(@units)) {
+    say YAML::Dump(properties($k));
 
     say "\n" . $brain->blob->get($k) . "\n\n";
 }

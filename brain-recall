@@ -14,20 +14,8 @@ my $brain = Brain->new;
 
 sub properties {
     my ($k) = @_;
-    my $prop = { digest => $k };
-
-    for (qw(appear origin)) {
-        $prop->{$_} = $brain->relation($_)->get($k);
-    }
-
-    if (@{$prop->{appear}} && !@{ $prop->{origin} }) {
-        $prop->{origin} = [ map { $brain->relation("origin")->get( $_ ) } @{ $prop->{appear} } ];
-    }
-
-    if (@{$prop->{origin}}) {
-        $prop->{origin} = [ map { $brain->blob->get($_) } @{$prop->{origin}} ];
-    }
-
+    my $prop = $brain->relations($k);
+    $prop->{digest} = $k;
     return $prop;
 }
 
@@ -58,8 +46,12 @@ for my $k ($brain->recall(@units, { operator => 'AND'})) {
 }
 
 for (sort { @{ $result->{$b} } <=> @{ $result->{$a} } } keys %$result) {
+    say colored("origin", "yellow") . " " . $_;
+
     for(@{$result->{$_}}){
-        render_properties($_);
-        say "\n" . $brain->blob->get($_->{digest}) . "\n";
+        delete $_->{origin};
+        say "    " . colored("digest", "yellow") . " " . $_->{digest};
+
+        say "\n    " . $brain->blob->get($_->{digest}) . "\n";
     }
 }

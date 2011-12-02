@@ -24,18 +24,9 @@ use Brain;
 use Ceis::Extractor;
 
 my $brain = Brain->new;
-my $extractor = Ceis::Extractor->new();
 
 for my $url (@urls) {
-    $extractor->url($url);
-
-    my $fulltext = $extractor->fulltext;
-
-    my $k_url      = $brain->blob->add($extractor->url);
-    my $k_fulltext = $brain->study($fulltext);
-
-    $brain->relation("origin")->add($k_fulltext, $k_url);
-
+    $brain->study($url);
     say "read: $url";
 }
 

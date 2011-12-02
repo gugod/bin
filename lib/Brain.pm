@@ -8,6 +8,7 @@ package Brain {
     use Brain::Helpers qw(sha1_hex);
     use Redis;
     use Lingua::Gram;
+    use Ceis::Extractor;
 
     has storage => (
         is => "ro",
@@ -23,6 +24,13 @@ package Brain {
         builder => '_build_blob'
     );
 
+    has extractor => (
+        is => "rw",
+        isa => "Ceis::Extractor",
+        lazy => 1,
+        builder => '_build_extractor'
+    );
+
     sub _build_storage {
         return Redis->new;
     }
@@ -30,6 +38,10 @@ package Brain {
     sub _build_blob {
         my $self = shift;
         return Brain::Blob->new(storage => $self->storage);
+    }
+
+    sub _build_extractor {
+        return Ceis::Extractor->new;
     }
 
     sub relation {
@@ -42,16 +54,21 @@ package Brain {
     }
 
     sub study {
-        my ($self, $text) = @_;
+        my ($self, $url) = @_;
 
-        my $k_text = $self->blob->add($text);
+        $self->extractor->url($url);
 
-        my @sentences = Brain::Language->sentences($text);
+        my $fulltext = $self->extractor->fulltext;
+
+        my $k_url      = $self->blob->add($self->extractor->url);
+        my $k_fulltext = $self->blob->add($fulltext);
+
+        my @sentences = Brain::Language->sentences($fulltext);
 
         my $k_last;
         for my $x (@sentences) {
             my $k = $self->remember($x);
-            $self->relation("appear")->add($k, $k_text);
+            $self->relation("appear")->add($k, $k_fulltext);
 
             if ($k_last) {
                 $self->relation("precede")->add($k, $k_last);
@@ -60,7 +77,9 @@ package Brain {
             $k_last = $k;
         }
 
-        return $k_text;
+        $self->relation("origin")->add($k_fulltext, $k_url);
+
+        return $k_fulltext;
     }
 
     sub remember {

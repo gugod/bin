@@ -17,15 +17,11 @@ sub properties {
 
     for (qw(appear origin precede follow)) {
         $prop->{$_} = $brain->relation($_)->get($k);
-
-        delete $prop->{$_} unless $prop->{$_};
     }
 
     if ($prop->{appear} && !$prop->{origin}) {
         $prop->{origin} = $brain->relation("origin")->get( $prop->{appear} );
     }
-
-    delete $prop->{origin} unless $prop->{origin};
 
     if ($prop->{origin}) {
         $prop->{origin} = [ map { $brain->blob->get($_) } @{$prop->{origin}} ];
@@ -42,8 +38,8 @@ sub render_properties {
         $prop->{$_} = join " ", @{ $prop->{$_} }
     }
 
-    for (qw(digest appear precede follow origin)) {
-        say "$_: $prop->{$_}"
+    for (grep { $prop->{$_} } qw(digest appear precede follow origin)) {
+        say "$_: $prop->{$_}";
     }
 }
 

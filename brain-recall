@@ -26,6 +26,9 @@ sub properties {
 
         delete $prop->{$_} unless $prop->{$_};
     }
+    if ($prop->{appear} && !$prop->{origin}) {
+        $prop->{origin} = join " ", map { $brain->blob->get($_) } @{$brain->relation("origin")->get( $prop->{appear} )};
+    }
     return $prop;
 }
 

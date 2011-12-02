@@ -34,11 +34,6 @@ use Ceis::Extractor;
 my $brain = Brain->new;
 my $extractor = Ceis::Extractor->new();
 
-my $rel_origin  = $brain->relation("original_of");
-my $rel_appear  = $brain->relation("appear_in");
-my $rel_precede = $brain->relation("precede");
-my $rel_follow  = $brain->relation("follow");
-
 for my $url (@urls) {
     $extractor->url($url);
 
@@ -47,7 +42,7 @@ for my $url (@urls) {
     my $k_url      = $brain->blob->add($extractor->url);
     my $k_fulltext = $brain->study($fulltext);
 
-    $brain->relation("original_of")->add($k_fulltext, $k_url);
+    $brain->relation("origin")->add($k_fulltext, $k_url);
 
     say "read: $url";
 }

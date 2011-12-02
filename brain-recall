@@ -14,14 +14,14 @@ binmode STDOUT, ":utf8";
 my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
 
 my $brain = Brain->new;
-my $rel_original = $brain->relation("original_of");
+my $rel_original = $brain->relation("origin");
 my $rel_precede  = $brain->relation("precede");
 my $rel_follow   = $brain->relation("follow");
 
 sub properties {
     my ($k) = @_;
     my $prop = { digest => $k };
-    for (qw(appear_in original_of precede follow)) {
+    for (qw(appear origin precede follow)) {
         $prop->{$_} = join " ", @{ $brain->relation($_)->get($k) };
 
         delete $prop->{$_} unless $prop->{$_};

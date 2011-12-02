@@ -51,7 +51,7 @@ package Brain {
         my $k_last;
         for my $x (@sentences) {
             my $k = $self->remember($x);
-            $self->relation("appear_in")->add($k, $k_text);
+            $self->relation("appear")->add($k, $k_text);
 
             if ($k_last) {
                 $self->relation("precede")->add($k, $k_last);

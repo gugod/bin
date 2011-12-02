@@ -19,11 +19,11 @@ sub properties {
         $prop->{$_} = $brain->relation($_)->get($k);
     }
 
-    if ($prop->{appear} && !$prop->{origin}) {
-        $prop->{origin} = $brain->relation("origin")->get( $prop->{appear} );
+    if (@{$prop->{appear}} && !@{ $prop->{origin} }) {
+        $prop->{origin} = [ map { $brain->relation("origin")->get( $_ ) } @{ $prop->{appear} } ];
     }
 
-    if ($prop->{origin}) {
+    if (@{$prop->{origin}}) {
         $prop->{origin} = [ map { $brain->blob->get($_) } @{$prop->{origin}} ];
     }
 

@@ -16,6 +16,7 @@ package Brain::Helpers {
         $x = Encode::encode_utf8($x) if Encode::is_utf8($x);
         return Digest::SHA1::sha1_hex($x);
     }
+
 };
 
 1;

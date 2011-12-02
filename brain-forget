@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+use v5.14;
+use utf8;
+binmode STDIN, ":utf8";
+binmode STDOUT, ":utf8";
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Brain;
+
+my @digests = @ARGV or die "$0 sha1 [sha1...]\n";
+
+my $brain = Brain->new;
+for my $k (@digests) {
+    $brain->blob->remove($k);
+
+    for my $rel (qw(origin appear precede follow)) {
+        $brain->relation($rel)->remove($k);
+    }
+}

@@ -30,6 +30,11 @@ package Brain::Relation {
         my ($self, $x) = @_;
         $self->storage->smembers( $self->_redis_key($x) );
     }
+
+    sub remove {
+        my ($self, $x) = @_;
+        $self->storage->del( $self->_redis_key($x) );
+    }
 };
 
 1;

@@ -26,6 +26,11 @@ package Brain::Blob {
         my $k = shift;
         return $self->storage->hget("brain_blob", $k);
     }
+
+    sub remove {
+        my ($self, $k) = @_;
+        return $self->storage->hdel("brain_blob", $k);
+    }
 };
 
 1;

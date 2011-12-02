@@ -111,6 +111,27 @@ package Brain {
 
         return @results;
     }
+
+    # The relations of a blob-key.
+    sub relations {
+        my ($self, $k) = @_;
+        my $prop = { };
+
+        for (qw(appear origin)) {
+            $prop->{$_} = $self->relation($_)->get($k);
+        }
+
+        if (@{$prop->{appear}} && !@{ $prop->{origin} }) {
+            $prop->{origin} = [ map { $self->relation("origin")->get( $_ ) } @{ $prop->{appear} } ];
+        }
+
+        if (@{$prop->{origin}}) {
+            $prop->{origin} = [ map { $self->blob->get($_) } @{$prop->{origin}} ];
+        }
+
+        return $prop;
+    }
+
 };
 
 1;

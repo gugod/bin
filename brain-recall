@@ -5,6 +5,7 @@ use lib "$FindBin::Bin/lib";
 use utf8;
 use Encode;
 use List::MoreUtils qw(natatime);
+use Term::ANSIColor;
 use Brain;
 
 binmode STDOUT, ":utf8";
@@ -15,7 +16,7 @@ sub properties {
     my ($k) = @_;
     my $prop = { digest => $k };
 
-    for (qw(appear origin precede follow)) {
+    for (qw(appear origin)) {
         $prop->{$_} = $brain->relation($_)->get($k);
     }
 
@@ -31,22 +32,31 @@ sub properties {
 }
 
 sub render_properties {
-    my ($k) = @_;
-    my $prop = properties($k);
+    my ($prop) = @_;
 
-    for (qw(appear precede follow origin)) {
+    for (qw(appear origin)) {
         $prop->{$_} = join " ", @{ $prop->{$_} }
     }
 
-    for (grep { $prop->{$_} } qw(digest appear precede follow origin)) {
-        say "$_: $prop->{$_}";
+    for (grep { $prop->{$_} } qw(digest origin)) {
+        say colored($_, "yellow") . " $prop->{$_}";
     }
 }
 
 my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
 
-for my $k ($brain->recall(@units)) {
-    render_properties($k);
+my $result = {};
 
-    say "\n" . $brain->blob->get($k) . "\n\n";
+for my $k ($brain->recall(@units)) {
+    my $prop = properties($k);
+    for(@{ $prop->{origin} }) {
+        push @{ $result->{$_} }, $prop;
+    }
+}
+
+for (sort { @{ $result->{$b} } <=> @{ $result->{$a} } } keys %$result) {
+    for(@{$result->{$_}}){
+        render_properties($_);
+        say "\n" . $brain->blob->get($_->{digest}) . "\n";
+    }
 }

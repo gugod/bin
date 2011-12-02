@@ -50,7 +50,7 @@ my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
 
 my $result = {};
 
-for my $k ($brain->recall(@units)) {
+for my $k ($brain->recall(@units, { operator => 'AND'})) {
     my $prop = properties($k);
     for(@{ $prop->{origin} }) {
         push @{ $result->{$_} }, $prop;

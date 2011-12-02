@@ -69,11 +69,12 @@ package Ceis::Extractor {
 
     sub _build_wanted {
         state $queries = {
-            qw{mobile01\.com}                    => 'title, .single-post-content',
-            qw{\.wordpress\.com/}                => 'h2.entry-title, .post p',
-            qw{wretch\.cc/blog}                  => 'h3.title, .innertext p',
-            qw{pansci\.tw/}                      => 'h2.posttitle, .entry p',
-            qw{\.cna\.com\.tw/}                  => '.new_mid_headline_orange, .new_mid_word_large',
+            qr{digitimes\.com/}                  => 'title, p.P1, p.P2',
+            qr{mobile01\.com/}                   => 'title, .single-post-content',
+            qr{\.wordpress\.com/}                => 'h2.entry-title, .post p',
+            qr{wretch\.cc/blog}                  => 'h3.title, .innertext p',
+            qr{pansci\.tw/}                      => 'h2.posttitle, .entry p',
+            qr{\.cna\.com\.tw/}                  => '.new_mid_headline_orange, .new_mid_word_large',
             qr{wikipedia\.org}                   => 'p, h1, h2>span.mw-headline, h3>span.mw-headline',
             qr{www\.techbang\.com\.tw/}          => 'header h2 a, .content h2, .content h3, .content p',
             qr{pcworld\.com/}                    => '#articleHead h1, .articleBodyContent p',
@@ -104,22 +105,7 @@ package Ceis::Extractor {
         return $query;
     }
 
-    sub __split_to_sentences {
-        my ($text) = @_;
-
-        my @result;
-        my $iter = natatime 2, split(/(？\」|。\」|！\」|。(?!\」))/, $text);
-
-        while (my @vals = $iter->()) {
-            local $_ = join "", @vals;
-            s/( \A\s+ | \s+\Z )//x;
-            push @result, $_;
-        }
-
-        return @result;
-    }
-
-    sub sentences {
+    sub fulltext {
         my ($self) = @_;
         my @result;
 
@@ -129,21 +115,21 @@ package Ceis::Extractor {
 
         $dom->find("style, script")->each(sub { $_[0]->replace("<div></div>") });
 
+        my $result = "";
+
         $dom->find($self->wanted)->each(
             sub {
                 local $_ = $_[0]->all_text(0);
                 return if /\A\s*\Z/;
                 return if $exclude && /$exclude/;
-
-                for(split /[\r\n]+/) {
-                    push @result, __split_to_sentences( $_ );
-                }
-
+                s/[\r\n]+//g;
+                $result .= $_ . "\n\n";
             }
         );
 
-        return @result;
+        return $result;
     }
+
 };
 
 1;

@@ -31,6 +31,6 @@ use Ceis::Extractor;
 for my $url (@urls) {
     my $extractor = Ceis::Extractor->new(url => $url);
 
-    say "$_\n" for $extractor->sentences;
+    say $extractor->fulltext;
     say "-" x 42 . "\n\n";
 }

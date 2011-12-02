@@ -42,31 +42,12 @@ my $rel_follow  = $brain->relation("follow");
 for my $url (@urls) {
     $extractor->url($url);
 
-    my @sentences = $extractor->sentences;
-    my $fulltext = join "\n", @sentences;
-
-    $brain->storage->multi;
+    my $fulltext = $extractor->fulltext;
 
     my $k_url      = $brain->blob->add($extractor->url);
-    my $k_fulltext = $brain->blob->add($fulltext);
+    my $k_fulltext = $brain->study($fulltext);
 
-    $rel_origin->add($k_fulltext, $k_url);
-
-    my $pre_x;
-    for my $x ($extractor->sentences) {
-        my $k = $brain->remember($x);
-
-        $rel_origin->add($k, $k_url);
-        $rel_appear->add($k, $k_fulltext);
-
-        if ($pre_x) {
-            $rel_precede->add($k, $pre_x);
-            $rel_follow->add($pre_x, $k);
-        }
-        $pre_x = $k;
-    }
-
-    $brain->storage->exec;
+    $brain->relation("original_of")->add($k_fulltext, $k_url);
 
     say "read: $url";
 }

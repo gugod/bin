@@ -3,38 +3,54 @@ use v5.14;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use utf8;
-
-use Brain;
 use Encode;
 use List::MoreUtils qw(natatime);
-use YAML;
+use Brain;
 
 binmode STDOUT, ":utf8";
 
-my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
-
 my $brain = Brain->new;
-my $rel_original = $brain->relation("origin");
-my $rel_precede  = $brain->relation("precede");
-my $rel_follow   = $brain->relation("follow");
 
 sub properties {
     my ($k) = @_;
     my $prop = { digest => $k };
+
     for (qw(appear origin precede follow)) {
-        $prop->{$_} = join " ", @{ $brain->relation($_)->get($k) };
+        $prop->{$_} = $brain->relation($_)->get($k);
 
         delete $prop->{$_} unless $prop->{$_};
     }
+
     if ($prop->{appear} && !$prop->{origin}) {
-        $prop->{origin} = join " ", map { $brain->blob->get($_) } @{$brain->relation("origin")->get( $prop->{appear} )};
+        $prop->{origin} = $brain->relation("origin")->get( $prop->{appear} );
     }
+
+    delete $prop->{origin} unless $prop->{origin};
+
+    if ($prop->{origin}) {
+        $prop->{origin} = [ map { $brain->blob->get($_) } @{$prop->{origin}} ];
+    }
+
     return $prop;
 }
 
+sub render_properties {
+    my ($k) = @_;
+    my $prop = properties($k);
+
+    for (qw(appear precede follow origin)) {
+        $prop->{$_} = join " ", @{ $prop->{$_} }
+    }
+
+    for (qw(digest appear precede follow origin)) {
+        say "$_: $prop->{$_}"
+    }
+}
+
+my @units = map { Encode::decode_utf8($_) } @ARGV or die "Need something";
 
 for my $k ($brain->recall(@units)) {
-    say YAML::Dump(properties($k));
+    render_properties($k);
 
     say "\n" . $brain->blob->get($k) . "\n\n";
 }

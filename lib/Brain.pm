@@ -134,21 +134,21 @@ package Brain {
     # The relations of a blob-key.
     sub relations {
         my ($self, $k) = @_;
-        my $prop = { };
+        my $rel = {};
 
         for (qw(appear origin)) {
-            $prop->{$_} = $self->relation($_)->get($k);
+            $rel->{$_} = $self->relation($_)->get($k);
         }
 
-        if (@{$prop->{appear}} && !@{ $prop->{origin} }) {
-            $prop->{origin} = [ map { $self->relation("origin")->get( $_ ) } @{ $prop->{appear} } ];
+        if (@{$rel->{appear}} && !@{ $rel->{origin} }) {
+            $rel->{origin} = [ map { $self->relation("origin")->get( $_ ) } @{ $rel->{appear} } ];
         }
 
-        if (@{$prop->{origin}}) {
-            $prop->{origin} = [ map { $self->blob->get($_) } @{$prop->{origin}} ];
+        if (@{$rel->{origin}}) {
+            $rel->{origin} = [ map { $self->blob->get($_) } @{$rel->{origin}} ];
         }
 
-        return $prop;
+        return $rel;
     }
 
 };

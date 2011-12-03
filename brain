@@ -1,4 +1,0 @@
-#!/usr/bin/env perl
-die unless @ARGV > 0;
-my $cmd = shift @ARGV;
-exec("$0-$cmd", @ARGV);

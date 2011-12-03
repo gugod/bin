@@ -1,33 +1,43 @@
 #!/usr/bin/env perl
 use v5.14;
 use utf8;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Brain;
+use Regexp::Common qw/URI/;
+
 binmode STDIN, ":utf8";
 binmode STDOUT, ":utf8";
 
 my @urls;
 @urls = @ARGV if @ARGV;
 
-if (@urls == 0) {
-    use Regexp::Common qw/URI/;
+my $brain = Brain->new;
 
-    local $/ = undef;
-    my $in = <STDIN>;
-    @urls = $in =~ m/($RE{URI}{HTTP}{-scheme=>"https?"})/g;
+if (@urls == 0) {
+    while (my $in = <STDIN>) {
+        chomp($in);
+
+        say $in;
+        if (@urls = $in =~ m/($RE{URI}{HTTP}{-scheme=>"https?"})/g) {
+            say "";
+            for my $url (@urls) {
+                say "    Study: $url";
+                $brain->study($url);
+            }
+            say "";
+        }
+    }
 }
 else {
     utf8::decode($_) for(@urls);
+    for my $url (@urls) {
+        $brain->study($url);
+        say "read: $url";
+    }
 }
 
-use FindBin;
-use lib "$FindBin::Bin/lib";
-use Brain;
-
-my $brain = Brain->new;
-
-for my $url (@urls) {
-    $brain->study($url);
-    say "read: $url";
-}
+say "DONE";
 
 __END__
 

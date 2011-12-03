@@ -93,7 +93,7 @@ package Ceis::Extractor {
         my ($self) = @_;
         die unless $self->url;
 
-        my $query = "h1, h2, h3, p";
+        my $query = "title, h1, h2, h3, p";
 
         for my $re (@$url_regexes) {
             if ($self->url =~ m/$re/) {

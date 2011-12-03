@@ -9,6 +9,7 @@ package Brain {
     use Redis;
     use Lingua::Gram;
     use Ceis::Extractor;
+    use Regexp::Common qw/URI/;
 
     has storage => (
         is => "ro",
@@ -54,19 +55,27 @@ package Brain {
     }
 
     sub study {
-        my ($self, $url) = @_;
+        my ($self, $thing) = @_;
 
-        $self->extractor->url($url);
+        my ($fulltext, $k_fulltext);
 
-        my $fulltext = $self->extractor->fulltext;
+        if ($thing =~ /\A$RE{URI}{HTTP}{-scheme=>"https?"}\Z/) {
+            $self->extractor->url($thing);
 
-        my $k_url      = $self->blob->add($self->extractor->url);
-        my $k_fulltext = $self->blob->add($fulltext);
+            $fulltext = $self->extractor->fulltext;
 
-        my @sentences = Brain::Language->sentences($fulltext);
+            my $k_url   = $self->blob->add($self->extractor->url);
+            $k_fulltext = $self->blob->add($fulltext);
+
+            $self->relation("origin")->add($k_fulltext, $k_url);
+        }
+        else {
+            $fulltext   = $thing;
+            $k_fulltext = $self->blob->add($fulltext);
+        }
 
         my $k_last;
-        for my $x (@sentences) {
+        for my $x ( Brain::Language->sentences($fulltext) ) {
             my $k = $self->remember($x);
             $self->relation("appear")->add($k, $k_fulltext);
 
@@ -76,8 +85,6 @@ package Brain {
             }
             $k_last = $k;
         }
-
-        $self->relation("origin")->add($k_fulltext, $k_url);
 
         return $k_fulltext;
     }

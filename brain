@@ -1,0 +1,2 @@
+#!/bin/sh
+/Users/gugod/src/Brain/bin/brain $*

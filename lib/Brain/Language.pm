@@ -5,12 +5,14 @@ package Brain::Language {
     use utf8;
     use List::MoreUtils qw(natatime);
     use Lingua::Sentence;
+    use String::Trim ();
 
+    #
+    # Trim off extra whitespaces around the text.
+    #
     sub trim {
         my ($self, $text) = @_;
-        $text =~ s/^ +//mg;
-        $text =~ s/ +$//mg;
-        return $text;
+        return String::Trim::trim($text);
     }
 
     sub sentences {

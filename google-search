@@ -1,0 +1,14 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use Google::Search;
+
+$ARGV[0] or die;
+
+my $search = Google::Search->Web(join " ", @ARGV);
+
+for (@{ $search->all }) {
+    say $_->title =~ s{</?b>}{*}rg;
+    say $_->uri;
+    say "";
+}

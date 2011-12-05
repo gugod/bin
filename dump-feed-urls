@@ -4,13 +4,15 @@ use v5.14;
 use XML::Feed;
 use URI;
 
-my @feed_urls = @ARGV;
+my @urls = @ARGV;
 
-die "Put feed urls in ARGV\n"
-    unless @feed_urls;
+die "Put urls in ARGV\n"
+    unless @urls;
 
-for my $feed_url (@feed_urls) {
-    my $feed = XML::Feed->parse( URI->new( $feed_url ));
-
-    say $_->link for $feed->entries;
+for my $url (@urls) {
+    my @feeds = XML::Feed->find_feeds(URI->new($url));
+    for (@feeds) {
+        my $feed = XML::Feed->parse(URI->new($_));
+        say $_->link for $feed->entries;
+    }
 }

@@ -46,6 +46,7 @@ sub copy_assets {
         # say "SKIP $source => $destination";
     }
     else {
+        say "COPY $source => $destination";
         copy($source, $destination)
             or die "copy failed: $!";
 

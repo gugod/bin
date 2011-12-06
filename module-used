@@ -1,8 +1,6 @@
 #!/usr/bin/env perl
 # -*- cperl -*-
-use strict;
-use warnings;
-
+use v5.14;
 use File::Spec;
 use File::Find;
 use Module::CoreList;
@@ -25,4 +23,4 @@ find(
     @dir
 );
 
-print "$_\n" for grep { !$Module::CoreList::version{"$]"}->{$_}  } grep { !/^[\.0-9]+$/ } uniq sort @used;
+say for grep { !$Module::CoreList::version{"$]"}->{$_}  } grep { !/^[\.0-9]+$/ } uniq sort @used;

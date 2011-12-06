@@ -29,6 +29,7 @@ sub should_not_proxy {
 use HTTP::Proxy;
 use HTTP::Proxy::HeaderFilter::simple;
 
+my $verbose = 0;
 my $proxy = HTTP::Proxy->new(
     port => 3128,
     keep_alive => 0,
@@ -42,7 +43,8 @@ $proxy->push_filter(
             my $host = $message->uri()->host();
 
             if (is_blocked($host)) {
-                print "!!! " . $message->uri . "\n";
+                print "!!! " . $message->uri . "\n" if $verbose;
+
                 $message->uri("file:///dev/null");
                 return;
             }
@@ -51,7 +53,7 @@ $proxy->push_filter(
                 $message->uri()->host($host);
                 $headers->header(Host => $host);
 
-                print "==> " . $message->uri()->as_string . "\n";
+                print "==> " . $message->uri()->as_string . "\n" if $verbose;
             }
 
         }

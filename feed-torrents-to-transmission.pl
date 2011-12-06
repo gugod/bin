@@ -103,9 +103,6 @@ GetOptions(
     'exclude=s@',
 );
 
-require YAML;
-say YAML::Dump(\%options);
-
 my $feed_url = shift @ARGV or pod2usage({ -verbose => 1, -exitval => 1 });
 
 my $feeder = TransmissionFeeder->new(

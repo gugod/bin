@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use WWW::Mechanize;
+
+my @urls = @ARGV;
+
+die "Put some urls in ARGV\n"
+    unless @urls;
+
+my $ua = WWW::Mechanize->new( autocheck => 0 );
+for (@urls) {
+    $ua->get($_) or next;
+    for ($ua->links) {
+        say $_->url_abs if $_->tag eq 'a';
+    }
+}

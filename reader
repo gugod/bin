@@ -24,13 +24,18 @@ Or pass URLs from STDIN:
 
 USAGE
 
-use FindBin;
-use lib "$FindBin::Bin/lib";
-use Ceis::Extractor;
+use Find::Lib 'lib';
+use Encode qw(encode_utf8 decode_utf8);
+use WWW::Mechanize;
+use HTML::ExtractContent;
+
+my $ua = WWW::Mechanize->new(autocheck => 0);
 
 for my $url (@urls) {
-    my $extractor = Ceis::Extractor->new(url => $url);
+    $ua->get($url) or next;
+    my $content = $ua->content;
 
-    say $extractor->fulltext;
-    say "-" x 42 . "\n\n";
+    say HTML::ExtractContent->new->extract($content)->as_text;
+    say "-"x42;
+
 }

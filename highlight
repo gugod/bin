@@ -1,0 +1,5 @@
+#!/usr/bin/env perl
+while(<STDIN>) {
+    s/$ARGV[0]/\e[30;43;m$&\e[0m/g;
+    print;
+}

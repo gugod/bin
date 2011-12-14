@@ -17,7 +17,7 @@ Sitebrew->initialize(app_root => io->curdir->absolute->name);
 
 my $brewer = Sitebrew->instance;
 
-my @articles = (sort { $b->published_at <=> $a->published_at } Sitebrew::Article->all)[0..24];
+my @articles = grep { defined } (sort { $b->published_at <=> $a->published_at } Sitebrew::Article->all)[0..24];
 
 my $feed = XML::Feed->new("Atom", version => 1.0);
 

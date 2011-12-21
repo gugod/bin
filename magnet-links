@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+#
+# Find and print magnet links in a given page.
+#
+
+use v5.14;
+use utf8;
+use File::Basename;
+use WWW::Mechanize;
+
+binmode STDOUT, ":utf8";
+
+unless (@ARGV) {
+    die "\nUsage: " . basename($0) . " URL [pattern]\n\n";
+}
+
+my $url = shift @ARGV;
+my $wanted = shift @ARGV || qr/\S/;
+
+my $ua = WWW::Mechanize->new;
+$ua->get($url);
+
+for ($ua->links) {
+    next unless $_->url =~ /magnet:/;
+    next unless $_->text =~ /$wanted/;
+
+    say "# " . $_->text;
+    say $_->url;
+}

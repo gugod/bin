@@ -27,6 +27,7 @@ $feed->self_link($brewer->config->url_base . "/atom.xml");
 $feed->modified(DateTime->now);
 
 for my $article (@articles) {
+    next if $article->content_file eq 'content/index.md';
     $feed->add_entry(do {
         my $x = XML::Feed::Entry->new;
         $x->link($brewer->config->url_base . $article->href);

@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+use v5.14;
+use Path::Class;
+use Org::Parser;
+use Data::Table;
+use List::Util qw(sum);
+
+$ARGV[0] && -f $ARGV[0] or die "\nUsage: " . file($0)->basename . " expense-file.org\n\n";
+
+my @currency = ("NTD");
+my $RE_currency = qr{(?:USD|NTD)?}i;
+
+my %wordmap = (
+    qr{(?:餐|吃|喝|宵夜|酥雞|飲|水|lunch|dinner|breakfast|food)}i => "food",
+    qr{(?:咖啡|coffee)}i => "coffee",
+    qr{(?:gasoline|加油|高速公路|bus)}i => "traffic"
+);
+
+my ($year, $month, $mday);
+my @expense_table;
+
+my $orgp = Org::Parser->new;
+my $doc  = $orgp->parse_file($ARGV[0]);
+$doc->walk(
+    sub {
+        my ($el) = @_;
+
+        if ( $el->isa("Org::Element::Headline") ) {
+            if ($el->title->as_string =~ m/\b(\d\d\d\d)-(\d\d)-(\d\d)\b/) {
+                ($year, $month, $mday) = ($1, $2, $3);
+            }
+        }
+        elsif ( $el->isa("Org::Element::ListItem") ) {
+            if ($el->children_as_string =~ /\b(\d+)\s*(${RE_currency})\p{Punct}?\s*(.+)$/) {
+                my ($amount, $currency, $description) = ($1, $2, $3);
+                my $category = "UNKNOWN";
+
+                lc($currency);
+                $currency ||= "NTD";
+
+                while (my ($pattern, $tag) = each %wordmap) {
+                    if ($description =~ m/$pattern/) {
+                        $category = $tag;
+                        last;
+                    }
+                }
+
+                push @expense_table, ["$year-$month", $amount, $currency, $category];
+            }
+        }
+    }
+);
+
+my $t = Data::Table->new(\@expense_table, ["Month", "Amount", "Currency", "Category"], 0);
+my $t2 = $t->group(
+    ["Month", "Category", "Currency"],
+    ["Amount"],
+    [\&sum],
+    ["Total"]
+);
+
+my $last_month = "";
+for my $i (0..$t2->nofRow-1) {
+    my $r = $t2->rowHashRef($i);
+
+    if ($last_month ne $r->{Month}) {
+        say $r->{Month};
+        say "=" x 8;
+        $last_month = $r->{Month};
+    }
+    say "  " . $r->{Category} . ": " . $r->{Total} . " " . $r->{Currency};
+}
+

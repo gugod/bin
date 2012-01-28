@@ -1,5 +1,9 @@
 #!/usr/bin/env perl
 use v5.14;
+use utf8;
+
+binmode STDOUT, ":utf8";
+
 use Path::Class;
 use Org::Parser;
 use Data::Table;
@@ -11,17 +15,23 @@ my @currency = ("NTD");
 my $RE_currency = qr{(?:USD|NTD)?}i;
 
 my %wordmap = (
-    qr{(?:餐|吃|喝|宵夜|酥雞|飲|水|lunch|dinner|breakfast|food)}i => "food",
-    qr{(?:咖啡|coffee)}i => "coffee",
-    qr{(?:gasoline|加油|高速公路|bus)}i => "traffic"
+    qr{(?:餐|吃|喝|宵夜|酥雞|飲|水|lunch|dinner|breakfast|drink|food)}i => "food",
+    qr{(?:咖啡|coffee|milk)}i => "coffee",
+    qr{(?:gasoline|加油|高速公路|bus)}i => "traffic",
+    qr{(?:國民年金|保險|瓦斯)}i => "bills",
 );
 
 my ($year, $month, $mday);
 my @expense_table;
 
-my $orgp = Org::Parser->new;
-my $doc  = $orgp->parse_file($ARGV[0]);
-$doc->walk(
+do {
+    local $/ = undef;
+    open my $fh, "<:utf8", $ARGV[0];
+    my $content = <$fh>;
+
+    my $orgp = Org::Parser->new;
+    $orgp->parse($content);
+}->walk(
     sub {
         my ($el) = @_;
 
@@ -33,6 +43,7 @@ $doc->walk(
         elsif ( $el->isa("Org::Element::ListItem") ) {
             if ($el->children_as_string =~ /\b(\d+)\s*(${RE_currency})\p{Punct}?\s*(.+)$/) {
                 my ($amount, $currency, $description) = ($1, $2, $3);
+                utf8::decode($description);
                 my $category = "UNKNOWN";
 
                 lc($currency);
@@ -44,8 +55,13 @@ $doc->walk(
                         last;
                     }
                 }
+                keys %wordmap; # reset the internal iterator
 
                 push @expense_table, ["$year-$month", $amount, $currency, $category];
+
+                # if ($category eq 'UNKNOWN') {
+                # say "UNKNOWN => $description";
+                # }
             }
         }
     }
@@ -68,6 +84,6 @@ for my $i (0..$t2->nofRow-1) {
         say "=" x 8;
         $last_month = $r->{Month};
     }
-    say "  " . $r->{Category} . ": " . $r->{Total} . " " . $r->{Currency};
+    printf '  %14s: %6d %s'."\n", @$r{qw(Category Total Currency)};
 }
 

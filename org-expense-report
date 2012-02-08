@@ -21,8 +21,10 @@ my %wordmap = (
     qr{(?:餐|吃|喝|宵夜|酥雞|飲|水|lunch|dinner|breakfast|drink|food)}i => "food",
     qr{(?:咖啡|coffee|milk)}i => "coffee",
     qr{(?:gasoline|加油|高速公路|bus)}i => "traffic",
-    qr{(?:國民年金|保險|瓦斯)}i => "bills",
-    qr{(?:music)}i => "music",
+    qr{(?:國民年金|保險|瓦斯|#?bills)}i => "bills",
+    qr{(?:生活用品|living)}i => "living",
+    qr{(?:#?music)}i => "music",
+    qr{(?:\b書\b|#?pleasure)}i => "pleasure",
 );
 
 my ($year, $month, $mday);

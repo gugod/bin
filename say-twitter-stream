@@ -55,6 +55,7 @@ my $listener = AnyEvent::Twitter::Stream->new(
             return;
         }
 
+        system "/usr/bin/say", -v => "Daniel", "From $tweet->{user}{screen_name}: ";
         system "/usr/bin/say", -v => $voice, "$text";
     },
     on_keepalive => sub {

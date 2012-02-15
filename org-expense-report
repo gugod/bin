@@ -55,13 +55,18 @@ do {
                 lc($currency);
                 $currency ||= "NTD";
 
-                while (my ($pattern, $tag) = each %wordmap) {
-                    if ($description =~ m/$pattern/) {
-                        $category = $tag;
-                        last;
-                    }
+                if ($description =~ /\s\#(\w+)\b/) {
+                    $category = $1;
                 }
-                keys %wordmap; # reset the internal iterator
+                else {
+                    while (my ($pattern, $tag) = each %wordmap) {
+                        if ($description =~ m/$pattern/) {
+                            $category = $tag;
+                            last;
+                        }
+                    }
+                    keys %wordmap; # reset the internal iterator
+                }
 
                 push @expense_table, ["$year-$month", $amount, $currency, $category];
 

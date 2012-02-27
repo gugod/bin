@@ -1,0 +1,8 @@
+#!/usr/bin/env perl6
+#
+# Calculate the numerical average of input numbers.
+#
+
+use v6;
+my @a = $*IN.slurp.split(/\s+/).grep({ $_ ne "" });
+say ( [+] @a ) / @a;

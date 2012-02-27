@@ -18,7 +18,7 @@ use Sitebrew::Article;
 
 Sitebrew->initialize(app_root => io->curdir->absolute->name);
 
-my @articles = sort { $b->published_at <=> $a->published_at } Sitebrew::Article->all;
+my @articles = Sitebrew::Article->all;
 
 my $tx = Text::Xslate->new( input_layer => ":utf8", path => ['views', 'layouts'] );
 my $index_html = $tx->render("index.tx", { articles => \@articles });

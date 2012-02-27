@@ -129,7 +129,7 @@ sub all {
         }
     );
 
-    return @articles;
+    return sort { $b->published_at <=> $a->published_at } @articles;
 }
 
 1;

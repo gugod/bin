@@ -114,7 +114,11 @@ sub each {
 
     for my $content_file (@content_files) {
         my $article = $class->new(content_file => $content_file);
-        $cb->($article);
+        my $result = $cb->($article);
+
+        if (defined($result) && !$result) {
+            last;
+        }
     }
 }
 
@@ -130,6 +134,19 @@ sub all {
     );
 
     return sort { $b->published_at <=> $a->published_at } @articles;
+}
+
+sub first {
+    my ($class, $count) = @_;
+    $count ||= 1;
+
+    if ($count < 1) {
+        return ();
+    }
+
+    my @articles = $class->all;
+
+    return splice(@articles, 0, $count);
 }
 
 1;

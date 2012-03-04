@@ -11,6 +11,7 @@ use YAML;
 use List::MoreUtils qw(any);
 use AnyEvent;
 use AnyEvent::Worker;
+use Data::RoundRobin;
 
 use Sitebrew;
 use Sitebrew::Article;
@@ -43,22 +44,25 @@ sub build_all {
     );
 
     my $builder_cv = AnyEvent->condvar;
-    my $builder = AnyEvent::Worker->new(
-        sub {
-            my $markdown_file = shift;
-            my $html_file  = $markdown_file =~ s/\.md$/.html/r =~ s/^content/public/r;
-            my $html_mtime = io($html_file)->mtime;
+    my $builder_sub = sub {
+        my $markdown_file = shift;
+        my $html_file  = $markdown_file =~ s/\.md$/.html/r =~ s/^content/public/r;
+        my $html_mtime = io($html_file)->mtime;
 
-            if (any { $html_mtime > $_ } @view_mtime) {
-                system "sitebrew-one", $markdown_file;
-            }
+        if (any { $html_mtime > $_ } @view_mtime) {
+            system "sitebrew-one", $markdown_file;
         }
+    };
+
+    my $builders = Data::RoundRobin->new(
+        AnyEvent::Worker->new($builder_sub),
+        AnyEvent::Worker->new($builder_sub)
     );
 
     for my $article (@articles) {
         $builder_cv->begin;
 
-        $builder->do(
+        $builders->next->do(
             $article->content_file, sub {
                 $builder_cv->end;
             }

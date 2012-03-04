@@ -8,34 +8,14 @@ use Text::Markdown qw(markdown);
 use IO::All -utf8;
 use File::Copy;
 use YAML;
+use List::MoreUtils qw(any);
+use AnyEvent;
+use AnyEvent::Worker;
 
 use Sitebrew;
 use Sitebrew::Article;
 
 Sitebrew->initialize(app_root => io->curdir->absolute->name);
-
-sub markdown_file :lvalue {
-    state $markdown_file
-}
-
-sub html_file {
-    markdown_file =~ s/\.md$/.html/r =~ s/^content/public/r;
-}
-
-sub build_markdown {
-    markdown_file = shift;
-
-    if (-f html_file
-        && io(html_file)->mtime > io(markdown_file)->mtime
-        && io(html_file)->mtime > io("views/default-layout.tx")->mtime
-        && io(html_file)->mtime > io("views/article.tx")->mtime) {
-
-        # say "SKIP " . markdown_file . " => " . html_file;
-        return;
-    }
-
-    system "sitebrew-one", markdown_file;
-}
 
 sub copy_assets {
     my $source = shift;
@@ -55,6 +35,36 @@ sub copy_assets {
 }
 
 sub build_all {
+    my @articles = Sitebrew::Article->all;
+
+    my @view_mtime = (
+        io("views/default-layout.tx")->mtime,
+        io("views/article.tx")->mtime
+    );
+
+    my $builder_cv = AnyEvent->condvar;
+    my $builder = AnyEvent::Worker->new(
+        sub {
+            my $markdown_file = shift;
+            my $html_file  = $markdown_file =~ s/\.md$/.html/r =~ s/^content/public/r;
+            my $html_mtime = io($html_file)->mtime;
+
+            if (any { $html_mtime > $_ } @view_mtime) {
+                system "sitebrew-one", $markdown_file;
+            }
+        }
+    );
+
+    for my $article (@articles) {
+        $builder_cv->begin;
+
+        $builder->do(
+            $article->content_file, sub {
+                $builder_cv->end;
+            }
+        );
+    }
+
     find +{
         wanted => sub {
             return if !-f || /\.DS_Store/ || /\.git/ || /(\.md|_attributes\.yml)\z/ || $File::Find::dir =~ /(sass|\.git)/;
@@ -64,13 +74,7 @@ sub build_all {
         follow => 1
     }, "content";
 
-    Sitebrew::Article->each(
-        sub {
-            my ($article) = @_;
-            build_markdown( $article->content_file );
-        }
-    );
-
+    $builder_cv->recv;
     say 'ALL DONE';
 }
 

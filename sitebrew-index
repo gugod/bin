@@ -20,7 +20,17 @@ Sitebrew->initialize(app_root => io->curdir->absolute->name);
 
 my @articles = Sitebrew::Article->first(10);
 
-my $tx = Text::Xslate->new( input_layer => ":utf8", path => ['views', 'layouts'] );
+my $tx = Text::Xslate->new(
+    input_layer => ":utf8", path => ['views', 'layouts'],
+    function => {
+        markdown => sub {
+            my $t = shift;
+            return Text::Xslate::mark_raw(
+                Sitebrew->markdown($t, { empty_element_suffix => '>' } )
+            )
+        }
+    }
+);
 my $index_html = $tx->render("index.tx", { articles => \@articles });
 
 io("public/index.html")->print($index_html);

@@ -56,6 +56,7 @@ sub _build_title_and_body {
 
     $content_text =~ s/\A(.+)\n//;
     $content_text =~ s/\A(=+)\n//;
+    $content_text =~ s/\A\s+//s;
 
     $self->title($title);
     $self->body($content_text);
@@ -95,6 +96,13 @@ sub _build_published_at {
 sub _build_href {
     my $self = shift;
     return $self->content_file =~ s{^content/}{/}r =~ s/.md$/.html/r =~ s/\/index.html$/\//r;
+}
+
+sub summary {
+    my $self = shift;
+    my ($first, undef) = split(/\n\n+/, $self->body, 2);
+
+    return $first;
 }
 
 sub each {

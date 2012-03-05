@@ -39,7 +39,7 @@ sub build_all {
     my @articles = Sitebrew::Article->all;
 
     my @view_mtime = (
-        io("views/default-layout.tx")->mtime,
+        io("views/article-layout.tx")->mtime,
         io("views/article.tx")->mtime
     );
 

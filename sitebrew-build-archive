@@ -1,0 +1,36 @@
+#!/bin/sh
+#! -*- perl -*-
+eval 'exec perl -x -wS $0 ${1+"$@"}'
+    if 0;
+
+use v5.14;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
+use File::Find;
+use IO::All -utf8;
+use DateTimeX::Easy;
+use Text::Xslate;
+
+use Sitebrew;
+use Sitebrew::Article;
+
+Sitebrew->initialize(app_root => io->curdir->absolute->name);
+
+my @articles = Sitebrew::Article->all;
+
+my $tx = Text::Xslate->new(
+    input_layer => ":utf8", path => ['views', 'layouts'],
+    function => {
+        markdown => sub {
+            my $t = shift;
+            return Text::Xslate::mark_raw(
+                Sitebrew->markdown($t, { empty_element_suffix => '>' } )
+            )
+        }
+    }
+);
+
+my $html = $tx->render("archive.tx", { articles => \@articles });
+
+io("public/archive.html")->print($html);

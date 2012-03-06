@@ -4,6 +4,8 @@ use IO::All;
 use Text::Markdown ();
 use DateTime::TimeZone;
 use Sitebrew::Config;
+use Sitebrew::Article;
+use Text::Xslate;
 
 has app_root => (
     is => "rw",
@@ -44,6 +46,27 @@ sub markdown {
     }eg;
 
     Text::Markdown::markdown( $text, @options );
+}
+
+sub helpers {
+    my ($self) = @_;
+    return {
+        markdown => sub {
+            my $t = shift;
+            return Text::Xslate::mark_raw(
+                Sitebrew->markdown($t, { empty_element_suffix => '>' } )
+            )
+        },
+
+        articles => sub {
+            my $n = shift;
+
+            if (defined($n) && $n > 0) {
+                return [Sitebrew::Article->first($n)]
+            }
+            return [Sitebrew::Article->all]
+        }
+    }
 }
 
 1;

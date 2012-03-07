@@ -38,10 +38,14 @@ sub copy_assets {
 sub build_all {
     my @articles = Sitebrew::Article->all;
 
-    my @view_mtime = (
-        io("views/article-layout.tx")->mtime,
-        io("views/article.tx")->mtime
-    );
+    my @view_mtime = ( io("views/article.tx")->mtime );
+
+    for (qw(article default)) {
+        my $f = io("views/$_-layout.tx");
+        if ($f->exists) {
+            push @view_mtime, $f->mtime
+        }
+    }
 
     my $builder_cv = AnyEvent->condvar;
     my $builder_sub = sub {

@@ -1,0 +1,15 @@
+#!/bin/sh
+
+if [ ! -f ~/.cpan/sources/modules/02packages.details.txt.gz ]; then
+    echo "Refreshing the cpan index..."
+    perl -MCPAN -e 'CPAN::Index->reload' >/dev/null 2>/dev/null
+else
+    age=`perl -e 'print(time - (stat("$ENV{HOME}/.cpan/sources/modules/02packages.details.txt.gz"))[9])'`
+
+    if [ $age -gt 3600 ]; then
+        echo "Refreshing the cpan index..."
+        perl -MCPAN -e 'CPAN::Index->reload' >/dev/null 2>/dev/null
+    fi
+fi
+
+zgrep $1 ~/.cpan/sources/modules/02packages.details.txt.gz

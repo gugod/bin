@@ -15,7 +15,7 @@ getopts("v", \%opts);
 
 $ARGV[0] && -f $ARGV[0] or die "\nUsage: " . file($0)->basename . " expense-file.org\n\n";
 
-my $RE_currency = qr{(?:USD|NTD|JPY)}i;
+my $RE_currency = qr{(?:USD|NTD|JPY|EUR)}i;
 
 my %wordmap = (
     qr{(?:餐|吃|喝|宵夜|酥雞|飲|水|lunch|dinner|breakfast|drink|food)}i => "food",

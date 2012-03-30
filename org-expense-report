@@ -47,7 +47,7 @@ do {
             }
         }
         elsif ( $el->isa("Org::Element::ListItem") ) {
-            if ($el->children_as_string =~ /\b(\d+)\s*(${RE_currency})\p{Punct}?\s*(.+)$/) {
+            if ($el->children_as_string =~ /\b([\d\.]+)\s*(${RE_currency})\p{Punct}?\s*(.+)$/) {
                 my ($amount, $currency, $description) = ($1, $2, $3);
                 utf8::decode($description);
                 my $category = "UNKNOWN";
@@ -71,7 +71,7 @@ do {
                 push @expense_table, ["$year-$month", $amount, $currency, $category];
 
                 if ($opts{v}) {
-                    printf('%s-%s %12s %6d %3s %s'."\n", $year, $month, $category, $amount, $currency, $description);
+                    printf('%s-%s %12s %6.2f %3s %s'."\n", $year, $month, $category, $amount, $currency, $description);
                 }
             }
         }

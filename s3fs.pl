@@ -22,12 +22,12 @@ package S3VFS::Dir {
 
 package S3VFS {
     use POSIX qw(:errno_h);
-    use Fcntl qw(:DEFAULT :mode); # S_IFREG S_IFDIR, O_SYNC O_LARGEFILE etc.
+    use Fcntl qw(:DEFAULT :mode :seek); # S_IFREG S_IFDIR, O_SYNC O_LARGEFILE etc.
     use Moose;
     use Net::Amazon::S3;
     use DateTime::Format::ISO8601;
     use Scalar::Util qw(refaddr);
-    use YAML;
+    use Digest::SHA qw(sha1_hex);
 
     has aws_access_key => (is => "ro", isa => "Str", required => 1);
     has aws_secret_key => (is => "ro", isa => "Str", required => 1);
@@ -75,6 +75,8 @@ package S3VFS {
         $self->fs->{"/"} = S3VFS::Dir->new(path => "/", name => "");
 
         $self->getdir("/");
+
+        mkdir("/tmp/s3fscache");
 
         return $self;
     }
@@ -139,16 +141,11 @@ package S3VFS {
 
         my ($inode, $mode, $size, $mtime) = (0, 0755, 0, time-1);
 
-        say "GETATTR: $path";
         my $f = $self->fs->{$path};
 
         unless ($f) {
-            say "NOT FOUND";
-            # say YAML::Dump($self->fs);
             return -ENOENT();
         }
-
-        say "FOUND " . $f->path;
 
         $mode |= S_IFDIR if $f->is_dir;
         $mode |= S_IFREG if $f->is_file;
@@ -172,6 +169,37 @@ package S3VFS {
             1024,               # blocksize
             1+int($size/1024)   # blocks
         );
+    }
+
+    sub open {
+        my ($self, $path, $flags, $fileinfo) = @_;
+        $path =~ s{^/}{};
+
+        my $local_cache_file = "/tmp/s3fscache/".sha1_hex($path);
+
+        unless (-f $local_cache_file) {
+            $self->bucket->get_key_filename($path, 'GET', $local_cache_file);
+        }
+
+        my $fh;
+
+        CORE::open($fh, "<:bytes", $local_cache_file);
+
+        return (0, $fh);
+    }
+
+
+    sub read {
+        my ($self, $path, $size, $offset, $fh) = @_;
+
+        $path =~ s{^/}{};
+
+        my $out = "";
+
+        CORE::seek($fh, $offset, SEEK_SET);
+        CORE::read($fh, $out, $size);
+
+        return $out;
     }
 }
 
@@ -200,10 +228,6 @@ my $s3vfs = S3VFS->new(
     bucket_name    => $bucket_name
 );
 
-$SIG{'USR1'} = sub {
-    print YAML::Dump($s3vfs->fs);
-};
-
 sub mount {
     Fuse::main(
         debug => 0,
@@ -214,28 +238,20 @@ sub mount {
         },
 
         getattr => sub {
-            my ($path) = @_;
-            return $s3vfs->getattr($path);
+            return $s3vfs->getattr(@_);
         },
 
-        # open => sub {
-        #     my ($path, $mode) = @_;
-        #     say @_;
-        #     return 0;
-        # },
+        open => sub {
+            return $s3vfs->open(@_);
+        },
 
         read => sub {
-            my ($path, $size, $offset) = @_;
-            return "You read $path $size $offset";
+            return $s3vfs->read(@_);
         },
 
-        # release => sub {
-        #     return 0;
-        # },
-
-        # statfs => sub {
-        #     return (1024, 3, 0, 0, 0, 1024);
-        # }
+        statfs => sub {
+            return (90, 10240, 10240, 10240, 10240, 1024);
+        }
     );
 }
 

@@ -1,6 +1,87 @@
 #!/usr/bin/env perl
-
 use v5.14;
+
+package S3VFS::File {
+    use Moose;
+    has name  => (is => "ro", isa => "Str", required => 1);
+    has mtime => (is => "ro", isa => "Int", required => 1);
+    has size  => (is => "ro", isa => "Int", required => 1);
+};
+
+package S3VFS::Dir {
+    use Moose;
+    extends 'S3VFS::File';
+};
+
+package S3VFS {
+    use Moose;
+    use Net::Amazon::S3;
+
+    has aws_access_key => (is => "ro", isa => "Str", required => 1);
+    has aws_secret_key => (is => "ro", isa => "Str", required => 1);
+    has bucket_name    => (is => "ro", isa => "Str", required => 1);
+
+    has s3 => (
+        is => "ro",
+        isa => "Net::Amazon::S3",
+        lazy => 1,
+        builder => '_build_s3'
+    );
+
+    has bucket => (
+        is => "ro",
+        isa => "Net::Amazon::S3::Bucket",
+        lazy => 1,
+        builder => '_build_bucket'
+    );
+
+    # S3
+    sub _build_s3 {
+        my ($self) = @_;
+
+        return Net::Amazon::S3->new({
+            aws_access_key_id     => $self->aws_access_key,
+            aws_secret_access_key => $self->aws_secret_key,
+            retry => 1
+        });
+    }
+
+    sub _build_bucket {
+        my ($self) = @_;
+        return $self->s3->bucket( $self->bucket_name );
+    }
+
+    # VFS
+    sub getdir {
+        my ($self, $path) = @_;
+        my $bucket = $self->bucket;
+
+        say "GETDIR $path";
+
+        my $prefix = $path =~ s{^/}{}r =~ s{$}{/}r;
+        $prefix = "" if $prefix eq "/";
+
+        my $result = $bucket->list({
+            prefix => $prefix,
+            delimiter => "/"
+        });
+
+        my @ret;
+        for my $item (@{$result->{keys}}) {
+            push @ret, $item->{key};
+        }
+        push @ret, 0;
+
+        return @ret;
+    }
+
+    sub getattr {
+        my ($self, $path) = @_;
+    }
+}
+
+package main;
+
 use Net::Amazon::S3;
 use Path::Class;
 use IO::All;
@@ -19,47 +100,24 @@ unless ($bucket_name && $mountpoint) {
     die "Usage: s3fs.pl <bucket> <mountpoint>";
 }
 
-my $s3 = Net::Amazon::S3->new({
-    aws_access_key_id     => $ENV{EC2_ACCESS_KEY},
-    aws_secret_access_key => $ENV{EC2_SECRET_KEY},
-    retry => 1
-});
-
-# XXX
-my $bucket = $s3->bucket($bucket_name);
+my $s3vfs = S3VFS->new(
+    aws_access_key => $ENV{EC2_ACCESS_KEY},
+    aws_secret_key => $ENV{EC2_SECRET_KEY},
+    bucket_name    => $bucket_name
+);
 
 sub mount {
     Fuse::main(
         mountpoint => dir($mountpoint)->absolute,
 
         getdir => sub {
-            my ($path) = @_;
-
-            say "GETDIR $path";
-
-            my $prefix = $path =~ s{^/}{}r =~ s{$}{/}r;
-            $prefix = "" if $prefix eq "/";
-
-            say "=> $prefix";
-
-            my $result = $bucket->list({
-                prefix => $prefix,
-                delimiter => "/"
-            });
-
-            my @ret;
-            for my $item (@{$result->{keys}}) {
-                push @ret, $item->{key};
-            }
-            push @ret, 0;
-
-            # say "- $_" for @ret;
-
-            return @ret;
+            return $s3vfs->getdir(@_);
         },
 
         getattr => sub {
             my ($filename) = @_;
+
+            say "GETATTR $filename";
 
             my $t = time() - 1;
             return (

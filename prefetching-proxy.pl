@@ -43,8 +43,7 @@ my $ua = LWP::UserAgent::Cached->new(cache_dir => '/tmp/prefetching-proxy-cache'
 
 my $proxy = HTTP::Proxy->new(
     port => 3128,
-    keep_alive => 0,
-    max_clients => 100,
+    keep_alive  => 1,
     agent => $ua
 );
 

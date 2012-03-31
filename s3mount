@@ -1,0 +1,104 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use Net::Amazon::S3;
+use Path::Class;
+use IO::All;
+use Path::Class;
+use JSON;
+use Fuse;
+use Fcntl qw(:DEFAULT :mode); # S_IFREG S_IFDIR, O_SYNC O_LARGEFILE etc.
+
+unless ($ENV{EC2_ACCESS_KEY} && $ENV{EC2_SECRET_KEY}) {
+    die "export env var EC2_ACCESS_KEY and EC2_SECRET_KEY\n";
+}
+
+my ($bucket_name, $mountpoint) = @ARGV;
+
+unless ($bucket_name && $mountpoint) {
+    die "Usage: s3fs.pl <bucket> <mountpoint>";
+}
+
+my $s3 = Net::Amazon::S3->new({
+    aws_access_key_id     => $ENV{EC2_ACCESS_KEY},
+    aws_secret_access_key => $ENV{EC2_SECRET_KEY},
+    retry => 1
+});
+
+# XXX
+my $bucket = $s3->bucket($bucket_name);
+
+sub mount {
+    Fuse::main(
+        mountpoint => dir($mountpoint)->absolute,
+
+        getdir => sub {
+            my ($path) = @_;
+
+            say "GETDIR $path";
+
+            my $prefix = $path =~ s{^/}{}r =~ s{$}{/}r;
+            $prefix = "" if $prefix eq "/";
+
+            say "=> $prefix";
+
+            my $result = $bucket->list({
+                prefix => $prefix,
+                delimiter => "/"
+            });
+
+            my @ret;
+            for my $item (@{$result->{keys}}) {
+                push @ret, $item->{key};
+            }
+            push @ret, 0;
+
+            # say "- $_" for @ret;
+
+            return @ret;
+        },
+
+        getattr => sub {
+            my ($filename) = @_;
+
+            my $t = time() - 1;
+            return (
+                0,              # device number (?)
+                42,             # inode
+                S_IFDIR|0755,   # mode
+                1,              # nlink
+                $>,             # uid
+                $)+0,           # gid
+                0,              # rdev
+                1,              # size
+                $t,             # atime
+                $t,             # mtime
+                $t,             # ctime
+                1024,           # blocksize
+                1,              # blocks
+            );
+        },
+
+        # open => sub {
+        #     my ($path, $mode) = @_;
+        #     say @_;
+        #     return 0;
+        # },
+
+        read => sub {
+            my ($path, $size, $offset) = @_;
+            return "You read $path $size $offset";
+        },
+
+        # release => sub {
+        #     return 0;
+        # },
+
+        # statfs => sub {
+        #     return (1024, 3, 0, 0, 0, 1024);
+        # }
+    );
+}
+
+mount();
+exit 0;

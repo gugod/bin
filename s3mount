@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use v5.14;
 use utf8;
+binmode STDOUT, ":utf8";
 
 package S3VFS::File {
     use Moose;

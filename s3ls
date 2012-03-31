@@ -8,10 +8,9 @@ unless ($ENV{EC2_ACCESS_KEY} && $ENV{EC2_SECRET_KEY}) {
 
 my ($bucket_name, $path) = @ARGV;
 
-unless ($bucket_name && $path) {
+unless ($bucket_name && defined($path)) {
     die "Usage: s3fs.pl <bucket> <path>";
 }
-
 
 my $s3 = Net::Amazon::S3->new({
     aws_access_key_id     => $ENV{EC2_ACCESS_KEY},
@@ -21,8 +20,10 @@ my $s3 = Net::Amazon::S3->new({
 
 my $bucket = $s3->bucket($bucket_name);
 
-my $prefix = $path =~ s{^/}{}r =~ s{$}{/}r;
-$prefix = "" if $prefix eq "/";
+my $prefix = $path;
+
+# my $prefix = $path =~ s{^/}{}r =~ s{$}{/}r;
+# $prefix = "" if $prefix eq "/";
 
 say "### prefix=$prefix";
 
@@ -31,8 +32,15 @@ my $result = $bucket->list({
     delimiter => "/"
 });
 
+for my $item (@{ $result->{common_prefixes} }) {
+    say "[DIR] $item";
+}
+
 for my $item (@{$result->{keys}}) {
     say $item->{key};
     say "     size=" . $item->{size};
     say "    mtime=" . $item->{last_modified};
 }
+
+use YAML;
+say YAML::Dump($result);

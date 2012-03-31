@@ -41,6 +41,10 @@ $mprpc_client = mprpc_client '127.0.0.1', '4423';
 mkdir('/tmp/prefetching-proxy-cache');
 my $ua = LWP::UserAgent::Cached->new(cache_dir => '/tmp/prefetching-proxy-cache', timeout => 60);
 
+if ($ENV{socks_proxy}) {
+    $ua->proxy([qw/ http https /] => $ENV{socks_proxy});
+}
+
 my $proxy = HTTP::Proxy->new(
     port => 3128,
     keep_alive  => 1,
@@ -49,7 +53,7 @@ my $proxy = HTTP::Proxy->new(
 
 $proxy->push_filter(
     method  => 'GET',
-    mime    => 'text/html',
+    mime    => 'text/*',
     response => HTTP::Proxy::BodyFilter::complete->new,
     response => HTTP::Proxy::BodyFilter::simple->new(
         sub {

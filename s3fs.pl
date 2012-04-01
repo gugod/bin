@@ -20,7 +20,7 @@ package S3VFS::Dir {
 };
 
 package S3VFS {
-    use POSIX qw(:errno_h);
+    use Errno;
     use Fcntl qw(:DEFAULT :mode :seek); # S_IFREG S_IFDIR, O_SYNC O_LARGEFILE etc.
     use Moose;
     use Net::Amazon::S3;
@@ -164,7 +164,7 @@ package S3VFS {
         }
 
         unless ($f) {
-            return -ENOENT();
+            return -Errno::ENOENT();
         }
 
         $mode |= S_IFDIR if $f->is_dir;

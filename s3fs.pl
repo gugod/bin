@@ -226,37 +226,25 @@ package S3VFS {
         my ($self, $path, $flags, $fh) = @_;
         CORE::close($fh) if $fh;
     }
+
+    sub statfs {
+        my $s = 1024**3;
+        return (90, $s, $s, $s, $s, 4096);
+    }
 }
 
 package main;
 
-use Net::Amazon::S3;
-use Path::Class;
-use IO::All;
-use Path::Class;
 use Fuse;
 use YAML;
 
-unless ($ENV{EC2_ACCESS_KEY} && $ENV{EC2_SECRET_KEY}) {
-    die "export env var EC2_ACCESS_KEY and EC2_SECRET_KEY\n";
-}
-
-my ($bucket_name, $mountpoint) = @ARGV;
-
-unless ($bucket_name && $mountpoint) {
-    die "Usage: s3fs.pl <bucket> <mountpoint>";
-}
-
-my $s3vfs = S3VFS->new(
-    aws_access_key => $ENV{EC2_ACCESS_KEY},
-    aws_secret_key => $ENV{EC2_SECRET_KEY},
-    bucket_name    => $bucket_name
-);
-
 sub mount {
+    my $s3vfs = shift;
+    my $mountpoint = shift;
+
     Fuse::main(
         debug => 0,
-        mountpoint => dir($mountpoint)->absolute,
+        mountpoint => $mountpoint,
 
         getdir => sub {
             return $s3vfs->getdir(@_);
@@ -275,18 +263,37 @@ sub mount {
         },
 
         release => sub {
-            return $s3vfs->close(@_);
+            return $s3vfs->release(@_);
         },
 
         statfs => sub {
-            my $s = 1024**3;
-            return (90, $s, $s, $s, $s, 4096);
+            return $s3vfs->statfs(@_);
         }
     );
 }
 
-mount();
+sub main {
+    unless ($ENV{EC2_ACCESS_KEY} && $ENV{EC2_SECRET_KEY}) {
+        die "export env var EC2_ACCESS_KEY and EC2_SECRET_KEY\n";
+    }
 
-say YAML::Dump($s3vfs->fs);
+    my ($bucket_name, $mountpoint) = @ARGV;
 
-exit 0;
+    unless ($bucket_name && $mountpoint) {
+        die "Usage: s3fs.pl <bucket> <mountpoint>";
+    }
+
+    my $s3vfs = S3VFS->new(
+        aws_access_key => $ENV{EC2_ACCESS_KEY},
+        aws_secret_key => $ENV{EC2_SECRET_KEY},
+        bucket_name    => $bucket_name
+    );
+
+    mount($s3vfs, $mountpoint);
+
+    say YAML::Dump($s3vfs->fs);
+
+    exit 0;
+}
+
+main();

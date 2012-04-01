@@ -242,33 +242,15 @@ sub mount {
     my $s3vfs = shift;
     my $mountpoint = shift;
 
+    my %delegates;
+    for my $method (qw[getdir getattr open read release statfs]) {
+        $delegates{$method} = sub { return $s3vfs->$method(@_) };
+    }
+
     Fuse::main(
         debug => 0,
         mountpoint => $mountpoint,
-
-        getdir => sub {
-            return $s3vfs->getdir(@_);
-        },
-
-        getattr => sub {
-            return $s3vfs->getattr(@_);
-        },
-
-        open => sub {
-            return $s3vfs->open(@_);
-        },
-
-        read => sub {
-            return $s3vfs->read(@_);
-        },
-
-        release => sub {
-            return $s3vfs->release(@_);
-        },
-
-        statfs => sub {
-            return $s3vfs->statfs(@_);
-        }
+        %delegates
     );
 }
 

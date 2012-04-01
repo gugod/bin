@@ -15,6 +15,13 @@ package S3VFS::File {
     );
     sub is_file { 1 }
     sub is_dir  { 0 }
+
+    sub s3_key_name {
+        my ($self) = @_;
+        my $k = $self->parent . "/" . $self->name;
+        $k =~ s{^/}{};
+        return $k;
+    }
 };
 
 package S3VFS::Dir {
@@ -91,11 +98,10 @@ package S3VFS {
     sub refresh {
         my ($self, $path, $isdir) = @_;
 
-        say "REFRESH: $path " . ($isdir ? "(DIR)" : "");
+        # say "REFRESH: $path " . ($isdir ? "(DIR)" : "");
 
         if (my $f = $self->fs->{$path}) {
             if (time - $f->refresh_at < 6) {
-                say "SKIP REFRESH: very close time frame";
                 return;
             }
         }
@@ -151,7 +157,7 @@ package S3VFS {
         my ($self, $path) = @_;
         utf8::decode($path) unless utf8::is_utf8($path);
 
-        say "GETDIR $path";
+        # say "GETDIR $path";
 
         $self->refresh($path, 1);
 
@@ -171,7 +177,7 @@ package S3VFS {
         my ($self, $path) = @_;
         utf8::decode($path) unless utf8::is_utf8($path);
 
-        say "GETATTR $path";
+        # say "GETATTR $path";
 
         my ($inode, $mode, $size, $mtime) = (0, 0755, 0, time-1);
 
@@ -241,6 +247,17 @@ package S3VFS {
         return $out;
     }
 
+    sub unlink {
+        my ($self, $path) = @_;
+        my $f = $self->fs->{$path};
+        return -Errno::ENOENT() unless $f;
+
+        $self->bucket->delete_key($f->s3_key_name);
+        delete $self->fs->{$path};
+
+        return 0;
+    }
+
     sub release {
         my ($self, $path, $flags, $fh) = @_;
         CORE::close($fh) if $fh;
@@ -262,7 +279,7 @@ sub mount {
     my $mountpoint = shift;
 
     my %delegates;
-    for my $method (qw[getdir getattr open read release statfs]) {
+    for my $method (qw[getdir getattr open read release statfs unlink]) {
         $delegates{$method} = sub { return $s3vfs->$method(@_) };
     }
 

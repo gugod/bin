@@ -135,13 +135,15 @@ package S3VFS {
 
         my @ret;
 
-        my $l = length($path);
+        my $l = length("$path/");
         my $fs = $self->fs;
         for my $k (keys %$fs) {
-            if (substr($k, 0, $l) eq $path) {
+            if (substr($k, 0, $l) eq "$path/") {
                 push @ret, $fs->{$k}->name;
             }
         }
+
+        say "==> $_" for @ret;
 
         return (@ret, 0);
     }

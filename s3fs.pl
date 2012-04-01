@@ -8,6 +8,7 @@ package S3VFS::File {
     has name  => (is => "ro", isa => "Str", required => 1);
     has mtime => (is => "ro", isa => "Int", required => 0);
     has size  => (is => "ro", isa => "Int", required => 0);
+    has parent => (is => "ro", isa => "Str", required => 1);
     sub is_file { 1 }
     sub is_dir  { 0 }
 };
@@ -71,7 +72,11 @@ package S3VFS {
 
     sub BUILD {
         my $self = shift;
-        $self->fs->{"/"} = S3VFS::Dir->new(path => "/", name => "");
+        $self->fs->{"/"} = S3VFS::Dir->new(
+            parent => "",
+            path   => "/",
+            name   => ""
+        );
 
         mkdir("/tmp/s3fscache");
         return $self;
@@ -102,7 +107,10 @@ package S3VFS {
             next unless $fn;
 
             my $p = "/$item";
-            my $f = S3VFS::Dir->new( name => $fn );
+            my $f = S3VFS::Dir->new(
+                parent => $path,
+                name   => $fn
+            );
             $self->fs->{ $p } = $f;
         }
 
@@ -114,9 +122,10 @@ package S3VFS {
 
             my $p = "/".$item->{key};
             my $f = S3VFS::File->new(
-                name  => $fn,
-                mtime => $d->epoch,
-                size  => $item->{size}
+                parent => $path,
+                name   => $fn,
+                mtime  => $d->epoch,
+                size   => $item->{size}
             );
             $self->fs->{ $p } = $f;
         }
@@ -135,15 +144,12 @@ package S3VFS {
 
         my @ret;
 
-        my $l = length("$path/");
         my $fs = $self->fs;
         for my $k (keys %$fs) {
-            if (substr($k, 0, $l) eq "$path/") {
+            if ($fs->{$k}->parent eq $path) {
                 push @ret, $fs->{$k}->name;
             }
         }
-
-        say "==> $_" for @ret;
 
         return (@ret, 0);
     }
@@ -159,7 +165,7 @@ package S3VFS {
         my $f = $self->fs->{$path};
 
         unless ($f) {
-            $self->refresh( file($path)->parent, 1 );
+            $self->refresh( "".file($path)->parent, 1 );
             $f = $self->fs->{$path};
         }
 

@@ -247,7 +247,9 @@ package S3VFS {
         my $out = "";
         utf8::encode($out) if utf8::is_utf8($out);
 
-        my $n = CORE::sysread($fh, $out, $size, $offset);
+        CORE::sysseek($fh, $offset, SEEK_SET);
+
+        my $n = CORE::sysread($fh, $out, $size);
 
         return $out;
     }
@@ -256,7 +258,8 @@ package S3VFS {
         my ($self, $path, $buffer, $offset, $fh) = @_;
 
         my $size = length($buffer);
-        CORE::syswrite($fh, $buffer, $size, $offset);
+        CORE::sysseek($fh, $offset, SEEK_SET);
+        CORE::syswrite($fh, $buffer, $size);
 
         my $f = $self->fs->{$path};
         push @{$self->dirty_laundry}, $f;
@@ -329,6 +332,13 @@ package S3VFS {
 
         return 0;
     }
+
+    sub chmod { 0 }
+
+    sub setxattr { 0 }
+    sub getxattr { 0 }
+    sub listxattr { 0 }
+    sub removexattr { 0 }
 }
 
 package main;
@@ -341,7 +351,7 @@ sub mount {
     my $mountpoint = shift;
 
     my %delegates;
-    for my $method (qw[getdir getattr open read release statfs unlink write create mkdir]) {
+    for my $method (qw[getdir getattr open read release statfs unlink write create mkdir chmod setxattr getxattr listxattr removexattr]) {
         $delegates{$method} = sub { return $s3vfs->$method(@_) };
     }
 

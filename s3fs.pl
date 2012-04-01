@@ -5,7 +5,6 @@ binmode STDOUT, ":utf8";
 
 package S3VFS::File {
     use Moose;
-    has path  => (is => "ro", isa => "Str", required => 1);
     has name  => (is => "ro", isa => "Str", required => 1);
     has mtime => (is => "ro", isa => "Int", required => 0);
     has size  => (is => "ro", isa => "Int", required => 0);
@@ -26,6 +25,7 @@ package S3VFS {
     use Moose;
     use Net::Amazon::S3;
     use DateTime::Format::ISO8601;
+    use Path::Class;
     use Scalar::Util qw(refaddr);
     use Digest::SHA qw(sha1_hex);
 
@@ -71,12 +71,55 @@ package S3VFS {
 
     sub BUILD {
         my $self = shift;
-
         $self->fs->{"/"} = S3VFS::Dir->new(path => "/", name => "");
 
-        $self->getdir("/");
-
         mkdir("/tmp/s3fscache");
+        return $self;
+    }
+
+    sub refresh {
+        my ($self, $path, $isdir) = @_;
+
+        say "REFRESH: $path " . ($isdir ? "(DIR)" : "");
+
+        my $prefix = $path =~ s{^/}{}r;
+
+        $prefix .= "/" if $isdir;
+        $prefix = '' if $prefix eq '/';
+
+        if ($isdir) {
+            say "REFRESHING $prefix";
+        }
+
+        my $result = $self->bucket->list({
+            prefix    => $prefix,
+            delimiter => "/"
+        });
+
+        ## Dirs
+        for my $item (@{$result->{common_prefixes}}) {
+            my $fn = $item =~ s{^$prefix}{}r;
+            next unless $fn;
+
+            my $p = "/$item";
+            my $f = S3VFS::Dir->new( name => $fn );
+            $self->fs->{ $p } = $f;
+        }
+
+        for my $item (@{$result->{keys}}) {
+            my $fn = $item->{key} =~ s{^$prefix}{}r;
+            next unless $fn;
+
+            my $d = DateTime::Format::ISO8601->parse_datetime( $item->{last_modified} );
+
+            my $p = "/".$item->{key};
+            my $f = S3VFS::File->new(
+                name  => $fn,
+                mtime => $d->epoch,
+                size  => $item->{size}
+            );
+            $self->fs->{ $p } = $f;
+        }
 
         return $self;
     }
@@ -86,49 +129,18 @@ package S3VFS {
         my ($self, $path) = @_;
         utf8::decode($path) unless utf8::is_utf8($path);
 
-        my $bucket = $self->bucket;
-
-        $path =~ s{^/}{};
-        $path =~ s{$}{/};
-
         say "GETDIR $path";
 
-        my $prefix = $path;
-        $prefix = '' if $prefix eq '/';
-
-        my $result = $bucket->list({
-            prefix    => $prefix,
-            delimiter => "/"
-        });
+        $self->refresh($path, 1);
 
         my @ret;
 
-        ## Dirs
-        for my $item (@{$result->{common_prefixes}}) {
-            my $fn = $item =~ s{^$path}{}r;
-            my $f = S3VFS::Dir->new( path => "/".$item, name => $fn );
-            $self->fs->{ $f->path } = $f;
-
-            say "==> $fn";
-            push @ret, $fn;
-        }
-
-        for my $item (@{$result->{keys}}) {
-            my $fn = $item->{key} =~ s{^$path}{}r;
-            next unless $fn;
-
-            my $d = DateTime::Format::ISO8601->parse_datetime( $item->{last_modified} );
-
-            my $f = S3VFS::File->new(
-                path  => "/".$item->{key},
-                name  => $fn,
-                mtime => $d->epoch,
-                size  => $item->{size}
-            );
-            $self->fs->{ $f->path } = $f;
-
-            say "==> $fn";
-            push @ret, $fn;
+        my $l = length($path);
+        my $fs = $self->fs;
+        for my $k (keys %$fs) {
+            if (substr($k, 0, $l) eq $path) {
+                push @ret, $fs->{$k}->name;
+            }
         }
 
         return (@ret, 0);
@@ -136,12 +148,18 @@ package S3VFS {
 
     sub getattr {
         my ($self, $path) = @_;
-
         utf8::decode($path) unless utf8::is_utf8($path);
+
+        say "GETATTR $path";
 
         my ($inode, $mode, $size, $mtime) = (0, 0755, 0, time-1);
 
         my $f = $self->fs->{$path};
+
+        unless ($f) {
+            $self->refresh( file($path)->parent, 1 );
+            $f = $self->fs->{$path};
+        }
 
         unless ($f) {
             return -ENOENT();
@@ -201,6 +219,11 @@ package S3VFS {
 
         return $out;
     }
+
+    sub release {
+        my ($self, $path, $flags, $fh) = @_;
+        CORE::close($fh) if $fh;
+    }
 }
 
 package main;
@@ -249,6 +272,10 @@ sub mount {
             return $s3vfs->read(@_);
         },
 
+        release => sub {
+            return $s3vfs->close(@_);
+        },
+
         statfs => sub {
             return (90, 10240, 10240, 10240, 10240, 1024);
         }
@@ -256,4 +283,7 @@ sub mount {
 }
 
 mount();
+
+say YAML::Dump($s3vfs->fs);
+
 exit 0;

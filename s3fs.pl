@@ -13,6 +13,7 @@ package S3VFS::File {
         is => "rw", isa => "Int", required => 1,
         default => sub { time }
     );
+
     sub is_file { 1 }
     sub is_dir  { 0 }
 
@@ -64,6 +65,12 @@ package S3VFS {
         is => "ro",
         isa => "HashRef",
         default => sub { {} }
+    );
+
+    has dirty_laundry => (
+        is => "ro",
+        isa => "ArrayRef",
+        default => sub { [] }
     );
 
     # S3
@@ -228,7 +235,7 @@ package S3VFS {
 
         my $fh;
 
-        CORE::open($fh, "<:bytes", $local_cache_file);
+        CORE::open($fh, "+<:bytes", $local_cache_file);
 
         return (0, $fh);
     }
@@ -241,10 +248,21 @@ package S3VFS {
 
         my $out = "";
 
-        CORE::seek($fh, $offset, SEEK_SET);
-        CORE::read($fh, $out, $size);
+        CORE::sysread($fh, $out, $size, $offset);
 
         return $out;
+    }
+
+    sub write {
+        my ($self, $path, $buffer, $offset, $fh) = @_;
+
+        my $size = length($buffer);
+        CORE::syswrite($fh, $buffer, $size, $offset);
+
+        my $f = $self->fs->{$path};
+        push @{$self->dirty_laundry}, $f;
+
+        return $size;
     }
 
     sub unlink {
@@ -267,6 +285,42 @@ package S3VFS {
         my $s = 1024**3;
         return (90, $s, $s, $s, $s, 4096);
     }
+
+    sub flush {
+        my ($self, $path, $fh) = @_;
+
+        while (my $f = shift(@{$self->dirty_laundry})) {
+            my $p = $f->parent . "/" . $f->name;
+            $p =~ s{^/}{};
+
+            my $local_cache_file = "/tmp/s3fscache/".sha1_hex($p);
+
+            if (-f $local_cache_file) {
+                # say "Upload: $local_cache_file => $p";
+                $self->bucket->add_key_filename($p, $local_cache_file);
+            }
+        }
+    }
+
+    sub create {
+        my ($self, $path, $mask, $flags) = @_;
+
+        $self->fs->{$path} = S3VFS::File->new(
+            name   => file($path)->basename ."",
+            parent => file($path)->parent   ."",
+            mtime  => time,
+            size   => 0
+        );
+
+        $path =~ s{^/}{};
+        my $local_cache_file = "/tmp/s3fscache/".sha1_hex($path);
+
+        my $fh;
+
+        CORE::open($fh, "+>:bytes", $local_cache_file);
+
+        return (0, $fh);
+    }
 }
 
 package main;
@@ -279,12 +333,12 @@ sub mount {
     my $mountpoint = shift;
 
     my %delegates;
-    for my $method (qw[getdir getattr open read release statfs unlink]) {
+    for my $method (qw[getdir getattr open read release statfs unlink write flush create]) {
         $delegates{$method} = sub { return $s3vfs->$method(@_) };
     }
 
     Fuse::main(
-        debug => 0,
+        debug => 1,
         mountpoint => $mountpoint,
         %delegates
     );

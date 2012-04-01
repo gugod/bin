@@ -184,8 +184,8 @@ package S3VFS {
             0,                  # atime
             $mtime,             # mtime
             0,                  # ctime
-            1024,               # blocksize
-            1+int($size/1024)   # blocks
+            4096,               # blocksize
+            1+int($size/4096)   # blocks
         );
     }
 
@@ -277,7 +277,8 @@ sub mount {
         },
 
         statfs => sub {
-            return (90, 10240, 10240, 10240, 10240, 1024);
+            my $s = 1024**3;
+            return (90, $s, $s, $s, $s, 4096);
         }
     );
 }

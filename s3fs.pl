@@ -7,7 +7,7 @@ package S3VFS::File {
     use Moose;
     has name  => (is => "ro", isa => "Str", required => 1);
     has mtime => (is => "ro", isa => "Int", required => 0);
-    has size  => (is => "ro", isa => "Int", required => 0);
+    has size  => (is => "rw", isa => "Int", required => 0);
     has parent => (is => "ro", isa => "Str", required => 1);
     has refresh_at => (
         is => "rw", isa => "Int", required => 1,
@@ -244,11 +244,10 @@ package S3VFS {
     sub read {
         my ($self, $path, $size, $offset, $fh) = @_;
 
-        $path =~ s{^/}{};
-
         my $out = "";
+        utf8::encode($out) if utf8::is_utf8($out);
 
-        CORE::sysread($fh, $out, $size, $offset);
+        my $n = CORE::sysread($fh, $out, $size, $offset);
 
         return $out;
     }
@@ -279,15 +278,6 @@ package S3VFS {
     sub release {
         my ($self, $path, $flags, $fh) = @_;
         CORE::close($fh) if $fh;
-    }
-
-    sub statfs {
-        my $s = 1024**3;
-        return (90, $s, $s, $s, $s, 4096);
-    }
-
-    sub flush {
-        my ($self, $path, $fh) = @_;
 
         while (my $f = shift(@{$self->dirty_laundry})) {
             my $p = $f->parent . "/" . $f->name;
@@ -299,7 +289,14 @@ package S3VFS {
                 # say "Upload: $local_cache_file => $p";
                 $self->bucket->add_key_filename($p, $local_cache_file);
             }
+
+            $f->size( (stat($local_cache_file))[7] );
         }
+    }
+
+    sub statfs {
+        my $s = 1024**3;
+        return (90, $s, $s, $s, $s, 4096);
     }
 
     sub create {
@@ -321,6 +318,17 @@ package S3VFS {
 
         return (0, $fh);
     }
+
+    sub mkdir {
+        my ($self, $path, $modes) = @_;
+
+        $self->fs->{$path} = S3VFS::Dir->new(
+            name   => "". file($path)->basename,
+            parent => "". file($path)->parent
+        );
+
+        return 0;
+    }
 }
 
 package main;
@@ -333,12 +341,12 @@ sub mount {
     my $mountpoint = shift;
 
     my %delegates;
-    for my $method (qw[getdir getattr open read release statfs unlink write flush create]) {
+    for my $method (qw[getdir getattr open read release statfs unlink write create mkdir]) {
         $delegates{$method} = sub { return $s3vfs->$method(@_) };
     }
 
     Fuse::main(
-        debug => 1,
+        debug => 0,
         mountpoint => $mountpoint,
         %delegates
     );

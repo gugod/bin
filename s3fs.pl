@@ -9,6 +9,10 @@ package S3VFS::File {
     has mtime => (is => "ro", isa => "Int", required => 0);
     has size  => (is => "ro", isa => "Int", required => 0);
     has parent => (is => "ro", isa => "Str", required => 1);
+    has refresh_at => (
+        is => "rw", isa => "Int", required => 1,
+        default => sub { time }
+    );
     sub is_file { 1 }
     sub is_dir  { 0 }
 };
@@ -16,6 +20,7 @@ package S3VFS::File {
 package S3VFS::Dir {
     use Moose;
     extends 'S3VFS::File';
+    has '+refresh_at' => ( default => sub { 0 } );
     sub is_file { 0 }
     sub is_dir  { 1 }
 };
@@ -72,6 +77,7 @@ package S3VFS {
 
     sub BUILD {
         my $self = shift;
+
         $self->fs->{"/"} = S3VFS::Dir->new(
             parent => "",
             path   => "/",
@@ -87,14 +93,17 @@ package S3VFS {
 
         say "REFRESH: $path " . ($isdir ? "(DIR)" : "");
 
+        if (my $f = $self->fs->{$path}) {
+            if (time - $f->refresh_at < 6) {
+                say "SKIP REFRESH: very close time frame";
+                return;
+            }
+        }
+
         my $prefix = $path =~ s{^/}{}r;
 
         $prefix .= "/" if $isdir;
         $prefix = '' if $prefix eq '/';
-
-        if ($isdir) {
-            say "REFRESHING $prefix";
-        }
 
         my $result = $self->bucket->list({
             prefix    => $prefix,
@@ -128,6 +137,10 @@ package S3VFS {
                 size   => $item->{size}
             );
             $self->fs->{ $p } = $f;
+        }
+
+        if (my $f = $self->fs->{$path}) {
+            $f->refresh_at(time);
         }
 
         return $self;

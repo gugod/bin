@@ -38,6 +38,7 @@ package S3VFS::Dir {
 package S3VFS::Mapper {
     use Moose;
     use Digest::SHA1 qw(sha1_hex);
+    use File::Path 2.08, qw(make_path remove_tree);
 
     has aws_access_key => (is => "ro", isa => "Str", required => 1);
     has aws_secret_key => (is => "ro", isa => "Str", required => 1);
@@ -70,6 +71,13 @@ package S3VFS::Mapper {
     sub _build_bucket {
         my ($self) = @_;
         return $self->s3->bucket( $self->bucket_name );
+    }
+
+    sub BUILD {
+        my ($self) = @_;
+
+        remove_tree("/tmp/s3fscache");
+        make_path("/tmp/s3fscache");
     }
 
     sub local_cache_file {
@@ -155,8 +163,6 @@ package S3VFS {
             path   => "/",
             name   => ""
         );
-
-        mkdir("/tmp/s3fscache");
 
         return $self;
     }

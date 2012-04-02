@@ -5,6 +5,8 @@ binmode STDOUT, ":utf8";
 
 package S3VFS::File {
     use Moose;
+    use Digest::SHA qw(sha1_hex);
+
     has name  => (is => "ro", isa => "Str", required => 1);
     has mtime => (is => "ro", isa => "Int", required => 0);
     has size  => (is => "rw", isa => "Int", required => 0);
@@ -33,15 +35,9 @@ package S3VFS::Dir {
     sub is_dir  { 1 }
 };
 
-package S3VFS {
-    use Errno;
-    use Fcntl qw(:DEFAULT :mode :seek); # S_IFREG S_IFDIR, O_SYNC O_LARGEFILE etc.
+package S3VFS::Mapper {
     use Moose;
-    use Net::Amazon::S3;
-    use DateTime::Format::ISO8601;
-    use Path::Class;
-    use Scalar::Util qw(refaddr);
-    use Digest::SHA qw(sha1_hex);
+    use Digest::SHA1 qw(sha1_hex);
 
     has aws_access_key => (is => "ro", isa => "Str", required => 1);
     has aws_secret_key => (is => "ro", isa => "Str", required => 1);
@@ -61,19 +57,6 @@ package S3VFS {
         builder => '_build_bucket'
     );
 
-    has fs => (
-        is => "ro",
-        isa => "HashRef",
-        default => sub { {} }
-    );
-
-    has dirty_laundry => (
-        is => "ro",
-        isa => "ArrayRef",
-        default => sub { [] }
-    );
-
-    # S3
     sub _build_s3 {
         my ($self) = @_;
 
@@ -89,6 +72,81 @@ package S3VFS {
         return $self->s3->bucket( $self->bucket_name );
     }
 
+    sub local_cache_file {
+        my ($self, $s3file, $fetch) = @_;
+        # $s3file isa S3VFS::File
+
+        my $local_cache_file = "/tmp/s3fscache/".sha1_hex($s3file->s3_key_name);
+
+        if ($fetch) {
+            $self->bucket->get_key_filename($s3file->s3_key_name, 'GET', $local_cache_file);
+        }
+
+        return $local_cache_file;
+    }
+
+    sub put {
+        my ($self, $s3file) = @_;
+        # $s3file isa S3VFS::File
+
+        my $local_cache_file = $self->local_cache_file($s3file, 0);
+
+        if (-f $local_cache_file) {
+            # say "Upload: $local_cache_file => $p";
+            $self->bucket->add_key_filename($s3file->s3_key_name, $local_cache_file);
+            $s3file->size( (stat($local_cache_file))[7] );
+        }
+
+        return $self;
+    }
+
+    sub delete {
+        my ($self, $s3file) = @_;
+        # $s3file isa S3VFS::File
+        $self->bucket->delete_key( $s3file->s3_key_name );
+        return $self;
+    }
+}
+
+package S3VFS {
+    use Errno;
+    use Fcntl qw(:DEFAULT :mode :seek); # S_IFREG S_IFDIR, O_SYNC O_LARGEFILE etc.
+    use Moose;
+    use Net::Amazon::S3;
+    use DateTime::Format::ISO8601;
+    use Path::Class;
+    use Scalar::Util qw(refaddr);
+
+    has fs => (
+        is => "ro",
+        isa => "HashRef",
+        default => sub { {} }
+    );
+
+    has mapper => (
+        is => "ro",
+        isa => "S3VFS::Mapper",
+        required => 1
+    );
+
+    has dirty_laundry => (
+        is => "ro",
+        isa => "ArrayRef",
+        default => sub { [] }
+    );
+
+    around 'BUILDARGS' => sub {
+        my ($orig, $class, %args) = @_;
+
+        $args{mapper} = S3VFS::Mapper->new(
+            aws_access_key => delete $args{aws_access_key},
+            aws_secret_key => delete $args{aws_secret_key},
+            bucket_name    => delete $args{bucket_name}
+        );
+
+        return $class->$orig(%args);
+    };
+
     sub BUILD {
         my $self = shift;
 
@@ -99,6 +157,7 @@ package S3VFS {
         );
 
         mkdir("/tmp/s3fscache");
+
         return $self;
     }
 
@@ -118,7 +177,7 @@ package S3VFS {
         $prefix .= "/" if $isdir;
         $prefix = '' if $prefix eq '/';
 
-        my $result = $self->bucket->list({
+        my $result = $self->mapper->bucket->list({
             prefix    => $prefix,
             delimiter => "/"
         });
@@ -225,13 +284,9 @@ package S3VFS {
 
     sub open {
         my ($self, $path, $flags, $fileinfo) = @_;
-        $path =~ s{^/}{};
+        my $f = $self->fs->{$path};
 
-        my $local_cache_file = "/tmp/s3fscache/".sha1_hex($path);
-
-        unless (-f $local_cache_file) {
-            $self->bucket->get_key_filename($path, 'GET', $local_cache_file);
-        }
+        my $local_cache_file = $self->mapper->local_cache_file($f, 1);
 
         my $fh;
 
@@ -272,7 +327,7 @@ package S3VFS {
         my $f = $self->fs->{$path};
         return -Errno::ENOENT() unless $f;
 
-        $self->bucket->delete_key($f->s3_key_name);
+        $self->mapper->delete($f);
         delete $self->fs->{$path};
 
         return 0;
@@ -283,17 +338,7 @@ package S3VFS {
         CORE::close($fh) if $fh;
 
         while (my $f = shift(@{$self->dirty_laundry})) {
-            my $p = $f->parent . "/" . $f->name;
-            $p =~ s{^/}{};
-
-            my $local_cache_file = "/tmp/s3fscache/".sha1_hex($p);
-
-            if (-f $local_cache_file) {
-                # say "Upload: $local_cache_file => $p";
-                $self->bucket->add_key_filename($p, $local_cache_file);
-            }
-
-            $f->size( (stat($local_cache_file))[7] );
+            $self->mapper->put($f);
         }
     }
 
@@ -312,8 +357,7 @@ package S3VFS {
             size   => 0
         );
 
-        $path =~ s{^/}{};
-        my $local_cache_file = "/tmp/s3fscache/".sha1_hex($path);
+        my $local_cache_file = $self->mapper->local_cache_file($self->fs->{$path}, 0);
 
         my $fh;
 

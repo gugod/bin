@@ -19,11 +19,13 @@ package S3VFS::File {
     sub is_file { 1 }
     sub is_dir  { 0 }
 
+    sub path {
+        my ($self) = @_;
+        return $self->parent . "/" . $self->name;
+    }
     sub s3_key_name {
         my ($self) = @_;
-        my $k = $self->parent . "/" . $self->name;
-        $k =~ s{^/}{};
-        return $k;
+        return $self->path =~ s{^/}{}r;
     }
 };
 
@@ -83,6 +85,7 @@ package S3VFS::Mapper {
     sub local_cache_file {
         my ($self, $s3file, $fetch) = @_;
         # $s3file isa S3VFS::File
+        return unless $s3file;
 
         my $local_cache_file = "/tmp/s3fscache/".sha1_hex($s3file->s3_key_name);
 
@@ -224,6 +227,29 @@ package S3VFS {
         return $self;
     }
 
+    sub wash_dirty_laundry {
+        my ($self, $path) = @_;
+        my $laundry = $self->dirty_laundry;
+
+        if ($path) {
+            for (@$laundry) {
+                say "WASH: $path <=> " . $_->path;
+            }
+            my ($i) = grep { $path eq $laundry->[$_]->path } 0..$#$laundry;
+            if (defined($i)) {
+                my $f = splice(@$laundry, $i, 1);
+                $self->mapper->put($f);
+            }
+        }
+        else {
+            while(my $f = shift(@$laundry)) {
+                $self->mapper->put($f);
+            }
+        }
+
+        return $self;
+    }
+
     # VFS
     sub getdir {
         my ($self, $path) = @_;
@@ -342,10 +368,14 @@ package S3VFS {
     sub release {
         my ($self, $path, $flags, $fh) = @_;
         CORE::close($fh) if $fh;
+        $self->wash_dirty_laundry($path);
+        return 0;
+    }
 
-        while (my $f = shift(@{$self->dirty_laundry})) {
-            $self->mapper->put($f);
-        }
+    sub fsync {
+        my ($self, $path, $flags) = @_;
+        $self->wash_dirty_laundry($path);
+        return 0;
     }
 
     sub statfs {
@@ -384,8 +414,21 @@ package S3VFS {
         return 0;
     }
 
-    sub chmod { 0 }
+    sub utime {
+        my ($self, $path, $atime, $mtime) = @_;
+        my $f = $self->fs->{$path};
+        $self->refresh($path) unless $f;
+        $f = $self->fs->{$path};
+        return 0 unless $f;
 
+        $f->mtime($mtime);
+        return 0;
+    }
+
+    sub chmod { 0 }
+    sub chown { 0 }
+    sub flush { 0 }
+    sub fsyncdir { 0 }
     sub setxattr { 0 }
     sub getxattr { 0 }
     sub listxattr { 0 }
@@ -402,12 +445,12 @@ sub mount {
     my $mountpoint = shift;
 
     my %delegates;
-    for my $method (qw[getdir getattr open read release statfs unlink write create mkdir chmod setxattr getxattr listxattr removexattr]) {
+    for my $method (qw[getdir getattr open read release statfs unlink write create mkdir chmod chown setxattr getxattr listxattr removexattr flush fsync fsyncdir utime]) {
         $delegates{$method} = sub { return $s3vfs->$method(@_) };
     }
 
     Fuse::main(
-        debug => 0,
+        debug => $ENV{FUSE_DEBUG} ||0,
         mountpoint => $mountpoint,
         %delegates
     );

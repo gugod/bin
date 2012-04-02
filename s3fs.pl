@@ -377,7 +377,8 @@ package S3VFS {
 
         $self->fs->{$path} = S3VFS::Dir->new(
             name   => "". file($path)->basename,
-            parent => "". file($path)->parent
+            parent => "". file($path)->parent,
+            mtime  => time
         );
 
         return 0;

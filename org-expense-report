@@ -91,10 +91,11 @@ my $last_month = "";
 for my $i (0..$t2->nofRow-1) {
     my $r = $t2->rowHashRef($i);
     if ($last_month ne $r->{Month}) {
+        last if $last_month ne "";
         say "\n".$r->{Month};
         say "=" x 8;
         $last_month = $r->{Month};
     }
-    printf '  %14s: %6d %s'."\n", @$r{qw(Category Total Currency)};
+    printf '  %14s: %8.2f %s'."\n", @$r{qw(Category Total Currency)};
 }
-
+print "\n\n";

@@ -52,8 +52,9 @@ sub build_all {
         my $markdown_file = shift;
         my $html_file  = $markdown_file =~ s/\.md$/.html/r =~ s/^content/public/r;
         my $html_mtime = io($html_file)->mtime;
+        my $markdown_mtime = io($markdown_file)->mtime;
 
-        if (!-f $html_file || any { $html_mtime < $_ } @view_mtime) {
+        if (!-f $html_file || $markdown_mtime > $html_mtime || any { $html_mtime < $_ } @view_mtime) {
             system "sitebrew-one", $markdown_file;
         }
     };

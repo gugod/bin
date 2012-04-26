@@ -1,0 +1,12 @@
+#!/bin/zsh
+
+input=$1
+outputdir=$2
+
+if [ -z "$outputdir" ] ; then
+    output=${input:s/.mkv/.m4v/}
+else
+    output=${outputdir}/${input:s/.mkv/.m4v/:t}
+fi
+
+ffmpeg -i ${input} -vcodec copy -acodec libfaac -ac 2 -ab 160 ${output}

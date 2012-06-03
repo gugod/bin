@@ -9,4 +9,4 @@ else
     output=${outputdir}/${input:s/.mkv/.m4v/:t}
 fi
 
-ffmpeg -i ${input} -vcodec copy -acodec libfaac -ac 2 -ab 160 ${output}
+ffmpeg -i ${input} -vcodec copy -acodec libfaac -ac 2 -ab 163840 ${output}

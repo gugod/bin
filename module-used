@@ -1,6 +1,8 @@
 #!/usr/bin/env perl
 # -*- cperl -*-
-use v5.14;
+use v5.10;
+use strict;
+use warnings;
 use File::Spec;
 use File::Find;
 use Module::CoreList;
@@ -14,9 +16,7 @@ my $meu = Module::ExtractUse->new;
 my @used = ();
 find(
     sub {
-        return if $File::Find::dir =~ /\.git/;
-        return if $File::Find::dir =~ /\.sv[nk]/;
-        return unless -f $File::Find::name;
+        return if $File::Find::dir =~ /\.(git|sv[nk])/ || ! -f $File::Find::name;
         $meu->extract_use($File::Find::name);
         push @used, $meu->array;
     },

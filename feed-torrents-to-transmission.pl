@@ -43,25 +43,30 @@ sub run {
     my $self = shift;
     my $today = DateTime->today;
 
-    my @todays;
+    my @feeds;
 
     for my $entry ($self->feed->entries) {
         my $delta = $today - $entry->issued->truncate(to => 'day');
 
-        if ( $delta->days == 0) {
-            push @todays, [$entry->title, $entry->content->body];
+        if ($self->options->{'only-today'}) {
+            if ( $delta->days == 0) {
+                push @feeds, [$entry->title, $entry->content->body];
+            }
+        }
+        else {
+            push @feeds, [$entry->title, $entry->content->body];
         }
     }
 
     for my $pattern (@{ $self->options->{only} ||[] }) {
-        @todays = grep { $_->[0] =~ /$pattern/ } @todays;
+        @feeds = grep { $_->[0] =~ /$pattern/ } @feeds;
     }
 
     for my $pattern (@{ $self->options->{exclude} ||[] }) {
-        @todays = grep { $_->[0] !~ /$pattern/ } @todays;
+        @feeds = grep { $_->[0] !~ /$pattern/ } @feeds;
     }
 
-    for (@todays) {
+    for (@feeds) {
         if ($self->options->{'dont-run'}) {
             say "Add: " . $_->[0];
         }
@@ -101,6 +106,7 @@ GetOptions(
     'password=s',
     'only=s@',
     'exclude=s@',
+    'only-today',
 );
 
 my $feed_url = shift @ARGV or pod2usage({ -verbose => 1, -exitval => 1 });

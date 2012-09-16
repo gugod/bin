@@ -8,23 +8,21 @@ use Memoize;
 
 sub flip($) { join "" => reverse split "", $_[0] }
 
-sub _chars_length($) {
-    return length($_[0])
+sub _chars {
+    my ($context, $str) = @_;
+    if ($context == 1) {
+        return length($str);
+    }
+    elsif ($context == 2) {
+        return split "" => $str;
+    }
+    return;
 }
-memoize('_chars_length');
+memoize '_chars';
 
 sub chars($) {
     my $wantlist = wantarray;
-
-    if (!defined($wantlist)) {
-        return;
-    }
-    elsif ($wantlist) {
-        return split "" => $_[0];
-    }
-    else {
-        return _chars_length($_[0]);
-    }
+    return _chars( defined($wantlist) ? ( $wantlist ? 2 : 1 ) : 0, $_[0]);
 }
 
 # longest common prefix
@@ -51,7 +49,7 @@ sub suffixes {
     $min_chars ||= 1;
     $max_chars ||= 1024;
     my $chars = chars($str);
-    return grep { chars($_) >= $min_chars } map { ( substr($str, $_, $max_chars) ) } 0..$chars-1;
+    return grep { chars($_) >= $min_chars && chars($_) <= $max_chars } map { substr($str, $_) } 0..$chars-1;
 }
 
 sub suffix_lcp {
@@ -75,22 +73,15 @@ sub ignore_all_latin {
     grep { ! /^\p{Alpha}+$/u } @_;
 }
 
-sub total_frequency {
-    my ($input, @tokens) = @_;
-    my %freq;
-    for my $k (@tokens) {
-        $freq{$k} = $input =~ s/\Q$k\E/$k/g;
-    }
-
-    return %freq;
+sub spectrum {
+    my $input = shift;
+    return memoize(
+        sub {
+            my ($token) = @_;
+            return $input =~ s/\Q$token\E/$token/g;
+        }
+    );
 }
-
-sub token_frequency {
-    my ($input, $token) = @_;
-    return $input =~ s/\Q$token\E/$token/g;
-}
-
-memoize('token_frequency');
 
 my $input = do {
     local $/ = undef;
@@ -98,6 +89,8 @@ my $input = do {
     utf8::decode($in);
     $in;
 };
+
+my $frequency = spectrum($input);
 
 my @strs = grep { $_ } split /(?:\p{Punct}|\s)/u, $input;
 
@@ -109,19 +102,19 @@ for my $token (sort { chars($a) <=> chars($b) } @suffix_lcp) {
     my $a = $token =~ s/^\p{Any}//ur;
     my $b = $token =~ s/\p{Any}$//ur;
 
-    if (chars($a) > 0 && chars($b)>0) {
-        my $f  = token_frequency($input, $token);
-        my $fa = token_frequency($input, $a);
-        my $fb = token_frequency($input, $b);
+    if (chars($token) > 1) {
+        my $f  = $frequency->($token);
+        my $fa = $frequency->($a);
+        my $fb = $frequency->($b);
 
-        if (defined($fa) && defined($fb)) {
+        if ($fa && $fb) {
             if ($f == $fa + $fb) {
                 $significance{$token} = 0;
             }
             else {
                 $significance{$token} = $f / ($fa + $fb - $f);
                 delete $significance{$a};
-                delete $significance{$b};
+                # delete $significance{$b};
             }
         }
     }
@@ -130,7 +123,9 @@ for my $token (sort { chars($a) <=> chars($b) } @suffix_lcp) {
     }
 }
 
-for(sort { $significance{$b} <=> $significance{$a} } keys %significance) {
+for(sort { $significance{$b} <=> $significance{$a} || $frequency->($b) <=> $frequency->($a) } keys %significance) {
     next unless $significance{$_} > 0;
-    say "$_\t" . token_frequency($input, $_) . "\t" . $significance{$_};
+    # next unless $significance{$_} == 1;
+    say sprintf("%4d\t%0.4f\t%s", $frequency->($_), $significance{$_}, $_);
+    # say sprintf("%d\t%s", $frequency->($_), $_);
 }

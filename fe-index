@@ -1,0 +1,71 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use utf8;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
+use Fe;
+use URI;
+use XML::XPath;
+use XML::Feed;
+use Encode qw(encode_utf8 decode_utf8);
+
+my $opml_file = shift @ARGV or die "Reques a path to OPML file.";
+-f $opml_file or die "$opml_file is not a file";
+
+sub feed_urls_in_opml {
+    my @urls;
+    my ($opml_file) = @_;
+    my $xp = XML::XPath->new($opml_file);
+    for my $node ($xp->find("//outline")->get_nodelist) {
+        my @attr = $node->getAttributes;
+        for my $attr (@attr) {
+            if ((my $name = $attr->getLocalName) =~ /^xmlurl$/i) {
+                if (my $data = $attr->getData) {
+                    push @urls, $data
+                }
+            }
+        }
+    }
+    return @urls;
+}
+
+
+sub store_entry {
+    my ($domain, $entry) = @_;
+
+}
+
+my @urls = feed_urls_in_opml($opml_file);
+my $fe = Fe->new;
+my $domain = $fe->domain("feeds");
+
+for my $feed_url (@urls) {
+    my $feed = XML::Feed->parse( URI->new($feed_url) ) or do {
+        print STDERR "Skip: $feed_url Reason: " . XML::Feed->errstr . "\n";
+        next;
+    };
+
+    print STDERR "Process $feed_url\n";
+
+    for my $entry ($feed->entries) {
+        my $body = $entry->content->body or do {
+            print STDERR "Skip " . $entry->link . " Reason: No body.\n";
+            next;
+        };
+
+        my $doc = $domain->new_doc(
+            feed_entry => {
+                url     => $entry->link,
+                feed    => $feed_url,
+                content => $body,
+                title   => $entry->title,
+            }
+        );
+        $doc->save(
+            on_unique => sub { }
+        );
+    }
+}
+

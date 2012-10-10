@@ -39,16 +39,14 @@ sub process_feed {
     my ($feed_url) = @_;
 
     my $feed = XML::Feed->parse( URI->new($feed_url) ) or do {
-        print STDERR "Skip: $feed_url Reason: " . XML::Feed->errstr . "\n";
+        print "Skip: $feed_url Reason: " . XML::Feed->errstr . "\n";
         return;
     };
-
-    print STDERR "Process $feed_url\n";
 
     for my $entry ($feed->entries) {
         my $title = $entry->title;
         my $body = $entry->content->body or do {
-            print STDERR "Skip " . $entry->link . " Reason: No body.\n";
+            print "Skip " . $entry->link . " Reason: No body.\n";
             next;
         };
 
@@ -85,7 +83,7 @@ for my $feed_url (@urls) {
         process_feed($feed_url);
         1;
     } or do {
-        print STDERR "Error: $@\n";
+        print "Error: $@\n";
     }
 }
 

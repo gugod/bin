@@ -1,0 +1,24 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+my $n = $ARGV[0] || 1;
+$n =~ s/^-//;
+
+my $ln = 1;
+my @picked;
+
+while(<STDIN>) {
+    $ln++;
+    if (@picked < $n) {
+        push @picked, $_;
+    }
+    else {
+        my $x = int rand($ln);
+        if ($x < $n) {
+            $picked[$x] = $_;
+        }
+    }
+}
+
+print for(@picked);

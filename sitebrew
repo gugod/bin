@@ -12,7 +12,7 @@ use List::MoreUtils qw(any);
 use AnyEvent;
 use AnyEvent::Worker;
 use Data::RoundRobin;
-
+use Path::Class;
 use Sitebrew;
 use Sitebrew::Article;
 
@@ -28,6 +28,7 @@ sub copy_assets {
     }
     else {
         say "COPY $source => $destination";
+        io->dir("".file($destination)->parent)->mkpath;
         copy($source, $destination)
             or die "copy failed: $!";
 

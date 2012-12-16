@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+use strict;
+use File::Temp qw(tempfile tempdir);
+
+die <<'USAGE' if 0 == @ARGV;
+
+This program print the fatpacked version of your oneliners. For example, the following line
+creates a css-compressor program with all dependencies included.
+
+  fatpack-oneliner -MCSS::Compressor -e 'local $/=undef; print CSS::Compressor::css_compress(<>)' > css-compress
+
+USAGE
+
+my $liner = join " " => map { quotemeta($_) } @ARGV;
+
+unless (($_ = `$^X -c $liner 2>&1`) eq "-e syntax OK\n") {
+    print STDERR "Error: $_\n";
+    exit 1;
+}
+
+my $dir = tempdir(CLEANUP => 1);
+my ($fh, $filename) = tempfile( DIR => $dir );
+mkdir("$dir/lib");
+
+my $code = `$^X -MO=Deparse $liner 2>/dev/null`;
+print $fh $code;
+close($fh);
+
+chdir($dir);
+system("fatpack trace $filename");
+system("fatpack packlists-for `cat fatpacker.trace` > packlists");
+system("fatpack tree `cat packlists`");
+system("(echo '#!$^X'; fatpack file; cat $filename)");

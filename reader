@@ -26,16 +26,22 @@ USAGE
 
 use Find::Lib 'lib';
 use Encode qw(encode_utf8 decode_utf8);
+use Text::Autoformat;
 use WWW::Mechanize;
 use HTML::ExtractContent;
+use HTML::WikiConverter::Markdown;
+
+sub extract_as_markdown {
+    state $co = HTML::WikiConverter::Markdown->new(dialect => "Markdown");
+    state $ex = HTML::ExtractContent->new;
+    return $co->html2wiki($ex->extract($_[0])->as_html);
+}
 
 my $ua = WWW::Mechanize->new(autocheck => 0);
 
 for my $url (@urls) {
     $ua->get($url) or next;
-    my $content = $ua->content;
 
-    say HTML::ExtractContent->new->extract($content)->as_text;
+    say autoformat extract_as_markdown $ua->content;
     say "-"x42;
-
 }

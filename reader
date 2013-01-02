@@ -1,47 +1,48 @@
 #!/usr/bin/env perl
 use v5.14;
-use utf8;
-binmode STDIN, ":utf8";
-binmode STDOUT, ":utf8";
+use File::Basename qw(basename);
+use HTML::ExtractContent;
+use HTML::WikiConverter::Markdown;
+use Mojo::UserAgent;
+use URI;
 
-my @urls;
-@urls = @ARGV if @ARGV;
+my $program_name = basename($0);
 
-if ($urls[0] eq '-') {
-    local $/ = undef;
-    @urls = split /\n/, <STDIN>;
-}
-
-die <<USAGE unless @urls;
+my $url = shift @ARGV or die <<USAGE;
 
 Pass URLs from argv:
 
-   $0 URL URL...
-
-Or pass URLs from STDIN:
-
-   cat one-url-per-line.txt | $0 -
+   $program_name URL
 
 USAGE
-
-use Find::Lib 'lib';
-use Encode qw(encode_utf8 decode_utf8);
-use Text::Autoformat;
-use WWW::Mechanize;
-use HTML::ExtractContent;
-use HTML::WikiConverter::Markdown;
 
 sub extract_as_markdown {
     state $co = HTML::WikiConverter::Markdown->new(dialect => "Markdown");
     state $ex = HTML::ExtractContent->new;
-    return $co->html2wiki($ex->extract($_[0])->as_html);
+
+    my $text = $co->html2wiki($ex->extract($_[0])->as_html);
+
+    $text =~ s{<br(\s*/)>}{\n}g;
+
+    return $text;
 }
 
-my $ua = WWW::Mechanize->new(autocheck => 0);
+my $ua = Mojo::UserAgent->new;
+my $tx = $ua->get($url);
 
-for my $url (@urls) {
-    $ua->get($url) or next;
+my $base_url = URI->new($url);
 
-    say autoformat extract_as_markdown $ua->content;
-    say "-"x42;
-}
+my $dom = $tx->res->dom;
+$dom->find("a, img")->each(
+    sub {
+        if ($_->type eq "a") {
+            $_->attrs(href => "".URI->new_abs( $_->attrs("href"), $base_url ) );
+        }
+        else {
+            $_->attrs(src  => "".URI->new_abs( $_->attrs("src"),  $base_url ) );
+        }
+    }
+);
+
+say extract_as_markdown $dom->root->html;
+

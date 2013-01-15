@@ -1,5 +1,6 @@
 package Sitebrew::Config;
 use Moose;
+use MooseX::Types::URI qw(Uri);
 
 has title => (
     is => "rw",
@@ -8,8 +9,9 @@ has title => (
 
 has url_base => (
     is => "rw",
-    isa => "Str",
-    required => 1
+    isa => Uri,
+    required => 1,
+    coerce => 1
 );
 
 use namespace::autoclean;

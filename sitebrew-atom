@@ -21,7 +21,7 @@ my @articles = grep { defined } (sort { $b->published_at <=> $a->published_at } 
 
 my $feed = XML::Feed->new("Atom", version => 1.0);
 
-$feed->id($brewer->config->url_base);
+$feed->id($brewer->config->url_base->canonical->as_string);
 $feed->title($brewer->config->title);
 $feed->link($brewer->config->url_base);
 $feed->self_link($brewer->config->url_base . "/atom.xml");
@@ -36,7 +36,7 @@ for my $article (@articles) {
         $x->title($article->title);
         $x->modified($article->published_at);
         $x->author($ENV{USER});
-        $x->content( Sitebrew->markdown($article->body) );
+        $x->summary( $article->summary );
 
         $x;
     });

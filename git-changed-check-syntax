@@ -1,0 +1,5 @@
+#!/bin/sh
+
+pm_files=$(git status --porcelain | cut -c4- | egrep '.pm$')
+
+echo "$pm_files" | parallel perl -cw

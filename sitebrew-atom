@@ -21,6 +21,7 @@ my @articles = grep { defined } (sort { $b->published_at <=> $a->published_at } 
 
 my $feed = XML::Feed->new("Atom", version => 1.0);
 
+$feed->id($brewer->config->url_base);
 $feed->title($brewer->config->title);
 $feed->link($brewer->config->url_base);
 $feed->self_link($brewer->config->url_base . "/atom.xml");
@@ -30,6 +31,7 @@ for my $article (@articles) {
     next if $article->content_file eq 'content/index.md';
     $feed->add_entry(do {
         my $x = XML::Feed::Entry->new;
+        $x->id($brewer->config->url_base . $article->href . '?' . $article->content_digest);
         $x->link($brewer->config->url_base . $article->href);
         $x->title($article->title);
         $x->modified($article->published_at);

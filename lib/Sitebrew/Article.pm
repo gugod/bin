@@ -8,15 +8,23 @@ use IO::All -utf8;
 use YAML;
 use Text::Markdown qw(markdown);
 use File::stat;
-
+use Digest::SHA1 qw(sha1_hex);
 use Sitebrew;
 use DateTime;
 use DateTimeX::Easy;
+use File::Slurp qw(read_file);
 
 has content_file => (
     is => "rw",
     isa => "Str",
     required => 1
+);
+
+has content_digest => (
+    is => "rw",
+    isa => "Str",
+    lazy => 1,
+    builder => "_build_content_digest"
 );
 
 has title => (
@@ -96,6 +104,12 @@ sub _build_published_at {
 sub _build_href {
     my $self = shift;
     return $self->content_file =~ s{^content/}{/}r =~ s/.md$/.html/r =~ s/\/index.html$/\//r;
+}
+
+sub _build_content_digest {
+    my $self = shift;
+    my $data = read_file($self->content_file);
+    return sha1_hex($data);
 }
 
 sub summary {

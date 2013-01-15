@@ -2,9 +2,12 @@
 use v5.14;
 use File::Basename qw(basename);
 use HTML::ExtractContent;
+use HTML::WikiConverter;
 use HTML::WikiConverter::Markdown;
 use Mojo::UserAgent;
+use JSON;
 use URI;
+use URI::Escape qw(uri_escape);
 
 my $program_name = basename($0);
 
@@ -17,32 +20,53 @@ Pass URLs from argv:
 USAGE
 
 sub extract_as_markdown {
-    state $co = HTML::WikiConverter::Markdown->new(dialect => "Markdown");
+    state $co = HTML::WikiConverter->new( dialect => "Markdown" );
     state $ex = HTML::ExtractContent->new;
 
-    my $text = $co->html2wiki($ex->extract($_[0])->as_html);
+    my $text = $ex->extract($_[0])->as_html;
 
     $text =~ s{<br(\s*/)>}{\n}g;
 
     return $text;
 }
 
-my $ua = Mojo::UserAgent->new;
-my $tx = $ua->get($url);
+sub extract_locally {
+    my $url = shift;
+    my $ua = Mojo::UserAgent->new;
+    my $tx = $ua->get($url);
 
-my $base_url = URI->new($url);
+    my $base_url = URI->new($url);
 
-my $dom = $tx->res->dom;
-$dom->find("a, img")->each(
-    sub {
-        if ($_->type eq "a") {
-            $_->attrs(href => "".URI->new_abs( $_->attrs("href"), $base_url ) );
+    my $dom = $tx->res->dom;
+    $dom->find("a, img")->each(
+        sub {
+            if ($_->type eq "a") {
+                $_->attrs(href => "".URI->new_abs( $_->attrs("href"), $base_url ) );
+            }
+            else {
+                $_->attrs(src  => "".URI->new_abs( $_->attrs("src"),  $base_url ) );
+            }
         }
-        else {
-            $_->attrs(src  => "".URI->new_abs( $_->attrs("src"),  $base_url ) );
-        }
-    }
-);
+    );
 
-say extract_as_markdown $dom->root->html;
+    return extract_as_markdown $dom->root->html;
+}
 
+sub extract_with_g0vre {
+    my $url = shift;
+    my $uri_g0v = URI->new("http://g0vre.herokuapp.com/read");
+    $uri_g0v->query_form("url", $url);
+
+
+    my $ua = Mojo::UserAgent->new;
+    my $tx = $ua->get("$uri_g0v");
+
+    say "Hello: $uri_g0v";
+
+    my $body = $tx->res->body;
+    my $res = JSON::decode_json($body);
+    return $res->{text};
+}
+
+binmode STDOUT, ":encoding(utf8)";
+say extract_with_g0vre($url);

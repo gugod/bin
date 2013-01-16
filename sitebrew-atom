@@ -37,7 +37,6 @@ for my $article (@articles) {
         $x->modified($article->published_at);
         $x->author($ENV{USER});
         $x->summary( $article->summary );
-
         $x;
     });
 }

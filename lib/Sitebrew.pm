@@ -45,7 +45,8 @@ sub markdown {
         "[$label]($page.html)"
     }eg;
 
-    Text::Markdown::markdown( $text, @options );
+    my $tm = Text::Markdown->new(empty_element_suffix => '>');
+    return $tm->markdown($text);
 }
 
 sub helpers {
@@ -53,9 +54,7 @@ sub helpers {
     return {
         markdown => sub {
             my $t = shift;
-            return Text::Xslate::mark_raw(
-                Sitebrew->markdown($t, { empty_element_suffix => '>' } )
-            )
+            return Text::Xslate::mark_raw( Sitebrew->markdown($t) );
         },
 
         articles => sub {

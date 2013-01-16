@@ -48,7 +48,7 @@ sub build_one {
             published_at => DateTime::Format::Mail->format_datetime($article->published_at),
             title => $article->title,
             body_html => Text::Xslate::mark_raw(
-                Sitebrew->markdown( $article->body, { empty_element_suffix => '>' } )
+                Sitebrew->markdown( $article->body )
             )
         },
         title => $title

@@ -6,13 +6,13 @@ use utf8;
 use File::Find;
 use IO::All -utf8;
 use YAML;
-use Text::Markdown qw(markdown);
 use File::stat;
 use Digest::SHA1 qw(sha1_hex);
 use Sitebrew;
 use DateTime;
 use DateTimeX::Easy;
 use File::Slurp qw(read_file);
+use Mojo::DOM;
 
 has content_file => (
     is => "rw",
@@ -114,9 +114,8 @@ sub _build_content_digest {
 
 sub summary {
     my $self = shift;
-    my ($first, undef) = split(/\n\n+/, $self->body, 2);
-
-    return $first;
+    my $dom = Mojo::DOM->new( Sitebrew->markdown($self->body) );
+    return $dom->find("p")->[0]->all_text;
 }
 
 sub each {

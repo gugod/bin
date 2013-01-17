@@ -1,0 +1,86 @@
+#!/usr/bin/env perl
+use v5.16;
+package Analyzer {
+    use Moo;
+    use autodie;
+
+    has onToken => (
+        is => "ro",
+        required => 1
+    );
+
+    sub process_io {
+        my ($self, $io) = @_;
+
+        my @RE = (
+            qr/^\p{Decimal_Number}+$/,
+            qr/^\p{Script=Latin}+$/,
+        );
+
+        my $char;
+        my $token = undef;
+        my $tokenEvent;
+        while(read($io, $char,1) == 1) {
+            unless($tokenEvent = defined($token)) {
+                $token = $char;
+            }
+
+            for my $re (@RE) {
+                if ($char =~ $re && defined($token) && $token =~ $re) {
+                    $token .= $char;
+                    $tokenEvent = 0;
+                    last;
+                }
+            }
+
+            if ($tokenEvent) {
+                $self->onToken->($token);
+                $token = $char;
+            }
+        }
+    }
+
+    sub process_file {
+        my ($self, $file) = @_;
+        open my $fh, "<:encoding(utf8)", $file;
+        $self->process_io($fh);
+        close($fh);
+    }
+};
+
+package WordCounter {
+    use Moo;
+
+    has file => (
+        is => "ro"
+    );
+
+    has frequencyTable => (
+        is => "ro",
+        builder => "_buildFrequencyTable",
+        lazy => 1
+    );
+
+    sub _buildFrequencyTable {
+        my ($self) = @_;
+
+        my $t = {};
+        my $analyzer = Analyzer->new(
+            onToken => sub {
+                my ($token) = @_;
+                $t->{$token} += 1;
+            }
+        );
+        $analyzer->process_file($self->file);
+
+        return $t;
+    }
+};
+
+package main;
+use YAML;
+
+binmode STDOUT, ":encoding(utf8)";
+
+my $wc = WordCounter->new( file => $ARGV[0] );
+print YAML::Dump($wc->frequencyTable);

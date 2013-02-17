@@ -1,0 +1,74 @@
+#!/usr/bin/env perl
+
+use strict;
+use Getopt::Long qw(GetOptions);
+use JSON;
+use Hash::Flatten qw(flatten);
+
+my $JT_PARAMS;
+
+sub jt {
+    my $params = shift;
+    my $IN = $params->{in};
+    my $data = do { local $/; JSON::from_json(<$IN>) };
+
+    if (ref($data) eq "ARRAY") {
+        jt_array($data, $params);
+    }
+    else {
+        die "No idea how to transform that.\n";
+    }
+}
+
+sub params {
+    my @args = @_;
+    my $params = {
+        fields => undef,
+        delimiter => "\t",
+        in     => *STDIN,
+        out    => *STDOUT,
+    };
+
+    my $fields;
+    GetOptions(
+        "f|fields=s"    => \$fields,
+        "d|delimiter=s" => \( $params->{delimiter} )
+    );
+
+    if ($fields) {
+        $params->{fields} = [ split qr!,! => $fields ];
+    }
+
+    binmode $$params{in}, ":utf8";
+    binmode $$params{out}, ":utf8";
+
+    return $JT_PARAMS = $params;
+}
+jt( params(@ARGV) );
+
+
+######
+
+sub emit {
+    my ($type, $data) = @_;
+    my $params = $JT_PARAMS;
+    my $OUT = $params->{out};
+
+    if ($type eq "keys") {
+        print $OUT "#".join($params->{delimiter} => @$data)."\n";
+    }
+    if ($type eq "values") {
+        print $OUT join($params->{delimiter} => @$data) . "\n";
+    }
+}
+
+sub jt_array {
+    my ($data, $params) = @_;
+    my @keys = $params->{fields} ? @{ $params->{fields} } : sort keys %{ flatten($data->[0]) };
+
+    for my $row (@$data) {
+        if (ref($row) eq "HASH") {
+            emit values => [ @{flatten($row)}{@keys} ];
+        }
+    }
+}

@@ -1,0 +1,21 @@
+#!/usr/bin/env perl
+use strict;
+
+my ($pid, @command) = @ARGV;
+
+
+unless ( $pid =~ /^[0123456789]+$/ && @command ) {
+    die "$0 <pid> command\n";
+}
+
+$SIG{CHILD} = 'IGNORE';
+fork and exit;
+
+my $pid = $pid;
+my $ps = "ps -p $pid -o command=";
+my $process = `$ps`;
+while ($_ = `$ps`) {
+    sleep 1;
+    $process = $_;
+}
+system(@command);

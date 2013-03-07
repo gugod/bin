@@ -2,6 +2,7 @@
 use v5.16;
 package Analyzer {
     use Moo;
+    use Unicode::UCD;
     use autodie;
 
     has onToken => (
@@ -25,12 +26,13 @@ package Analyzer {
                 $token = $char;
             }
 
-            for my $re (@RE) {
-                if ($char =~ $re && defined($token) && $token =~ $re) {
-                    $token .= $char;
-                    $tokenEvent = 0;
-                    last;
-                }
+            my $charscript  = Unicode::UCD::charscript ord $char;
+            my $tokenscript = Unicode::UCD::charscript ord substr $token,0,1;
+
+            if ($charscript && $tokenscript && $charscript eq $tokenscript) {
+                $token .= $char;
+                $tokenEvent = 0;
+                next;
             }
 
             if ($tokenEvent) {

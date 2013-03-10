@@ -1,4 +1,3 @@
-#!/Users/gugod/perl5/perlbrew/perls/perl-5.14.2/bin/perl
 #!/usr/bin/env perl
 use File::Slurp;
 my @words = read_file "/usr/share/dict/words";

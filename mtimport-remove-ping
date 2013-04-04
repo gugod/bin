@@ -1,0 +1,20 @@
+#!/usr/bin/env perl
+use v5.14;
+use utf8;
+
+my $ping_block = 0;
+while (<>) {
+    if ($_ eq "PING:\n") {
+        $ping_block = 1;
+    }
+    elsif ($_ eq "-----\n") {
+        if ($ping_block) {
+            $ping_block = 0;
+            next;
+        }
+    }
+
+    unless ($ping_block) {
+        print;
+    }
+}

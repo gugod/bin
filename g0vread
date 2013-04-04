@@ -1,0 +1,7 @@
+#!/bin/sh
+
+url=$1
+
+curl http://g0vre.herokuapp.com/read'?'url="$(perl -MURI::Escape=uri_escape -e 'print uri_escape(@ARGV[0])' $url)" 2>/dev/null
+
+

@@ -1,0 +1,47 @@
+#!/usr/bin/env perl
+use v5.14;
+use autodie;
+use URI;
+use URI::QueryParam;
+use Parse::AccessLog;
+use PerlIO::via::gzip;
+
+my @engine_searchstring_param = (
+    qr(google|bing|alltheweb|aol|ask|duckduckgo) => "q",
+    qr(yahoo) => "p",
+    qr(baidu) => "wd",
+);
+
+sub extract_searchstring {
+    my $uri = URI->new($_[0]);
+    my $ss;
+
+    for (0..@engine_searchstring_param/2) {
+        my $pattern = $engine_searchstring_param[$_];
+        my $param = $engine_searchstring_param[$_+1];
+        if ($uri =~ $pattern) {
+            $ss = $uri->query_param($param);
+            last;
+        }
+    }
+    return $ss;
+}
+
+my $parser = Parse::AccessLog->new;
+
+for my $file (@ARGV) {
+    my $fh;
+    if ($file =~ /.gz$/) {
+        open $fh, "<:via(gzip)", $file;
+    }
+    else {
+        open $fh, "<", $file;
+    }
+
+    while (<$fh>) {
+        my $log = $parser->parse($_);
+        next unless index($log->{referer}, "http") == 0;
+        my $ss = extract_searchstring $log->{referer};
+        say $ss if $ss;
+    }
+}

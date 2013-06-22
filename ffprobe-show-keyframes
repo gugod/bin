@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec ffprobe -show_frames -of compact -i "$*" | grep 'key_frame=1'

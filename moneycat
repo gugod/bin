@@ -1,8 +1,6 @@
 #!/usr/bin/env perl
 
-use strict;
-use feature 'say';
-use encoding 'utf8';
+use v5.16;
 use Perl6::Form;
 
 my $form = '{]]]]]]]]}: {>>>.<<<} {>>>.<<<}';
@@ -17,17 +15,6 @@ my $form = '{]]]]]]]]}: {>>>.<<<} {>>>.<<<}';
         @{ $rate->for_currency('zar') },
         @{ $rate->for_currency('usd') }
     ) {
-        print form $form, $_->{en_currency_name}, $_->{buy_at}, $_->{sell_at};
-    }
-    print "\n";
-}
-
-{
-    use Finance::Bank::Esun::TW;
-    my $rate = Finance::Bank::Esun::TW->currency_exchange_rate;
-
-    print "Esun\n====\n";
-    for ( @$rate[ 4, 5 ] ) {
         print form $form, $_->{en_currency_name}, $_->{buy_at}, $_->{sell_at};
     }
     print "\n";

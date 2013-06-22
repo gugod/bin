@@ -6,6 +6,7 @@ use HTML::WikiConverter;
 use HTML::WikiConverter::Markdown;
 use Mojo::UserAgent;
 use JSON;
+use Encode;
 use URI;
 use URI::Escape qw(uri_escape);
 
@@ -37,7 +38,12 @@ sub extract_locally {
 
     my $base_url = URI->new($url);
 
+    my $charset;
+    say $tx->res->headers->content_type;
+
     my $dom = $tx->res->dom;
+    my ($charset) = $dom->find("head meta[http-equiv=Content-Type]")->first->{content} =~ m{charset=([^\s;]+)};
+
     $dom->find("a, img")->each(
         sub {
             if ($_->type eq "a") {
@@ -49,7 +55,12 @@ sub extract_locally {
         }
     );
 
-    return extract_as_markdown $dom->root->html;
+    my $html = $tx->res->body;
+    if ($charset !~ m/^utf-?8$/i) {
+        $html = Encode::decode($charset, $html);
+    }
+
+    return extract_as_markdown($html)
 }
 
 sub extract_with_g0vre {
@@ -61,12 +72,13 @@ sub extract_with_g0vre {
     my $ua = Mojo::UserAgent->new;
     my $tx = $ua->get("$uri_g0v");
 
-    say "Hello: $uri_g0v";
-
     my $body = $tx->res->body;
     my $res = JSON::decode_json($body);
     return $res->{text};
 }
 
-binmode STDOUT, ":encoding(utf8)";
-say extract_with_g0vre($url);
+# binmode STDOUT, ":encoding(utf8)";
+# say extract_with_g0vre($url);
+
+extract_locally($url);
+

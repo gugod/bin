@@ -20,15 +20,10 @@ Pass URLs from argv:
 
 USAGE
 
-sub extract_as_markdown {
-    state $co = HTML::WikiConverter->new( dialect => "Markdown" );
+sub extract_as_text {
     state $ex = HTML::ExtractContent->new;
 
-    my $text = $ex->extract($_[0])->as_html;
-
-    $text =~ s{<br(\s*/)>}{\n}g;
-
-    return $text;
+    return $ex->extract($_[0])->as_text;
 }
 
 sub extract_locally {
@@ -37,12 +32,17 @@ sub extract_locally {
     my $tx = $ua->get($url);
 
     my $base_url = URI->new($url);
+    my $dom = $tx->res->dom;
+    my $content_type = $tx->res->headers->content_type;
 
     my $charset;
-    say $tx->res->headers->content_type;
-
-    my $dom = $tx->res->dom;
-    my ($charset) = $dom->find("head meta[http-equiv=Content-Type]")->first->{content} =~ m{charset=([^\s;]+)};
+    if ($content_type =~ m!charset=(.+)[;\s]?!) {
+        $charset = $1;
+    }
+    if (!$charset) {
+        ($charset) = $dom->find("head meta[http-equiv=Content-Type]")->first->{content} =~ m{charset=([^\s;]+)};
+    }
+    $charset ||= "utf-8";
 
     $dom->find("a, img")->each(
         sub {
@@ -55,12 +55,9 @@ sub extract_locally {
         }
     );
 
-    my $html = $tx->res->body;
-    if ($charset !~ m/^utf-?8$/i) {
-        $html = Encode::decode($charset, $html);
-    }
+    my $html = Encode::decode($charset, $tx->res->body);
 
-    return extract_as_markdown($html)
+    return extract_as_text($html)
 }
 
 sub extract_with_g0vre {
@@ -77,8 +74,8 @@ sub extract_with_g0vre {
     return $res->{text};
 }
 
-# binmode STDOUT, ":encoding(utf8)";
+binmode STDOUT, ":encoding(utf8)";
 # say extract_with_g0vre($url);
 
-extract_locally($url);
+say extract_locally($url);
 

@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+use v5.14;
+use utf8;
+use Encode qw(decode_utf8);
+
+sub is_good_comment {
+    my ($comment_block_content) = @_;
+    my $x = decode_utf8($comment_block_content);
+
+    if ($x =~ m/\p{Block: CJK_Unified_Ideographs}/) {
+        return 1;
+    }
+}
+
+my $inside_block = 0;
+my $block_content = "";
+
+while (<>) {
+    if ($_ eq "COMMENT:\n") {
+        $inside_block = 1;
+    }
+    elsif ($_ eq "-----\n") {
+        if ($inside_block) {
+            if (is_good_comment($block_content)) {
+                say $block_content
+            }
+
+            $inside_block = 0;
+            $block_content = "";
+            next;
+        }
+    }
+
+    if ($inside_block) {
+        $block_content .= $_;
+    }
+    else {
+        print;
+    }
+}

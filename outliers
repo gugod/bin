@@ -1,0 +1,47 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use strict;
+use warnings;
+
+use Statistics::Descriptive;
+package Statistics::Descriptive::Full;
+
+package main;
+
+use Scalar::Util qw(looks_like_number);
+use List::Util qw(max min sum);
+
+local $/ = undef;
+my @numbers_original = my @numbers = grep { looks_like_number($_) } split /\s+/, <>;
+
+my $stats = Statistics::Descriptive::Full->new;
+$stats->add_data(@numbers);
+
+my $mad = do {
+    my $_s = Statistics::Descriptive::Full->new;
+    $_s->add_data(map {abs( $_ - $stats->median )} $stats->get_data);
+    $_s->median;
+};
+
+# even disribution generally has mad = 0, in that case std_dev is generally large.
+my $variability = $mad || $stats->standard_deviation(@numbers);
+my $sigma  = 2.5;
+
+my $is_outlier = sub {
+    my ($n) = @_;
+    return abs($n - $stats->median) > $variability * $sigma
+};
+
+
+for (0..$#numbers) {
+    my $n = $numbers[$_];
+    my $o = $numbers_original[$_];
+
+    if ( $is_outlier->($n) ) {
+        say "* $o";
+    }
+    else {
+        say "  $o";
+    }
+}

@@ -8,7 +8,7 @@ die "Need module names from arugments.\n" unless @ARGV;
 for my $module (@ARGV) {
     try {
         load $module;
-        say "$module => @{[$module->VERSION]}";
+        say "$module => @{[$module->VERSION || 0]}";
     } catch {
         my $error = $_;
         say "Failed to load $module: $error";

@@ -1,35 +1,17 @@
 #!/usr/bin/env perl
 
 use v5.16;
-use utf8;
-use encoding 'utf8';
+
 use List::MoreUtils qw(uniq);
-use Memoize;
+use Encode qw(encode decode);
 
 sub flip($) { join "" => reverse split "", $_[0] }
-
-sub _chars {
-    my ($context, $str) = @_;
-    if ($context == 1) {
-        return length($str);
-    }
-    elsif ($context == 2) {
-        return split "" => $str;
-    }
-    return;
-}
-memoize '_chars';
-
-sub chars($) {
-    my $wantlist = wantarray;
-    return _chars( defined($wantlist) ? ( $wantlist ? 2 : 1 ) : 0, $_[0]);
-}
 
 # longest common prefix
 sub lcp($$) {
     my ($str1, $str2) = @_;
-    my @chars1 = chars($str1);
-    my @chars2 = chars($str2);
+    my @chars1 = split( "" => $str1 );
+    my @chars2 = split( "" => $str2 );
 
     my @common;
 
@@ -48,12 +30,12 @@ sub suffixes {
     my ($str, $min_chars, $max_chars) = @_;
     $min_chars ||= 1;
     $max_chars ||= 1024;
-    my $chars = chars($str);
-    return grep { chars($_) >= $min_chars && chars($_) <= $max_chars } map { substr($str, $_) } 0..$chars-1;
+    my $chars = length($str);
+    return grep { length($_) >= $min_chars && length($_) <= $max_chars } map { substr($str, $_) } 0..$chars-1;
 }
 
 sub suffix_lcp {
-    my @suffixes = @_;
+    my @suffixes = sort @_;
     my @lcp;
     for my $i (0..$#suffixes-1) {
         $lcp[$i] = lcp($suffixes[$i], $suffixes[$i+1]);
@@ -75,34 +57,24 @@ sub ignore_all_latin {
 
 sub spectrum {
     my $input = shift;
-    return memoize(
-        sub {
-            my ($token) = @_;
-            return $input =~ s/\Q$token\E/$token/g;
-        }
-    );
+    return sub {
+        my ($token) = @_;
+        return $input =~ s/\Q$token\E/$token/g;
+    }
 }
 
-my $input = do {
-    local $/ = undef;
-    my $in = <>;
-    utf8::decode($in);
-    $in;
-};
+my $input = do { local $/ = undef;  decode( utf8 => <> ); };
+
+my @suffix_lcp = suffix_lcp uniq map { !$_ ? () : suffixes($_) } split /(?:\p{Punct}|\s)/u, $input;
 
 my $frequency = spectrum($input);
 
-my @strs = grep { $_ } split /(?:\p{Punct}|\s)/u, $input;
-
-my @suffixes = uniq sort map { suffixes($_) } @strs;
-my @suffix_lcp = suffix_lcp(@suffixes);
-
 my %significance;
-for my $token (sort { chars($a) <=> chars($b) } @suffix_lcp) {
+for my $token (map {$_->[1]} sort { $a->[0] <=> $b->[0] } map {[length($_), $_]} @suffix_lcp) {
     my $a = $token =~ s/^\p{Any}//ur;
     my $b = $token =~ s/\p{Any}$//ur;
 
-    if (chars($token) > 1) {
+    if (length($token) > 1) {
         my $f  = $frequency->($token);
         my $fa = $frequency->($a);
         my $fb = $frequency->($b);
@@ -123,9 +95,8 @@ for my $token (sort { chars($a) <=> chars($b) } @suffix_lcp) {
     }
 }
 
-for(sort { $significance{$b} <=> $significance{$a} || $frequency->($b) <=> $frequency->($a) } keys %significance) {
-    next unless $significance{$_} > 0;
+for(map { $_->[0] } sort { $significance{$b->[0]} <=> $significance{$a->[0]} || $b->[1] <=> $a->[1] } map {[$_, $frequency->($_)]} grep { $significance{$_} > 0 } keys %significance) {
     # next unless $significance{$_} == 1;
-    say sprintf("%4d\t%0.4f\t%s", $frequency->($_), $significance{$_}, $_);
+    printf("%4d\t%0.4f\t%s\n", $frequency->($_), $significance{$_}, encode(utf8 => $_));
     # say sprintf("%d\t%s", $frequency->($_), $_);
 }

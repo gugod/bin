@@ -55,7 +55,7 @@ do {
                 lc($currency);
                 $currency ||= "NTD";
 
-                if ($description =~ /\s\#(\w+)\b/) {
+                if ($description =~ /(?:\s|\A|\b)\#([a-zA-Z]+)(\b|$)/) {
                     $category = $1;
                 }
                 else {

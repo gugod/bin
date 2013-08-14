@@ -10,6 +10,12 @@ use Encode;
 use URI;
 use URI::Escape qw(uri_escape);
 
+$SIG{__DIE__} = sub {
+    require Devel::StackTrace;
+    print Devel::StackTrace->new->as_string;
+    exit;
+};
+
 my $program_name = basename($0);
 
 my $url = shift @ARGV or die <<USAGE;
@@ -28,7 +34,7 @@ sub extract_as_text {
 
 sub extract_locally {
     my $url = shift;
-    my $ua = Mojo::UserAgent->new;
+    my $ua = Mojo::UserAgent->new->max_redirects(10);
     my $tx = $ua->get($url);
 
     my $base_url = URI->new($url);
@@ -44,20 +50,19 @@ sub extract_locally {
     }
     $charset ||= "utf-8";
 
-    $dom->find("a, img")->each(
-        sub {
-            if ($_->type eq "a") {
-                $_->attrs(href => "".URI->new_abs( $_->attrs("href"), $base_url ) );
-            }
-            else {
-                $_->attrs(src  => "".URI->new_abs( $_->attrs("src"),  $base_url ) );
-            }
-        }
-    );
-
     my $html = Encode::decode($charset, $tx->res->body);
 
-    return extract_as_text($html)
+    my $title = $dom->find("title");
+    if ($title->size > 0) {
+        $title = $title->[0]->text;
+        $title = Encode::decode($charset, $title) unless $title && Encode::is_utf8($title);
+    }
+
+    my $text = extract_as_text($html)
+        =~ s!^ \S{1,4} $!!xmgr
+        =~ s!\n\n+!\n!gr;
+
+    return "$title\n\n$text";
 }
 
 sub extract_with_g0vre {

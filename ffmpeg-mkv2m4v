@@ -10,3 +10,5 @@ else
 fi
 
 ffmpeg -i ${input} -vcodec copy -acodec libfaac -ac 2 -ab 163840 -ar 44100 ${output}
+
+# ffmpeg -i ${input} -vcodec copy -acodec copy -ac 2 -ab 163840 -ar 44100 ${output}

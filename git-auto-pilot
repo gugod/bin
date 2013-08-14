@@ -1,0 +1,18 @@
+#!/bin/bash
+
+_git_sync() {
+        git add --all &&
+        git commit -m 'autocommit' &&
+        git pull --no-edit &&
+        git push
+}
+
+if [[ "$1" != "" ]]; then
+    cd $1
+fi
+
+_git_sync
+
+while inotifywait -q -e close -r --format '%f' . ; do
+        _git_sync
+done

@@ -1,4 +1,2 @@
 #!/bin/sh
-
-watcher --dir . -- bash -c 'git commit -a -m "auto commit $(date)" && git pull --no-edit && git push'
-
+exec watcher --dir . -- bash -c 'git commit -a -m "auto commit $(date)" && git pull --no-edit && git push'

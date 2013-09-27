@@ -1,0 +1,15 @@
+#!/usr/bin/env perl
+use v5.18;
+use Digest::SHA1;
+
+local $, = "\t";
+for my $file (@ARGV) {
+    my $fh;
+    open $fh, "<", $file;
+    my $sha1 = Digest::SHA1->new;
+    $sha1->addfile($fh);
+    my $b64 = $sha1->clone->b64digest;
+    my $y64 = $b64 =~ y!+/!.-!r;
+    my $b64uri = $b64 =~ y!+/!-_!r;
+    say $file, $sha1->clone->hexdigest, $b64, $y64, $b64uri;
+}

@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+use Imager;
+use File::Basename qw(basename);
+
+my $image_file = shift(@ARGV) or die <<"USAGE";
+
+Usage:
+
+    @{[ basename($0) ]} image_file_name
+
+USAGE
+
+my $img = Imager->new( file => $image_file );
+my %color_count;
+for ( 0 .. $img->getheight - 1 ) {
+    my @colors = $img->getscanline(y => $_);
+    for my $color (@colors) {
+        my $k = join ",", $color->rgba;
+        $color_count{$k}++;
+    }
+}
+
+my @color_sorted = sort { $color_count{$b} <=> $color_count{$a} } keys %color_count;
+for (@color_sorted[0..9]) {
+    say "$_ - $color_count{$_}";
+}

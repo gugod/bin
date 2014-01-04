@@ -1,0 +1,45 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use Data::Dumper;
+use URI::Escape qw(uri_escape);
+
+use HTTP::Tiny;
+use JSON::PP;
+use YAML;
+
+sub module_releases {
+    state $http_client = HTTP::Tiny->new;
+    state $json = JSON::PP->new;
+    my $module = shift;
+    my $res = $http_client->get("http://api.metacpan.org/v0/module/" . $module);
+
+    return unless $res->{success};
+
+    my $thing = $json->decode($res->{content});
+
+    return $thing->{version};
+}
+
+# deplist
+
+# my $v = module_releases("App::perlbrew");
+
+my %division_to_function = (
+    build_requires => "test_requires"
+);
+
+if (-f 'META.yml') {
+    my $cpan_meta = YAML::LoadFile('META.yml');
+
+    delete $cpan_meta->{requires}{perl}; # don't care
+
+    for my $division ('requires', 'build_requires') {
+        my %x;
+        for (keys %{ $cpan_meta->{$division} }) {
+            $x{$_} = module_releases($_);
+        }
+        say( ($division_to_function{$division} || $division) . "\n    " . join(",\n    ", map { "'$_' => '$x{$_}'" } (sort keys %x)). ";\n");
+    }
+}

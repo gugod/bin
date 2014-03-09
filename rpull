@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# rpull -- move files from a remote dir to a local dir.
+#
+
+if [[ (-z "$1") || (-z "$2") ]] ; then
+    echo Usage: $0 $USER@example.com:/data/there/ /data/here/:
+    exit 1;
+fi
+
+remote_host_and_target=$1
+local_destination=$2
+
+remote_host=$(echo $remote_host_and_target | cut -f1 -d: )
+remote_target=$(echo $remote_host_and_target | cut -f2 -d: )
+
+remote_files=$(ssh $remote_host find $remote_target -d 1 -type f)
+
+for remote_file in $remote_files
+do
+    echo 'remote_file=' $remote_file
+    rsync --progress -8vP $remote_host:$remote_file $local_destination
+    if [[ $? -eq 0 ]]; then
+        echo "Good, $remote_file is transfered. Now delete its remote copy"
+        ssh $remote_host rm $remote_file
+    else
+        echo "ERROR: $remote_file failed to be transfered"
+    fi
+done

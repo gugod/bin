@@ -7,6 +7,7 @@ use YAML;
 my $config = YAML::LoadFile( "$ENV{HOME}/.twitterrc" );
 
 my $twitter = Net::Twitter->new(
+    ssl => 1,
     traits => [ 'API::REST', 'OAuth' ],
     consumer_key => $config->{consumer_key},
     consumer_secret => $config->{consumer_secret}

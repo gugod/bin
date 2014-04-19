@@ -15,28 +15,6 @@ use FindBin;
 use lib $FindBin::Bin . "/lib";
 use Tokenize;
 
-sub ngram($) {
-    my @t;
-    my $s = $_[0];
-    my $l = length($s);
-    while($l > 1) {
-        for (1..$l) {
-            push @t, substr($s, 0, $_);
-        }
-        $s = substr($s, 1);
-        $l = length($s);
-    }
-    return @t;
-}
-
-sub tokenize($) {
-    return map {
-        s/\A\s+//;
-        s/\s+\z//;
-        $_ eq '' ? () : ( ngram( lc($_) ) )
-    } Tokenize::by_script($_[0]);
-}
-
 sub index_document {
     my ($idx, $id_doc, $doc) = @_;
 
@@ -45,7 +23,7 @@ sub index_document {
 
     for my $field (keys %$doc) {
         my $fidx = $idx->{field}{$field} ||= {};
-        $fidx->{count_token} += my @tokens = tokenize($doc->{$field});
+        $fidx->{count_token} += my @tokens = Tokenize::by_script_than_ngram($doc->{$field});
 
         # say $doc->{$field};
         # say "==" . join ",", @tokens;
@@ -66,12 +44,9 @@ sub index_document {
     }
 }
 
-binmode STDOUT, ":utf8";
-
-my %idx;
-for my $box (@ARGV) {
-    my $box_name = basename($box);
-    my $box_idx  = $idx{$box_name} = {};
+sub index_maildir {
+    my $box = shift;
+    my $box_idx  = {};
     my $folder = Email::Folder::Maildir->new($box);
     while (my $message = $folder->next_message ) {
         my $email = Email::MIME->new($message);
@@ -84,9 +59,16 @@ for my $box (@ARGV) {
             }
         );
     }
+    return $box_idx;
 }
 
-say YAML::Dump(\%idx);
+mkdir("/tmp/maildir_idx/");
+binmode STDOUT, ":utf8";
+for my $box (@ARGV) {
+    my $box_name = basename($box);
+    my $idx = index_maildir($box);
+    YAML::DumpFile("/tmp/maildir_idx/" . $box_name . ".yml", $idx);
+}
 
 # my @top = sort { $token{$b} <=> $token{$a} } keys %token;
 # for (splice(@top,0,25)) {

@@ -26,4 +26,29 @@ sub by_script($) {
     return @tokens;
 }
 
+sub ngram($) {
+    my @t;
+    my $s = $_[0];
+    my $l = length($s);
+    while($l > 1) {
+        for (1..$l) {
+            push @t, substr($s, 0, $_);
+        }
+        $s = substr($s, 1);
+        $l = length($s);
+    }
+    return @t;
+}
+
+sub by_script_than_ngram($) {
+    return map {
+        s/[\t ]+/ /g;
+        s/\A\s+//;
+        s/\s+\z//;
+        $_ eq '' ? () : ( ngram( lc($_) ) )
+    } by_script($_[0]);
+}
+
+
+
 1;

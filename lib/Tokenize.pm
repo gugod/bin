@@ -3,8 +3,20 @@ use v5.14;
 use strict;
 use Unicode::UCD qw(charscript);
 
+sub normalize_whitespace {
+    local $_ = $_[0];
+    s/[\t ]+/ /g;
+    s/\A\s+//;
+    s/\s+\z//;
+    return $_;
+}
+
+sub remove_spaces {
+    return grep { ! /\A\s*\z/u } @_;
+}
+
 sub by_script($) {
-    my $str = shift;
+    my $str = normalize_whitespace($_[0]);
     my @tokens;
     my @chars = grep { defined($_) } split "", $str;
     return () unless @chars;
@@ -23,7 +35,7 @@ sub by_script($) {
         }
     }
     push @tokens, $t;
-    return @tokens;
+    return remove_spaces map { $_ = normalize_whitespace($_) } @tokens;
 }
 
 sub ngram($) {
@@ -31,7 +43,7 @@ sub ngram($) {
     my $s = $_[0];
     my $l = length($s);
     while($l > 1) {
-        for (1..$l) {
+        for (2..$l) {
             push @t, substr($s, 0, $_);
         }
         $s = substr($s, 1);
@@ -41,14 +53,7 @@ sub ngram($) {
 }
 
 sub by_script_than_ngram($) {
-    return map {
-        s/[\t ]+/ /g;
-        s/\A\s+//;
-        s/\s+\z//;
-        $_ eq '' ? () : ( ngram( lc($_) ) )
-    } by_script($_[0]);
+    return map { ngram( lc($_) ) } by_script($_[0]);
 }
-
-
 
 1;

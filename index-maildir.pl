@@ -11,6 +11,8 @@ use Email::Folder::Maildir;
 use Encode qw(decode_utf8);
 use File::Basename 'basename';
 
+use Sereal::Encoder;
+
 use FindBin;
 use lib $FindBin::Bin . "/lib";
 use Tokenize;
@@ -23,7 +25,7 @@ sub index_document {
 
     for my $field (keys %$doc) {
         my $fidx = $idx->{field}{$field} ||= {};
-        $fidx->{count_token} += my @tokens = Tokenize::by_script_than_ngram($doc->{$field});
+        $fidx->{count_token} += my @tokens = Tokenize::by_script($doc->{$field});
 
         # say $doc->{$field};
         # say "==" . join ",", @tokens;
@@ -62,15 +64,14 @@ sub index_maildir {
     return $box_idx;
 }
 
+my $sereal = Sereal::Encoder->new;
 mkdir("/tmp/maildir_idx/");
 binmode STDOUT, ":utf8";
 for my $box (@ARGV) {
     my $box_name = basename($box);
     my $idx = index_maildir($box);
-    YAML::DumpFile("/tmp/maildir_idx/" . $box_name . ".yml", $idx);
-}
 
-# my @top = sort { $token{$b} <=> $token{$a} } keys %token;
-# for (splice(@top,0,25)) {
-#     say "$token{$_}/$count_doc\t<$_>";
-# }
+    open my $fh, ">", "/tmp/maildir_idx/${box_name}.sereal";
+    print $fh $sereal->encode($idx);
+    close($fh);
+}

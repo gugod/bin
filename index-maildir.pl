@@ -52,13 +52,15 @@ sub index_maildir {
     my $folder = Email::Folder::Maildir->new($box);
     while (my $message = $folder->next_message ) {
         my $email = Email::MIME->new($message);
+        my $doc ={
+            subject => decode_utf8( $email->header("Subject"), Encode::FB_QUIET ),
+            from    => decode_utf8( $email->header("From"), Encode::FB_QUIET ),
+        };
+
         index_document(
             $box_idx,
             sha1_hex($message),
-            {
-                subject => decode_utf8( $email->header("Subject"), Encode::FB_QUIET ),
-                body    => decode_utf8( $email->body, Encode::FB_QUIET ),
-            }
+            $doc
         );
     }
     return $box_idx;

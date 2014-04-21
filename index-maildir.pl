@@ -1,6 +1,8 @@
 #!/usr/bin/env perl
 use v5.14; use strict; use warnings;
 
+use Getopt::Std;
+
 use YAML;
 use Digest::SHA1 qw(sha1_hex);
 use Email::MIME;
@@ -66,14 +68,21 @@ sub index_maildir {
     return $box_idx;
 }
 
+my %opts;
+getopts(
+    'd:',
+    \%opts
+);
+
+my $index_directory = $opts{d} or die "-d /dir/of/index";
+
 my $sereal = Sereal::Encoder->new;
-mkdir("/tmp/maildir_idx/");
+mkdir( $index_directory );
 binmode STDOUT, ":utf8";
 for my $box (@ARGV) {
     my $box_name = basename($box);
-    my $idx = index_maildir($box);
-
-    open my $fh, ">", "/tmp/maildir_idx/${box_name}.sereal";
-    print $fh $sereal->encode($idx);
+    my $index = index_maildir($box);
+    open my $fh, ">", File::Spec->catdir($index_directory, "${box_name}.sereal");
+    print $fh $sereal->encode($index);
     close($fh);
 }

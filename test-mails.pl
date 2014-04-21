@@ -11,7 +11,7 @@ use File::Basename 'basename';
 use Sereal::Decoder;
 use Email::Folder::Maildir;
 use Email::MIME;
-use List::Util qw(sum);
+use List::Util qw(max sum);
 use List::MoreUtils qw(uniq);
 
 use FindBin;
@@ -54,13 +54,13 @@ sub test_maildir {
             $guess{$field} = {
                 fieldLength => 0+@tokens,
                 category   => $c[0],
-                confidence => ($score{$c[0]} - ($score{$c[1]} || 0) ),
+                confidence => $score{$c[0]} / (sum(values %score) ||1),
                 categories => \@c,
                 score => \%score,
             };
         }
 
-        my @guess = grep { defined($guess{$_}) } keys %guess;
+        my @guess = keys %guess;
         if (@guess > 0) {
             if (1 == uniq(map { $guess{$_}->{category} } @guess)) {
                 $count_sure++;
@@ -72,15 +72,14 @@ sub test_maildir {
                     $count_pass++;
                 }
                 say "$category(l=@{[ $g->{fieldLength} ]},s=@{[ $g->{score}{$category} ]},c=$confidence)\t$doc->{subject}";
-            }
-            else {
+            } else {
                 $count_unsure++;
-                # say "(???)\t$doc->{subject}";
+                say "(???)\t$doc->{subject}";
+                say "\t" . $json->encode(\%guess);
                 # say "\t".join "," => map { $_ . ":" . sprintf('%.2f', $score{$_} ) } @c;
             }
-        }
-        else {
-            # say "(!!!)\t$doc->{subject}";
+        } else {
+            say "(!!!)\t$doc->{subject}";
             $count_unsure++;
         }
     }

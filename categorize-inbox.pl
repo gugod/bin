@@ -70,16 +70,17 @@ sub test_maildir {
 
                 if ($category eq 'Junk') {
                     $count_pass++;
+                    say $email->header("message-id");
                 }
-                say "$category(l=@{[ $g->{fieldLength} ]},s=@{[ $g->{score}{$category} ]},c=$confidence)\t$doc->{subject}";
+                # say "$category(l=@{[ $g->{fieldLength} ]},s=@{[ $g->{score}{$category} ]},c=$confidence)\t$doc->{subject}";
             } else {
                 $count_unsure++;
-                say "(???)\t$doc->{subject}";
-                say "\t" . $json->encode(\%guess);
+                # say "(???)\t$doc->{subject}";
+                # say "\t" . $json->encode(\%guess);
                 # say "\t".join "," => map { $_ . ":" . sprintf('%.2f', $score{$_} ) } @c;
             }
         } else {
-            say "(!!!)\t$doc->{subject}";
+            # say "(!!!)\t$doc->{subject}";
             $count_unsure++;
         }
     }
@@ -100,9 +101,11 @@ my $index_directory = $opts{d} or die "-d /dir/of/index";
 
 my $idx = {};
 my $sereal = Sereal::Decoder->new;
-for(<$index_directory/*.sereal>) {
-    open my $fh, "<", $_;
-    my $box_name = basename($_) =~ s/\.sereal$//r;
+for my $fn (<$index_directory/*.sereal>) {
+    my $box_name = basename($fn) =~ s/\.sereal$//r;
+    next if lc($box_name) eq 'inbox';
+
+    open my $fh, "<", $fn;
     local $/ = undef;
     $idx->{$box_name} = $sereal->decode(<$fh>);
 }

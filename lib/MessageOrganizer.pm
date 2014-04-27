@@ -27,7 +27,7 @@ package MessageOrganizer {
         my %guess;
 
         for my $field (keys %$doc) {
-            my @tokens = Tokenize::by_script_with_ngram_and_shingle($doc->{$field}) or next;
+            my @tokens = Tokenize::standard_than_shingle2($doc->{$field}) or next;
 
             my (%matched, %score);
             for my $category (keys %$idx) {

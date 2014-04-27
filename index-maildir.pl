@@ -27,7 +27,9 @@ sub index_document {
 
     for my $field (keys %$doc) {
         my $fidx = $idx->{field}{$field} ||= {};
-        $fidx->{count_token} += my @tokens = Tokenize::by_script_with_ngram_and_shingle($doc->{$field});
+        my @tokens = Tokenize::standard_than_shingle2( $doc->{$field} );
+
+        $fidx->{count_token} += @tokens;
 
         # say $doc->{$field};
         # say "==" . join ",", @tokens;

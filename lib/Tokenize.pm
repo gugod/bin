@@ -38,6 +38,10 @@ sub by_script($) {
     return remove_spaces map { $_ = normalize_whitespace($_) } @tokens;
 }
 
+sub standard {
+    map { /\p{Ideographic}/ ? (split "") : $_ } by_script($_[0]);
+}
+
 sub ngram($) {
     my @t;
     my $s = $_[0];
@@ -50,6 +54,15 @@ sub ngram($) {
         $l = length($s);
     }
     return @t;
+}
+
+sub shingle($@) {
+    my ($size, @t) = @_;
+    my @x;
+    for (0..$#t-$size) {
+        push @x, join " ", @t[$_ .. $_+$size-1];
+    }
+    return @x;
 }
 
 sub by_script_than_ngram($) {
@@ -66,6 +79,12 @@ sub by_script_with_ngram_and_shingle($) {
     }
 
     return @shingle, @token, map { ngram($_) } @token;
+}
+
+sub standard_than_shingle2 {
+    my @tokens = standard($_[0]);
+    my @shingles = shingle(2, @tokens);
+    return (@tokens, @shingles);
 }
 
 1;

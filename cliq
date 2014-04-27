@@ -1,12 +1,13 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use encoding 'utf8';
 use LWP::UserAgent;
 use Mojo::DOM;
 
 my ($url, $selector) = @ARGV;
 die "Usage: $0 url css-selecotr" unless $url && $selector;
+
+binmode STDOUT, ":utf8";
 
 my $ua = LWP::UserAgent->new;
 my $response = $ua->get($url);
@@ -15,12 +16,12 @@ die "Failed to get the URL" unless $response->is_success;
 die "The response is not HTML" unless $response->header("Content-Type") =~ m{^text/html\s*(;|$)};
 
 my $dom = Mojo::DOM->new;
-$dom->parse($response->content);
+$dom->parse($response->decoded_content);
 
 $dom->find($selector)->each(
     sub {
         my $el = shift;
-        my $attrs = $el->attrs;
+        my $attrs = $el->attr;
         print $el->type . ":\n";
         for (keys %$attrs) {
             print "  " . $_ . ": " . $attrs->{$_} . "\n";
@@ -29,5 +30,3 @@ $dom->find($selector)->each(
 
         print "\n\n";
 });
-
-

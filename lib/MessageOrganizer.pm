@@ -54,7 +54,7 @@ package MessageOrganizer {
         if (@guess > 0) {
             if (1 == uniq(map { $guess{$_}->{category} } @guess)) {
                 my $g = $guess{ $guess[0] };
-                if ($g->{confidence} > 0.1) {
+                if ($g->{confidence} > 0.9) {
                     $category = $g->{category};
                 }
             }

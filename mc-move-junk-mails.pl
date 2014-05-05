@@ -32,7 +32,12 @@ my $mo  = MessageOrganizer->new( idx => $idx );
 my $mgr = Mail::Box::Manager->new( folderdir => "$ENV{HOME}/Maildir/" );
 
 my $folder_inbox = $mgr->open("=INBOX", access => "rw");
-my $folder_junk  = $mgr->open("=Junk",  access => "a");
+my %folder;
+
+for my $folder_name (keys %$idx) {
+    $folder{$folder_name} = $mgr->open("=${folder_name}",  access => "a");
+}
+exit;
 
 my $count_message = $folder_inbox->messages;
 for my $i (0..$count_message-1) {
@@ -42,8 +47,6 @@ for my $i (0..$count_message-1) {
     next if $@;
 
     if (my $category = $mo->looks_like( $message_str )) {
-        if ($category eq 'Junk') {
-            $mgr->moveMessage($folder_junk, $message);
-        }
+        $mgr->moveMessage($folder{$category}, $message);
     }
 }

@@ -49,12 +49,13 @@ package MessageOrganizer {
             };
         }
 
-        my @guess = keys %guess;
+        my @guess = sort { $guess{$b}{confidence} <=> $guess{$a}{confidence} } keys %guess;
         my $category;
         if (@guess > 0) {
             if (1 == uniq(map { $guess{$_}->{category} } @guess)) {
+                # say "Confidence: ". join ",", map { sprintf("%s=%.2f",$_,$guess{$_}{confidence}) } @guess;
                 my $g = $guess{ $guess[0] };
-                if ($g->{confidence} > 0.9) {
+                if ($g->{confidence} > 0.5) {
                     $category = $g->{category};
                 }
             }

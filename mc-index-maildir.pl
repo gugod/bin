@@ -27,7 +27,7 @@ sub index_document {
 
     for my $field (keys %$doc) {
         my $fidx = $idx->{field}{$field} ||= {};
-        my @tokens = Tokenize::standard_than_shingle2( $doc->{$field} );
+        my @tokens = Tokenize::standard_than_shingle3( $doc->{$field} );
 
         $fidx->{count_token} += @tokens;
 

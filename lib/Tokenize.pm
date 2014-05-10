@@ -93,4 +93,12 @@ sub standard_than_shingle3 {
     return (@tokens, @shingles);
 }
 
+sub standard_shingle2_shingle3 {
+    my @tokens = standard($_[0]);
+    my @shingle2 = shingle(2, @tokens);
+    my @shingle3 = shingle(3, @tokens);
+    return (@tokens, @shingle2, @shingle3);
+}
+
+
 1;

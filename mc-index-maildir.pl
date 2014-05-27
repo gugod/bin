@@ -6,12 +6,10 @@ use Getopt::Std;
 use YAML;
 use Digest::SHA1 qw(sha1_hex);
 use Email::MIME;
-use Email::Delete qw(delete_message);
 
-use Email::Folder::Maildir;
+use Mail::Box::Manager;
 
 use Encode qw(decode_utf8);
-use File::Basename 'basename';
 
 use Sereal::Encoder;
 
@@ -51,15 +49,24 @@ sub index_document {
 }
 
 sub index_maildir {
+    my $mgr = shift;
     my $box = shift;
     my $box_idx  = {};
-    my $folder = Email::Folder::Maildir->new($box);
-    while (my $message = $folder->next_message ) {
-        my $email = Email::MIME->new($message);
-        my $doc ={
-            subject => decode_utf8( $email->header("Subject"), Encode::FB_QUIET ),
-            from    => decode_utf8( $email->header("From"), Encode::FB_QUIET ),
+
+    my $folder = $mgr->open("=${box}", access => "r");
+    my $count_message = $folder->messages;
+    for my $i (0..$count_message-1) {
+        my $message = $folder->message($i);
+
+        my $doc = {
+            subject       => "". $message->head->study("subject"),
+            from          => "". $message->head->study("from"),
+            'reply-to'    => "". ($message->head->study("reply-to") // ""),
+            'message-id'  => "". ($message->head->study("message-id") // ""),
+            'return-path' => "". ($message->head->study("return-path") // ""),
         };
+
+        # say YAML::Dump($doc);
 
         index_document(
             $box_idx,
@@ -67,24 +74,30 @@ sub index_maildir {
             $doc
         );
     }
+
     return $box_idx;
 }
 
 my %opts;
-getopts(
-    'd:',
-    \%opts
-);
+getopts('d:', \%opts);
+binmode STDOUT, ":utf8";
 
 my $index_directory = $opts{d} or die "-d /dir/of/index";
+mkdir( $index_directory ) unless -d $index_directory;
 
 my $sereal = Sereal::Encoder->new;
-mkdir( $index_directory );
-binmode STDOUT, ":utf8";
-for my $box (@ARGV) {
-    my $box_name = basename($box);
-    my $index = index_maildir($box);
-    open my $fh, ">", File::Spec->catdir($index_directory, "${box_name}.sereal");
-    print $fh $sereal->encode($index);
+
+my $mgr = Mail::Box::Manager->new( folderdir => "$ENV{HOME}/Maildir/" );
+
+for my $folder_name (@ARGV) {
+    my $idx = index_maildir($mgr, $folder_name);
+
+    $folder_name =~ s{\A(.*/)?([^/]+)\z}{$2};
+    open my $fh, ">", File::Spec->catdir($index_directory, "${folder_name}.sereal");
+    print $fh $sereal->encode($idx);
+    close($fh);
+
+    open $fh, ">", File::Spec->catdir($index_directory, "${folder_name}.yml");
+    print $fh YAML::Dump($idx);
     close($fh);
 }

@@ -9,7 +9,7 @@ use Email::MIME;
 
 use Mail::Box::Manager;
 
-use Encode qw(decode_utf8);
+use Encode qw(encode_utf8);
 
 use Sereal::Encoder;
 
@@ -59,8 +59,8 @@ sub index_maildir {
         my $message = $folder->message($i);
 
         my $doc = {
-            subject       => "". $message->head->study("subject"),
-            from          => "". $message->head->study("from"),
+            subject       => "". ($message->head->study("subject") // ""),
+            from          => "". ($message->head->study("from") // ""),
             'reply-to'    => "". ($message->head->study("reply-to") // ""),
             'message-id'  => "". ($message->head->study("message-id") // ""),
             'return-path' => "". ($message->head->study("return-path") // ""),
@@ -98,6 +98,6 @@ for my $folder_name (@ARGV) {
     close($fh);
 
     open $fh, ">", File::Spec->catdir($index_directory, "${folder_name}.yml");
-    print $fh YAML::Dump($idx);
+    print $fh encode_utf8(YAML::Dump($idx));
     close($fh);
 }

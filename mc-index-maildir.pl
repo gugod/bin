@@ -61,9 +61,9 @@ sub index_maildir {
         my $doc = {
             subject       => "". ($message->head->study("subject") // ""),
             from          => "". ($message->head->study("from") // ""),
-            'reply-to'    => "". ($message->head->study("reply-to") // ""),
-            'message-id'  => "". ($message->head->study("message-id") // ""),
-            'return-path' => "". ($message->head->study("return-path") // ""),
+            # 'reply-to'    => "". ($message->head->study("reply-to") // ""),
+            # 'message-id'  => "". ($message->head->study("message-id") // ""),
+            # 'return-path' => "". ($message->head->study("return-path") // ""),
         };
 
         # say YAML::Dump($doc);

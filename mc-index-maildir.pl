@@ -57,22 +57,26 @@ sub index_maildir {
     my $count_message = $folder->messages;
     for my $i (0..$count_message-1) {
         my $message = $folder->message($i);
-
         my $doc = {
             subject       => "". ($message->head->study("subject") // ""),
-            from          => "". ($message->head->study("from") // ""),
+            # from          => "". ($message->head->study("from") // ""),
             # 'reply-to'    => "". ($message->head->study("reply-to") // ""),
             # 'message-id'  => "". ($message->head->study("message-id") // ""),
             # 'return-path' => "". ($message->head->study("return-path") // ""),
         };
 
-        # say YAML::Dump($doc);
+        my @from = $message->from;
 
-        index_document(
-            $box_idx,
-            sha1_hex($message),
-            $doc
-        );
+        for my $from_address (map { $_->address} @from) {
+            my $doc2 = {%$doc};
+            $doc2->{from} = $from_address;
+
+            index_document(
+                $box_idx,
+                sha1_hex($message),
+                $doc2
+            );
+        }
     }
 
     return $box_idx;

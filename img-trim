@@ -1,0 +1,45 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+use Imager;
+use List::MoreUtils qw(uniq);
+
+my $img = Imager->new( file => $ARGV[0] );
+$img = trim($img);
+$img->write(file => $ARGV[1]);
+exit;
+
+sub trim {
+    my $original_image = shift;
+    my $image = $original_image->copy;
+    my $box = { top => 0, bottom => 0, left => 0, right => 0 };
+    my $white = Imager::Color->new("#FFFFFF");
+
+    for my $side ("top", "left", "bottom", "right") {
+        my $shave = 0;
+        my ($width, $height) = ($image->getwidth, $image->getheight);
+
+        while($shave < $height) {
+            my @colors = $image->getscanline(y => $shave);
+            my @white = grep { looks_like_white($_) } @colors;
+            last if @white < @colors;
+            $shave++;
+        }
+        if ($shave != 0 && $shave < $height) {
+            say "shave $shave at $side";
+            $image = $image->crop(top => $shave);
+        }
+        $image = $image->rotate(degrees=>90);
+    }
+
+    return $image;
+}
+
+sub looks_like_white {
+    my $color = shift;
+    my ($r,$g,$b,undef) = $color->rgba();
+    # return ( $r > 230 && $g > 230 && $b > 230 )
+    return ( $r > 170 && $g > 170 && $b > 170 )
+}
+

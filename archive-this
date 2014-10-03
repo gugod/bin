@@ -1,0 +1,43 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+use Data::Dumper;
+use Hijk;
+
+my $url = shift @ARGV or die "Usage: $0 \URL\n";;
+
+my $archivers = [
+    sub {
+        my $res = Hijk::request({
+            method => "GET",
+            host   => "archive.today",
+            port   => "80",
+            path   => "/submit/",
+            body   => "url=$url",
+            parse_chunked => 1,
+        });
+        return $res->{status};
+    },
+    sub {
+        my $res = Hijk::request({
+            method => "GET",
+            host   => "web.archive.org",
+            port   => "80",
+            path   => "/save/$url",
+            parse_chunked => 1,
+        });
+        return $res->{status};
+    },
+];
+
+for my $archiver (@$archivers) {
+    my $kid = fork();
+    unless ($kid) {
+        my $status = $archiver->();
+        say $status;
+        exit;
+    }
+}
+
+wait() for @$archivers;

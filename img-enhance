@@ -1,0 +1,53 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+use Imager;
+use Imager::Color;
+
+use File::Basename qw(basename);
+
+@ARGV == 2 or die <<"USAGE";
+
+Usage:
+
+    @{[ basename($0) ]} input_image_file_name output_image_file_name
+
+USAGE
+
+my ($input_image_file, $output_image_file_name) = @ARGV;
+
+
+my $img = Imager->new( file => $input_image_file );
+# $img->filter( type => "contrast", intensity => 1.2) or die $img->errstr;
+# $img->filter( type => "unsharpmask", stddev=>1, scale=>0.5) or die $img->errstr;
+enhance_black_and_white($img);
+
+$img->write( file => $output_image_file_name ) or die $img->errstr;
+
+sub enhance_black_and_white {
+    my $img = shift;
+    my $white = Imager::Color->new("#FFFFFF");
+    my $black = Imager::Color->new("#000000");
+
+    my %color_count;
+    my $THRESHOLD = 0.7;
+    my $almost_white = 255 * $THRESHOLD;
+    my $almost_black = 255 - $almost_white;
+    for my $y ( 0 .. $img->getheight - 1 ) {
+        my @colors = $img->getscanline(y => $y);
+        my $dirty = 0;
+        for (my $i = 0; $i < @colors; $i++) {
+            my @rgba = $colors[$i]->rgba;
+            if ($rgba[0] > $almost_white && $rgba[1] > $almost_white && $rgba[2] > $almost_white) {
+                $colors[$i] = $white;
+                $dirty = 1;
+            }
+            if ($rgba[0] < $almost_black && $rgba[1] < $almost_black  && $rgba[2] < $almost_black) {
+                $colors[$i] = $black;
+                $dirty = 1;
+            }
+        }
+        $img->setscanline(y => $y, pixels => \@colors) if $dirty;
+    }
+}

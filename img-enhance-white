@@ -20,6 +20,7 @@ my ($input_image_file, $output_image_file_name) = @ARGV;
 my $THRESHOLD = 255 * 0.7;
 
 my $white = Imager::Color->new("#FFFFFF");
+my $black = Imager::Color->new("#000000");
 my $img = Imager->new( file => $input_image_file );
 my %color_count;
 
@@ -30,6 +31,10 @@ for my $y ( 0 .. $img->getheight - 1 ) {
         my @rgba = $colors[$i]->rgba;
         if ($rgba[0] > $THRESHOLD && $rgba[1] > $THRESHOLD && $rgba[2] > $THRESHOLD) {
             $colors[$i] = $white;
+            $dirty = 1;
+        }
+        if ($rgba[0] < 128 && $rgba[1] < 128  && $rgba[2] < 128) {
+            $colors[$i] = $black;
             $dirty = 1;
         }
     }

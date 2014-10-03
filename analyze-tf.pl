@@ -4,12 +4,35 @@ use utf8;
 
 use IO::All;
 use YAML ();
+use Unicode::UCD qw(charscript);
 use List::MoreUtils qw(uniq);
 use List::PowerSet qw(powerset);
+use Sereal::Encoder;
+use Sereal::Decoder;
+
+sub tokenize_by_script {
+    my $str = shift;
+    my @tokens;
+    my @chars = split "", $str;
+    my $t = shift(@chars);
+    my $s = charscript(ord($t));
+    while(my $char = shift @chars) {
+        my $_s = charscript(ord($char));
+        if ($_s eq $s) {
+            $t .= $char;
+        }
+        else {
+            push @tokens, $t;
+            $s = $_s;
+            $t = $char;
+        }
+    }
+    push @tokens, $t;
+    return @tokens;
+}
 
 sub tokenize {
-    my $str = $_[0];
-    split "", $str;
+    return tokenize_by_script($_[0])
 }
 
 sub char_filter {
@@ -17,6 +40,31 @@ sub char_filter {
     $str =~ s!\s+! !g;
     return $str;
 }
+
+sub ngram {
+    my ($str, $n) = @_;
+    my @chars = split "", $str;
+    my @tokens = ();
+    for (my $i = 0; $i < @chars - $n + 1; $i++) {
+        push @tokens, join("", @chars[$i .. $i+$n-1]);
+    }
+    return @tokens;
+}
+
+sub filter {
+    return map {
+        my @o;
+        if (/\p{Han}/) {
+            @o = ($_, ngram($_, 3), ngram($_, 2), split("", $_));
+        }
+        else {
+            @o = ($_)
+        }
+
+        @o;
+    } @_;
+}
+
 
 sub build_index {
     my ($fh_txt) = @_;
@@ -29,7 +77,7 @@ sub build_index {
 
     while ( $_ = $fh_txt->getline ) {
         $line_number++;
-        my @token = tokenize char_filter $_;
+        my @token = filter tokenize char_filter $_;
 
         my %seen;
         for my $token (@token) {
@@ -38,6 +86,8 @@ sub build_index {
         }
 
         $idx->{doc_count}++;
+
+        # last if $line_number > 10;
     }
 
     return $idx;
@@ -71,15 +121,27 @@ sub search {
 }
 
 my $txt = shift @ARGV || die;
-my $idx = build_index( io($txt)->utf8 );
+my $idx;
+my $idx_file = "/tmp/the_index.sereal";
+if (-f $idx_file) {
+    my $decoder = Sereal::Decoder->new();
+    $decoder->decode( scalar(io($idx_file)->all), $idx );
+}
+else {
+    $idx = build_index( io($txt)->utf8 );
+    my $encoder = Sereal::Encoder->new();
+    io($idx_file)->print( $encoder->encode($idx) );
+}
+die unless $idx;
 
-my @terms = qw(王 金 平);
+my @terms = ("王", "金", "平", "王金", "金平", "王金平");
 binmode STDOUT, ":utf8";
 my $res = search($idx, \@terms);
 my $ro = $res->{ro};
 say YAML::Dump($res->{ro});
 
-
-say "Confidence(王金 => 王金平) = " . ( $ro->{"王 金 平"} / $ro->{"王 金"} );
-say "Confidence(金平 => 王金平) = " . ( $ro->{"王 金 平"} / $ro->{"金 平"} );
-say "Confidence(王平 => 王金平) = " . ( $ro->{"王 金 平"} / $ro->{"王 平"} );
+say "Confidence(王金 => 王金平) = " . $ro->{"王金平"} / $ro->{"王金"};
+say "Confidence(金平 => 王金平) = " . $ro->{"王金平"} / $ro->{"金平"};
+say "Confidence(王   => 王金平) = " . $ro->{"王金平"} / $ro->{"王"};
+say "Confidence(金   => 王金平) = " . $ro->{"王金平"} / $ro->{"金"};
+say "Confidence(平   => 王金平) = " . $ro->{"王金平"} / $ro->{"平"};

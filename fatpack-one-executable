@@ -1,0 +1,27 @@
+#!/usr/bin/env perl
+use strict;
+use File::Temp qw(tempfile tempdir);
+
+die <<'USAGE' if 0 == @ARGV;
+
+This program print the fatpacked version of a program. For example, the following statments
+produce an fatpacked executable file under cwd
+
+  cd ~/MyProject/
+  export PERL5LIB=`pwd`/lib
+  fatpack-one-executable bin/myprogram
+
+USAGE
+
+my $program = $ARGV[0];
+
+my $dir = tempdir();
+print STDERR "Tmpdir = $dir\n";
+my ($fh, $filename) = tempfile( DIR => $dir );
+mkdir("$dir/lib");
+
+chdir($dir);
+system("fatpack trace $filename");
+system("fatpack packlists-for `cat fatpacker.trace` > packlists");
+system("fatpack tree `cat packlists`");
+system("(echo '#!$^X'; fatpack file; cat $filename)");

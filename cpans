@@ -1,15 +1,9 @@
 #!/bin/sh
 
-if [ ! -f ~/.cpan/sources/modules/02packages.details.txt.gz ]; then
-    echo "Refreshing the cpan index..."
-    perl -MCPAN -e 'CPAN::Index->reload' >/dev/null 2>/dev/null
+CPAN_PACKAGE_DETAILS="$HOME/perl5/minicpan/modules/02packages.details.txt.gz"
+
+if [ -f $CPAN_PACKAGE_DETAILS ]; then
+    zgrep -i $1 $CPAN_PACKAGE_DETAILS
 else
-    age=`perl -e 'print(time - (stat("$ENV{HOME}/.cpan/sources/modules/02packages.details.txt.gz"))[9])'`
-
-    if [ $age -gt 86400 ]; then
-        echo "Refreshing the cpan index..."
-        perl -MCPAN -e 'CPAN::Index->reload' >/dev/null 2>/dev/null
-    fi
+    echo "Missing cpan index: $CPAN_PACKAGE_DETAILS"
 fi
-
-zgrep -i $1 ~/.cpan/sources/modules/02packages.details.txt.gz

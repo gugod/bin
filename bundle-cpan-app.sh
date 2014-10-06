@@ -17,6 +17,7 @@ APP_BASE=${APP_ROOT}/app
 mkdir -p $BIN_BASE $DEP_BASE $APP_BASE
 
 export PERL5LIB=$APP_BASE/lib/perl5:$DEP_BASE/lib/perl5
+cpanm -L $DEP_BASE Module::Install Module::Install::CPANfile
 cpanm -L $DEP_BASE --installdeps .
 perl Makefile.PL INSTALL_BASE=$APP_BASE
 make &&  make install

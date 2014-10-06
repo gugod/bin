@@ -1,0 +1,10 @@
+#!/usr/bin/env perl
+use strict;
+use CPAN::FindDependencies;
+
+my $module = shift or die "$0 \$module";
+my @dependencies = CPAN::FindDependencies::finddeps( $module );
+foreach my $dep (@dependencies) {
+    print ' ' x $dep->depth();
+    print $dep->name().' (dist: '.$dep->distribution().', mod ver: '.$dep->version().")\n";
+}

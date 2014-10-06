@@ -1,0 +1,6 @@
+#!/bin/sh
+
+while [ true ]; do
+    offlineimap -u machineui
+    sleep 600
+done

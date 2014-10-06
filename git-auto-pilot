@@ -15,7 +15,7 @@ _git_sync
 
 if [ "$(type -t inotifywait)" = "" ]
 then
-    exec watcher --dir . -- bash -c 'git add --all && git commit -m "auto commit $(date)" && git pull --no-edit && git push'    
+    exec watcher --dir . -- bash -c 'git add --all && git commit -m "auto commit $(date)" && git pull --no-edit && git push'
 else
     while inotifywait -q -e close -r --format '%f' . ; do
         _git_sync

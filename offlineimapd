@@ -2,5 +2,6 @@
 
 while [ true ]; do
     offlineimap -u machineui
+    terminal-notifier -title 'offlineimapd' -message "You (most likely) got mails."
     sleep 600
 done

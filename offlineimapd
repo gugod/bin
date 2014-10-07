@@ -1,7 +1,10 @@
 #!/bin/sh
 
 while [ true ]; do
+    echo "----"
     offlineimap -u machineui
-    terminal-notifier -title 'offlineimapd' -message "You (most likely) got mails."
+    if [ -n "$(which terminal-notifier)" ]; then
+        terminal-notifier -title 'offlineimapd' -message "You (most likely) got mails."
+    fi
     sleep 120
 done

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "screendump screen.ppm" | socat - unix:$1
+pnmtopng screen.ppm > screen.png
+rm /tmp/screen.ppm
+

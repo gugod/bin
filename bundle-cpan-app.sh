@@ -7,7 +7,9 @@ fi
 
 if [ -z "$PERL" ]; then
     PERL="/usr/bin/perl"
+    CPANM="$PERL $HOME/perl5/perlbrew/bin/cpanm"
     echo "USING PERL=$PERL";
+    echo "USING CPANM=$CPANM";
 fi
 
 BIN_BASE=${APP_ROOT}/bin
@@ -17,9 +19,9 @@ APP_BASE=${APP_ROOT}/app
 mkdir -p $BIN_BASE $DEP_BASE $APP_BASE
 
 export PERL5LIB=$APP_BASE/lib/perl5:$DEP_BASE/lib/perl5
-cpanm -L $DEP_BASE Module::Install Module::Install::CPANfile
-cpanm -L $DEP_BASE --installdeps .
-perl Makefile.PL INSTALL_BASE=$APP_BASE
+${CPANM} -L $DEP_BASE Module::Install Module::Install::CPANfile
+${CPANM} -L $DEP_BASE --installdeps .
+${PERL} Makefile.PL INSTALL_BASE=$APP_BASE
 make &&  make install
 
 for executable in $APP_BASE/bin/*

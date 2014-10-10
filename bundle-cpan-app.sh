@@ -27,6 +27,6 @@ do
     this_executable=$BIN_BASE/`basename $executable`
     echo "#!/bin/sh
 export PERL5LIB=$APP_BASE/lib/perl5:$DEP_BASE/lib/perl5
-exec $PERL $executable" > $this_executable
+exec $PERL $executable \$@" > $this_executable
     chmod +x $this_executable
 done

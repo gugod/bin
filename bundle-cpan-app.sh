@@ -7,10 +7,14 @@ fi
 
 if [ -z "$PERL" ]; then
     PERL="/usr/bin/perl"
-    CPANM="$PERL $HOME/perl5/perlbrew/bin/cpanm"
-    echo "USING PERL=$PERL";
-    echo "USING CPANM=$CPANM";
 fi
+if [ -z "$CPANM" ]; then
+    CPANM="$PERL $HOME/perl5/perlbrew/bin/cpanm"
+fi
+
+echo "USING PERL=$PERL";
+echo "USING CPANM=$CPANM";
+
 
 BIN_BASE=${APP_ROOT}/bin
 DEP_BASE=${APP_ROOT}/dep

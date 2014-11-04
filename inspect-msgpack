@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+use v5.14;
+use autodie;
+use strict;
+use warnings;
+use Data::MessagePack;
+use Data::MessagePack::Stream;
+use JSON;
+    
+my $JSON = JSON->new->pretty->allow_blessed->canonical;
+
+my $fh;
+if ($ARGV[0] && -f $ARGV[0]) {
+    open my $fh, "<", $ARGV[0];
+} else {
+    $fh = \*STDIN;
+}
+
+my $unpacker = Data::MessagePack::Stream->new;
+while (read($fh, my $buf, 10240)) {
+    $unpacker->feed($buf);
+
+    while ($unpacker->next) {
+        print $JSON->encode($unpacker->data);
+    }
+}

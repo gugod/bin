@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+
+use Imager;
+
+my ($file) = @ARGV;
+
+my $image = Imager->new( file => $file );
+
+my $colors = $image->getcolorusagehash();
+
+for my $packed_rgb (sort { $colors->{$b} <=> $colors->{$a} } keys %$colors) {
+    my ($r,$g,$b) = unpack("CCC", $packed_rgb);
+    say "R$r G$g B$b => $colors->{$packed_rgb}";
+}

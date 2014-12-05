@@ -1,0 +1,44 @@
+#!/usr/bin/env perl
+use v5.14; use strict;
+use Sereal::Decoder;
+use JSON;
+use Encode qw<encode_utf8>;
+
+my $JSON = JSON->new->pretty;
+
+my $decoder = Sereal::Decoder->new;
+my $sereal_string = "";
+
+my $decode_one_struct = sub {
+    $sereal_string .= $_[0] if defined $_[0];
+    $decoder->decode($sereal_string => my $d);
+    substr($sereal_string, 0, $decoder->bytes_consumed) = "";
+    return $d;
+};
+
+
+my $fh;
+if ($ARGV[0] && -f $ARGV[0]) {
+   open $fh, "<", $ARGV[0];
+} else {
+    $fh = \*STDIN
+}
+
+my $buf = "";
+while ( read($fh, $buf, 10240) ) {
+    my $d = $decode_one_struct->($buf);
+    my $str = $JSON->encode($d);
+    if (Encode::is_utf8($str)) {
+        $str = encode_utf8($str);
+    }
+    say $str;
+}
+
+while (length($sereal_string)) {
+    my $d = $decode_one_struct->();
+    my $str = $JSON->encode($d);
+    if (Encode::is_utf8($str)) {
+        $str = encode_utf8($str);
+    }
+    say $str;
+}

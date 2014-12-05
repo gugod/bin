@@ -17,7 +17,7 @@ my $archivers = [
             body   => "url=$url",
             parse_chunked => 1,
         });
-        return $res->{status};
+        return $res;
     },
     sub {
         my $res = Hijk::request({
@@ -27,15 +27,15 @@ my $archivers = [
             path   => "/save/$url",
             parse_chunked => 1,
         });
-        return $res->{status};
+        return $res;
     },
 ];
 
 for my $archiver (@$archivers) {
     my $kid = fork();
     unless ($kid) {
-        my $status = $archiver->();
-        say $status;
+        my $res = $archiver->();
+        say $res->{status}, " ", (substr( ($res->{status} =~ /^3/) ? $res->{head}{Location} : $res->{body} , 0, 64) =~ s/\n/\\n/gr);
         exit;
     }
 }

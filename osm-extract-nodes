@@ -6,8 +6,7 @@ use XML::Twig;
 my $GEOHASH = Geo::Hash::XS->new;
 
 sub print_this_node {
-    my ($tag_elt) = @_;
-    my $node_elt = $tag_elt->parent;
+    my ($node_elt, $tag_elt) = @_;
 
     my ($name_elt) = $node_elt->get_xpath('//tag[@k="name"]');
     if ($name_elt) {
@@ -26,11 +25,12 @@ my $tag_cond = shift(@ARGV) || '@k="amenity" and (@v="restaurant" or @v="cafe")'
 
 binmode STDOUT, ":utf8";
 my $t = XML::Twig->new(
-    pretty_print => "indented",
+    twig_roots => { "node" => 1 },
     twig_handlers => {
         "node/tag[$tag_cond]" => sub {
-            my ($t, $elt) = @_;
-            print_this_node($elt);
+            my ($t, $tag_elt) = @_;
+            my $node_elt = $tag_elt->parent;
+            print_this_node($node_elt, $tag_elt);
             $t->purge;
         }
     }

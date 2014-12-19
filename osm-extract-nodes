@@ -37,3 +37,9 @@ my $t = XML::Twig->new(
 );
 
 $t->safe_parse(\*STDIN);
+
+=head1 Run like this...
+
+    bzcat planet-latest.osm.bz2 | perl osm-extract-nodes '@k="amenity"'
+
+=cut

@@ -1,0 +1,20 @@
+#!/usr/bin/env perl
+use v5.18;
+use Encode;
+use Mojo::DOM;
+use Text::CSV;
+
+my $CSV = Text::CSV->new({ binary => 1 });
+$CSV->eol("\n");
+
+local $/ = undef;
+my $html = decode_utf8 scalar <>;
+my $dom = Mojo::DOM->new($html);
+
+binmode STDOUT, ":utf8";
+$dom->find("tr")->each(
+    sub {
+        my $e = $_;
+        my @row = map { $_->text } $e->find("td")->each;
+        $CSV->print(\*STDOUT, \@row);
+    });

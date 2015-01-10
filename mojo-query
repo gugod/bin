@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 use v5.14;
-use encoding 'utf8';
+
 use Mojo::DOM;
 use Mojo::UserAgent;
 use JSON;

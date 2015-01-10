@@ -1,0 +1,45 @@
+#!/usr/bin/env perl
+use v5.18;
+use Geo::Hash::XS;
+use XML::Twig;
+
+my $GEOHASH = Geo::Hash::XS->new;
+
+sub print_this_node {
+    my ($node_elt, $tag_elt) = @_;
+
+    my ($name_elt) = $node_elt->get_xpath('//tag[@k="name"]');
+    if ($name_elt) {
+        my $name = $name_elt->att("v");
+        my $amenity = $tag_elt->att("v");
+        my $lat = $node_elt->att("lat");
+        my $lon = $node_elt->att("lon");
+        my $hash = $GEOHASH->encode($lat, $lon, 10);
+
+        say join "\t", $hash, $amenity, $name;
+    }
+    return 1;
+}
+
+my $tag_cond = shift(@ARGV) || '@k="amenity" and (@v="restaurant" or @v="cafe")';
+
+binmode STDOUT, ":utf8";
+my $t = XML::Twig->new(
+    twig_roots => { "node" => 1 },
+    twig_handlers => {
+        "node/tag[$tag_cond]" => sub {
+            my ($t, $tag_elt) = @_;
+            my $node_elt = $tag_elt->parent;
+            print_this_node($node_elt, $tag_elt);
+            $t->purge;
+        }
+    }
+);
+
+$t->safe_parse(\*STDIN);
+
+=head1 Run like this...
+
+    bzcat planet-latest.osm.bz2 | perl osm-extract-nodes '@k="amenity"'
+
+=cut

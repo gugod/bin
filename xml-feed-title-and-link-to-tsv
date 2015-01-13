@@ -1,0 +1,15 @@
+#!/usr/bin/env perl
+use v5.18;
+use URI;
+use XML::Feed;
+
+binmode STDOUT, ":utf8";
+
+my $url = shift(@ARGV) or exit 0;
+my $feed = XML::Feed->parse(URI->new($url));
+for my $entry ($feed->entries) {
+    say join "\t", map { s/\s+/ /; $_ } (
+        $entry->title,
+        $entry->link
+    );
+}

@@ -2,14 +2,17 @@
 use v5.18;
 use URI;
 use XML::Feed;
-
-binmode STDOUT, ":utf8";
+use Encode;
 
 my $url = shift(@ARGV) or exit 0;
-my $feed = XML::Feed->parse(URI->new($url));
+my $feed = XML::Feed->parse(URI->new($url)) or exit 0;
+
 for my $entry ($feed->entries) {
-    say join "\t", map { s/\s+/ /; $_ } (
+    my $str = join "\t", map { s/\s+/ /; $_ } (
         $entry->title,
         $entry->link
     );
+
+    $str = Encode::is_utf8($str) ? Encode::encode_utf8($str) : $str;
+    say $str;
 }

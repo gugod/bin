@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+use File::Slurp qw(slurp write_file);
+use JSON;
+use Web::Query;
+use YAML;
+
+sub retrieve_report_text {
+    my $url = shift;
+    my $el = wq($url)->find("pre");
+    return $el ? $el->text : undef;
+}
+
+sub extract_module_versions {
+    my $report_text = shift;
+    my @markers = (
+        "PREREQUISITES:\n",
+        "Perl module toolchain versions installed:\n",
+        "******************************** NOTE ********************************\n"
+    );
+
+    my @marker_pos = map {
+        my $pos = index($report_text, $_);
+        [$pos, $pos + length($_)];
+    } @markers;
+
+    my $prerequesities = substr($report_text, $marker_pos[0][1], $marker_pos[1][0] - $marker_pos[0][1]);
+    my $toolchain = substr($report_text, $marker_pos[1][1], $marker_pos[2][0] - $marker_pos[1][1]);
+
+    my %modules;
+    for (split/\n/, $prerequesities) {
+        if (/\A\s*(\S+)\s+([0-9\.]+)\s+([0-9\.]+)/) {
+            $modules{$1} = $2;
+        }
+    }
+
+    for (split/\n/, $toolchain) {
+        if (/\A\s*(\S+)\s+([0-9\.]+)/) {
+            $modules{$1} = $2;
+        }
+    }
+
+    return \%modules
+}
+
+sub load_module_test_reports_json {
+    return JSON::decode_json(slurp($_[0]));
+}
+
+sub extract_failure_reports {
+    [ grep { $_->{status} eq 'FAIL' } @{$_[0]} ]
+}
+# my $modules = extract_module_versions retrieve_report_text 'http://www.cpantesters.org/cpan/report/d489c024-55eb-11e3-bd14-e3bee4621ba3?raw=1';
+# say YAML::Dump($modules);
+
+my $reports = load_module_test_reports_json($ARGV[0] or die);
+my $failure_reports = extract_failure_reports( $reports );
+
+# mkdir("$ENV{HOME}/cpantesters");
+# mkdir("$ENV{HOME}/cpantesters/fail");
+for my $report (@$failure_reports) {
+    next unless $report->{distversion} eq 'App-perlbrew-0.67';
+    my $text = retrieve_report_text 'http://www.cpantesters.org/cpan/report/'. $report->{guid} .'?raw=1' or next;
+
+    $report->{modules} = extract_module_versions $text;
+
+    my $dir = "$ENV{HOME}/cpantesters/fail/$report->{distversion}";
+    mkdir($dir);
+    write_file("$dir/$report->{guid}.json", JSON::encode_json($report));
+    exit;
+}

@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+use v5.14;
+
+my $i = <>;
+chomp($i);
+while(<>) {
+    chomp($_);
+    my $j = 0+ $_;
+
+    say($j - $i);
+
+    $i = $j;
+}

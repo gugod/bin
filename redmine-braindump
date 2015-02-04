@@ -1,0 +1,42 @@
+#!/usr/bin/env perl
+
+use v5.14;
+use YAML;
+use Net::Redmine;
+use File::HomeDir;
+use Path::Class;
+use Getopt::Long;
+
+my ($project_url, $config_file);
+
+GetOptions(
+    "url=s" => \$project_url,
+    "config=s" => \$config_file,
+);
+
+
+die unless -f $config_file;
+die unless $project_url;
+
+my $config = YAML::LoadFile( file($config_file) );
+
+die unless $config->{user} && $config->{password};
+
+my $r = Net::Redmine->new(
+    url      => $project_url,
+    user     => $config->{user},
+    password => $config->{password}
+);
+
+while(<STDIN>) {
+    chomp;
+    my $subject = $_;
+    my $description = "created by redmine-braindump.";
+
+    $r->create(
+        ticket => {
+            subject     => $subject,
+            description => $description
+        }
+    );
+}

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+s3prefix=$(cat ~/etc/blob.txt)
+
+file=$1
+file_basename=$(basename $file)
+file_shasum=$(shasum $file | cut -c 1-40)
+
+s3full=${s3prefix}${file_shasum}/${file_basename}
+
+s3cmd --continue-put put $file $s3full
+
+echo "$file\t$s3full" >> ~/var/blob/index.$(echo $file_shasum | cut -c1,2).tsv

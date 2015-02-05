@@ -1,8 +1,8 @@
+#!/usr/bin/env perl6
+
+open("/usr/share/dict/words").lines.pick(4).join("").say;
+
 #!/usr/bin/env perl
-use File::Slurp;
-my @words = read_file "/usr/share/dict/words";
-print join("", map{chomp;$_} @words[ map { rand(@words) } 1..4 ])."\n";
-
-#!/Users/gugod/perl6/rakudo-star-2012.08/bin/perl6
-# slurp("/usr/share/dict/words").split(/\n+/).pick(4).join("").say;
-
+# use File::Slurp;
+# my @words = read_file "/usr/share/dict/words";
+# print join("", map{chomp;$_} @words[ map { rand(@words) } 1..4 ])."\n";

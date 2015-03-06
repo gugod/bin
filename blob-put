@@ -1,8 +1,27 @@
 #!/bin/sh
 
+file=$1
+
+if [[ ! -f $file ]]
+then
+    echo
+    echo "blob-put <file>"
+    echo
+    exit 1
+fi
+
+if [[ ! -f ~/etc/blob.txt ]]
+then
+    echo
+    echo "Prepare ~/etc/blob.txt like this:"
+    echo
+    echo "    echo s3://my-s3-bucket/prefx/ > ~/etc/blob.txt"
+    echo
+    exit 1
+fi
+
 s3prefix=$(cat ~/etc/blob.txt)
 
-file=$1
 file_basename=$(basename $file)
 file_shasum=$(shasum $file | cut -c 1-40)
 

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+pattern=$1
+
+if [[ -n "$pattern" ]]
+then
+    cat ~/var/blob/index.*.tsv | grep -e "$pattern"
+else
+    cat ~/var/blob/index.*.tsv
+fi
+
+
+
+

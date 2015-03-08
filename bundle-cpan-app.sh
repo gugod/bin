@@ -1,7 +1,19 @@
-#!/bin/sh
+#!/bin/bash
+
+while getopts ":o:" opt; do
+    case $opt in
+        o)
+            APP_ROOT=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+        ;;
+    esac
+done
 
 if [ -z "$APP_ROOT" ]; then
-    echo "set APP_ROOT before running"
+    echo "$0 -o APP_ROOT"
     exit
 fi
 

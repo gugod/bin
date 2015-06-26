@@ -1,4 +1,4 @@
-#!/Users/gugod/local/bin/perl
+#!/usr/bin/env perl
 use CSS::Minifier qw(minify);
 undef $/;
 print minify(input => <>);

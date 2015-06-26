@@ -1,4 +1,7 @@
-#!/usr/bin/env perl
-use feature 'say';
-use Time::HiRes;
-say Time::HiRes::time;
+#!/usr/bin/env perl6
+time.say
+
+# #!/usr/bin/env perl
+# use feature 'say';
+# use Time::HiRes;
+# say Time::HiRes::time;

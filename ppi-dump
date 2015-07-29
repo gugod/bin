@@ -1,0 +1,9 @@
+#!/usr/bin/env perl
+
+use strict;
+use PPI;
+use PPI::Dumper;
+
+my $code = shift or die "No code ?";
+
+PPI::Dumper->new( PPI::Document->new( -f $code ? $code : \$code ) )->print;

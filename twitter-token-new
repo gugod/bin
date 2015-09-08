@@ -4,16 +4,19 @@ use v5.14;
 use Net::Twitter;
 use YAML;
 
-my $config = YAML::LoadFile( "$ENV{HOME}/.twitterrc" );
+my $config = YAML::LoadFile( "$ENV{HOME}/etc/twitter.yml" );
 
 my $twitter = Net::Twitter->new(
     ssl => 1,
-    traits => [ 'API::REST', 'OAuth' ],
+    traits => [ 'API::RESTv1_1' ],
     consumer_key => $config->{consumer_key},
     consumer_secret => $config->{consumer_secret}
 );
 
-system "open" => $twitter->get_authorization_url;
+my $url = $twitter->get_authorization_url;
+say "open $url";
+
+system "open" => $url;
 
 print "Enter the PIN#\n";
 

@@ -1,0 +1,55 @@
+#!/usr/bin/env perl
+use v5.18;
+
+use List::MoreUtils qw(part);
+use Sereal::Decoder;
+use Sereal::Encoder;
+
+my %args = @ARGV;
+my $input_dir   = $args{'-i'} or die;
+my $output_dir  = $args{'-o'} or die;
+
+sub t2d {
+    my ($t) = @_;
+    my ($dd,$mm,$yyyy) = (localtime($t))[3,4,5];
+    return sprintf('%04d-%02d-%02d', ($yyyy+1900), $mm, $dd);
+}
+
+my $srl_decoder = Sereal::Decoder->new;
+
+my $today = t2d(time);
+my $unmerged = [];
+for ( glob($input_dir . "/twitter-timeline-*.srl") ) {
+    if (/\/ twitter-timeline-(?<ts>[0-9]+).srl \z/x) {
+        my $p = t2d($+{ts});
+        next if $p eq $today;
+        push @$unmerged, [$p, my $f = $_];
+    }
+}
+@$unmerged = sort { $a->[0] cmp $b->[0] } @$unmerged;
+
+while ($unmerged && @$unmerged) {
+    (my $batch, $unmerged) = part { ($_->[0] eq $unmerged->[0][0]) ? 0 : 1 } @$unmerged;
+    last unless $batch && @$batch;
+    my $date = $batch->[0][0];
+    my @rows;
+    for (@$batch) {
+        my $f = $_->[1];
+        open(my $fh, "<", $f)or die $!;
+        local $/ = undef;
+        my $d = <$fh>;
+        my $rows = $srl_decoder->decode($d);
+        push @rows, @$rows;
+        close($fh);
+    }
+
+
+    my $srl_encoder = Sereal::Encoder->new;
+    open(my $fh, ">", "${output_dir}/twitter-timeline-daily-${date}.srl") or die $!;
+    print $fh $srl_encoder->encode(\@rows);
+    close($fh);
+
+    for (@$batch) {
+        unlink($_->[1]);
+    }
+}

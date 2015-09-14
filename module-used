@@ -8,6 +8,12 @@ use File::Find;
 use Module::CoreList;
 use Module::ExtractUse;
 use List::MoreUtils qw(uniq);
+use Getopt::Long qw(GetOptions);
+
+
+GetOptions(
+    "cpanfile" => (\my $generate_cpanfile),
+);
 
 my @dir = map { File::Spec->rel2abs($_) } @ARGV;
 push @dir, File::Spec->rel2abs(File::Spec->curdir) unless @dir;
@@ -23,4 +29,13 @@ find(
     @dir
 );
 
-say for grep { !$Module::CoreList::version{"$]"}->{$_}  } grep { !/^v?[\.0-9]+$/ } uniq sort @used;
+my @deps = grep { !$Module::CoreList::version{"$]"}->{$_}  } grep { !/^v?[\.0-9]+$/ } uniq sort @used;
+
+if ($generate_cpanfile) {
+    for (@deps) {
+        say "requires \"$_\" => 0;";
+    }
+} else {
+    say for @deps;
+}
+

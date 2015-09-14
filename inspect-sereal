@@ -25,7 +25,7 @@ if ($ARGV[0] && -f $ARGV[0]) {
 }
 
 my $buf = "";
-while ( read($fh, $buf, 10240) ) {
+while ( read($fh, $buf, 2**24) ) {
     my $d = $decode_one_struct->($buf);
     my $str = $JSON->encode($d);
     if (Encode::is_utf8($str)) {

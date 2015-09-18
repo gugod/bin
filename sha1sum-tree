@@ -20,5 +20,5 @@ while ( defined ( my $file = $files->() ) ) {
 }
 
 for (grep { @{$seen{$_}} > 1 } keys %seen) {
-    say join("\t", @{$seen{$_}});
+    say join("\t", $_, @{$seen{$_}});
 }

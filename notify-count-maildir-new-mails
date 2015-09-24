@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for md in ~/Maildir/*; do
+    count=$(ls -1 $md/new 2>/dev/null |wc -l);
+    if [[ $count -gt 9 ]]; then
+        notify-send "Look: $(basename $md) has $count new mails"
+    fi;
+done

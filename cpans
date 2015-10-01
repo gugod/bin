@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CPAN_PACKAGE_DETAILS=$(ls -1t ~/.cpanm/sources/**/02packages.details.txt.gz | head -1)
+CPAN_PACKAGE_DETAILS=$(ls -1t ~/.cpanm/sources/*/02packages.details.txt.gz | head -1)
 
 if [ -f $CPAN_PACKAGE_DETAILS ]; then
     zgrep -i $1 $CPAN_PACKAGE_DETAILS

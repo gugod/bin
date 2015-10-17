@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
 for base in $*
 do
-        find $base -depth 2 -name .git -type d  | parallel  'cd $(dirname {}); git fetch -a'
+        find $base -depth 2 -name .git -type d  -exec bash -c 'repo=$(dirname {}); echo "# $repo" ; cd $repo; git fetch --all' \;
 done

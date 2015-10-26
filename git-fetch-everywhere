@@ -2,5 +2,5 @@
 
 for base in $*
 do
-        find $base -depth 2 -name .git -type d  -exec bash -c 'repo=$(dirname {}); echo "# $repo" ; cd $repo; git fetch --all' \;
+        find $base -name .git -type d  -exec bash -c 'repo=$(dirname {}); echo "# $repo" ; cd $repo; git fetch --all' \;
 done

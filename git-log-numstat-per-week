@@ -1,0 +1,30 @@
+#!/usr/bin/env perl
+
+use v5.18;
+use strict;
+use warnings;
+
+
+my $cmd = q{git log } . join(" ", @ARGV) . q{ --numstat --format='format:Date: %at' };
+
+open my $git_fh, "$cmd |";
+
+my %bucket;
+my $bucket = "???";
+
+while(<$git_fh>) {
+    if (/^ Date: \s+ (?<ts> \d+) $/x) {
+        my @t = localtime($+{ts});
+        my $year = $t[5] + 1900;
+        my $week_num = sprintf("%02d", int( $t[7] / 7) + 1);
+        $bucket = "$year-$week_num";
+    } elsif (/^ (?<add> \d+) \t (?<del> \d+) \t (.+) $/x) {
+        $bucket{$bucket}{add} += $+{add};
+        $bucket{$bucket}{del} += $+{del};
+    }
+}
+
+for (sort keys %bucket) {
+    say join("\t", $_, $bucket{$_}{add}, $bucket{$_}{del}, $bucket{$_}{add} - $bucket{$_}{del});
+}
+

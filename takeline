@@ -1,0 +1,22 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use Getopt::Long;
+
+my %args;
+GetOptions(
+    \%args,
+    "line=i",
+    "context=i"
+);
+
+die unless defined $args{line};
+$args{context} ||= 0;
+
+my ($from, $until) = ( $args{line} - $args{context}, $args{line} + $args{context} );
+
+while(<>) {
+    if ($. == $from .. $. == $until) {
+        print;
+    }
+}

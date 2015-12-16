@@ -1,18 +1,44 @@
 #!/usr/bin/env perl
 
 use v5.14;
-use XML::Feed;
+use Mojo::UserAgent;
 use URI;
+
+use constant IS_A_FEED_MIME_TYPE => { map { $_ => 1 } (
+    'application/x.atom+xml',
+    'application/atom+xml',
+    'application/xml',
+    'text/xml',
+    'application/rss+xml',
+    'application/rdf+xml',
+)};
+
 
 my @urls = @ARGV;
 
 die "Put urls in ARGV\n"
     unless @urls;
 
-for my $url (@urls) {
-    my @feeds = XML::Feed->find_feeds(URI->new($url));
-    for (@feeds) {
-        my $feed = XML::Feed->parse(URI->new($_));
-        say $_->link for $feed->entries;
-    }
+my $ua = Mojo::UserAgent->new( max_redirect => 5 );
+for my $base_url (@urls) {
+    my $tx = $ua->get($base_url);
+    my $dom = $tx->res->dom;
+    my @feeds = (
+        map {
+            URI->new_abs($_, $base_url)->as_string;
+        }
+        @{ $dom->find("link[rel='alternate'],link[rel='service.feed']")->map(sub { $_->attr('href') }) }
+    );
+
+    $dom->find("a[href]")->each(
+        sub {
+            my $href =  $_->attr('href');
+            my $url = URI->new_abs($href, $base_url)->as_string;
+            my $ct = $ua->get($url)->res->headers->content_type;
+            if ( IS_A_FEED_MIME_TYPE->{$ct} ) {
+                push @feeds, $url;
+            }
+        }
+    );
+    say for @feeds;
 }

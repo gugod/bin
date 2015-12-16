@@ -1,0 +1,16 @@
+#!/bin/bash
+
+function notify() {
+    if [[ $(type -pf terminal-notifier) ]]; then
+        terminal-notifier -title mails -message "$1"
+    else
+        notify-send "$1"
+    fi
+}
+
+for md in ~/Maildir/*; do
+    count=$(ls -1 $md/new 2>/dev/null |wc -l);
+    if [[ $count -gt 9 ]]; then
+        notify "Look: $(basename $md) has $count new mails"
+    fi;
+done

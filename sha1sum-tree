@@ -1,0 +1,24 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use File::Next;
+use Digest::SHA1;
+
+my $dir = shift(@ARGV) or die;
+my $files = File::Next::files( $dir );
+
+my %seen;
+while ( defined ( my $file = $files->() ) ) {
+    my $digest = Digest::SHA1->new;
+    open my $fh, "<", $file or die $!;
+    $digest->addfile($fh);
+    close($fh);
+    my $digest_hex = $digest->hexdigest;
+    push @{$seen{$digest_hex}}, $file =~ s/^${dir}\///r;
+}
+
+for (grep { @{$seen{$_}} > 1 } keys %seen) {
+    say join("\t", $_, @{$seen{$_}});
+}

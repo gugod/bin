@@ -60,7 +60,7 @@ sub extract_locally {
 
     my $text = extract_as_text($html)
         =~ s!^ \S{1,4} $!!xmgr
-        =~ s!\n\n+!\n!gr;
+        =~ s!\n\n+!\n\n!gr;
 
     return "$title\n\n$text";
 }

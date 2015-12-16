@@ -12,7 +12,7 @@ my $output_dir  = $args{'-o'} or die;
 sub t2d {
     my ($t) = @_;
     my ($dd,$mm,$yyyy) = (localtime($t))[3,4,5];
-    return sprintf('%04d-%02d-%02d', ($yyyy+1900), $mm, $dd);
+    return sprintf('%04d-%02d-%02d', ($yyyy+1900), ($mm+1), $dd);
 }
 
 my $srl_decoder = Sereal::Decoder->new;

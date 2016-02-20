@@ -39,8 +39,14 @@ while ($unmerged && @$unmerged) {
         local $/ = undef;
         my $d = <$fh>;
         if ($srl_decoder->looks_like_sereal($d)) {
-            my $rows = $srl_decoder->decode($d);
-            push @rows, @$rows;
+            my $rows;
+            eval {
+                $srl_decoder->decode($d);
+                push @rows, @$rows;
+                1;
+            } or do {
+                warn "$f is broken";
+            };
         } else {
             say STDERR "Does not look like Sereal: $f";
         }

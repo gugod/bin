@@ -1,0 +1,16 @@
+#!/usr/bin/env perl
+use v5.18;use strict;use warnings;
+
+use UnQLite;
+
+my $dbfile = $ARGV[0];
+
+die "db file required" unless -f $dbfile;
+
+
+my $db = UnQLite->open($dbfile, UnQLite::UNQLITE_OPEN_READONLY);
+
+my $cursor = $db->cursor_init();
+for ($cursor->first_entry; $cursor->valid_entry; $cursor->next_entry) {
+    say $cursor->key . "\n" . $cursor->data . "\n";
+}

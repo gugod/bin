@@ -6,8 +6,8 @@ use Sereal::Decoder;
 use Sereal::Encoder;
 
 my %args = @ARGV;
-my $input_dir   = $args{'-i'} or die;
-my $output_dir  = $args{'-o'} or die;
+my $input_dir   = $args{'-i'} or die "No input dir -i";
+my $output_dir  = $args{'-o'} or die "No output dir -o";
 
 sub t2d {
     my ($t) = @_;

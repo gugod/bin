@@ -41,7 +41,7 @@ while ($unmerged && @$unmerged) {
         if ($srl_decoder->looks_like_sereal($d)) {
             my $rows;
             eval {
-                $srl_decoder->decode($d);
+                $rows = $srl_decoder->decode($d);
                 push @rows, @$rows;
                 1;
             } or do {
@@ -52,7 +52,6 @@ while ($unmerged && @$unmerged) {
         }
         close($fh);
     }
-
 
     my $srl_encoder = Sereal::Encoder->new;
     open(my $fh, ">", "${output_dir}/twitter-timeline-daily-${date}.srl") or die $!;

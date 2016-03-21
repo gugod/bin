@@ -3,6 +3,7 @@ use v5.18;
 use strict;
 use warnings;
 
+use Encode qw(encode_utf8);
 use Data::Printer;
 use List::MoreUtils qw(part);
 use Sereal::Decoder;
@@ -19,14 +20,15 @@ for my $f (@sources) {
     open(my $fh, "<", $f)or die $!;
     local $/ = undef;
     my $d = <$fh>;
+    close($fh);
+
     if ($srl_decoder->looks_like_sereal($d)) {
         my $rows;
         eval {
             $rows = $srl_decoder->decode($d);
             for my $tweet (@$rows) {
-                say $tweet->{text};
+                say encode_utf8($tweet->{text});
             }
-
             1;
         } or do {
             warn "$f is broken";
@@ -34,5 +36,4 @@ for my $f (@sources) {
     } else {
         say STDERR "Does not look like Sereal: $f";
     }
-    close($fh);    
 }

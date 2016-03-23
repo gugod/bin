@@ -1,0 +1,9 @@
+#!/bin/bash
+
+trap "echo SIGINT; exit" 2
+rc=1
+while [[ rc -ne 0 ]];
+do
+    $*
+    rc=$?
+done

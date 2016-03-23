@@ -3,5 +3,4 @@
 while [ true ]
 do
     bash -c "$*" >> ~/var/log/keep-doing.log
-    sleep 60
 done

@@ -1,0 +1,18 @@
+#!/usr/bin/env perl
+use v5.18; use strict; use warnings;
+
+use File::Touch;
+use Scalar::Util qw( looks_like_number );
+
+my ($seconds, @files) = @ARGV;
+
+die unless looks_like_number($seconds);
+@files = grep { -f } @files;
+die unless @files;
+
+for my $file (@files) {
+    my $mtime_orig = (stat($file))[9];
+    my $mtime_new  = $mtime_orig + $seconds;
+    say "$file : $mtime_orig => $mtime_new";
+    File::Touch->new( time => $mtime_new )->touch($file);
+}

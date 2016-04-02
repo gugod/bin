@@ -1,6 +1,0 @@
-#!/bin/sh
-
-while [ true ]
-do
-    bash -c "$*" >> ~/var/log/keep-doing.log
-done

@@ -46,7 +46,9 @@ sub extract_locally {
         $charset = $1;
     }
     if (!$charset) {
-        ($charset) = $dom->find("head meta[http-equiv=Content-Type]")->first->{content} =~ m{charset=([^\s;]+)};
+        if (my $meta_el = $dom->find("head meta[http-equiv=Content-Type]")->first) {
+            ($charset) = $meta_el->{content} =~ m{charset=([^\s;]+)};                    
+        }
     }
     $charset ||= "utf-8";
 
@@ -65,22 +67,7 @@ sub extract_locally {
     return "$title\n\n$text";
 }
 
-sub extract_with_g0vre {
-    my $url = shift;
-    my $uri_g0v = URI->new("http://g0vre.herokuapp.com/read");
-    $uri_g0v->query_form("url", $url);
-
-
-    my $ua = Mojo::UserAgent->new;
-    my $tx = $ua->get("$uri_g0v");
-
-    my $body = $tx->res->body;
-    my $res = JSON::decode_json($body);
-    return $res->{text};
-}
-
 binmode STDOUT, ":encoding(utf8)";
-# say extract_with_g0vre($url);
 
 say extract_locally($url);
 

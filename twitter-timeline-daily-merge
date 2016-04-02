@@ -33,6 +33,7 @@ while ($unmerged && @$unmerged) {
     last unless $batch && @$batch;
     my $date = $batch->[0][0];
     my @rows;
+    my %seen;
     for (@$batch) {
         my $f = $_->[1];
         open(my $fh, "<", $f)or die $!;
@@ -42,7 +43,7 @@ while ($unmerged && @$unmerged) {
             my $rows;
             eval {
                 $rows = $srl_decoder->decode($d);
-                push @rows, @$rows;
+                push @rows, grep { !($seen{$_->{id}}++) } @$rows;
                 1;
             } or do {
                 warn "$f is broken";

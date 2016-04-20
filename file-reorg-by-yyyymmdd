@@ -1,0 +1,56 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use File::Basename qw(fileparse);
+use File::Path qw(make_path);
+use File::Spec::Functions qw(catfile catdir);
+use File::Next;
+use Getopt::Long;
+
+sub main {
+    my ($opts, $args) = @_;
+    my @input = grep { -f || -d } @{ $opts->{i} };
+    my $iter = File::Next::files(@input);
+    my %plan;
+    while (defined( my $file = $iter->() )) {
+        my $mtime = (stat($file))[9];
+        my ($year, $month, $day) = ( localtime($mtime) )[5,4,3];
+        $year += 1900; $month += 1;
+        my $yyyy     = sprintf('%04d', $year);
+        my $yyyymmdd = sprintf('%04d%02d%02d', $year, $month, $day);
+        my $filename = fileparse($file);
+
+        my $new_dir  = catdir($yyyy, $yyyymmdd);
+        my $new_path = catfile($new_dir, $filename);
+        if (exists $plan{$new_path}) {
+            die "File name Conflict:\n\t$plan{$new_path}\n\t$file\n";
+        } else {
+            $plan{$new_path} = [$file, $new_dir];
+        }
+        if (-e $new_path) {
+            die "File already exists: $new_path (from $file)";
+        }
+    }
+
+    for my $k (keys %plan) {
+        my ($file, $new_dir) = @{ $plan{$k} };
+        if ($opts->{n}) {
+            say "mv $file $k";
+        } else {
+            make_path($new_dir) unless -d $new_dir;
+            link($file, $k);
+            unlink($file);
+        }
+    }
+}
+
+my %opts;
+GetOptions(
+    \%opts,
+    'i=s@',
+    'n',
+);
+main(\%opts, [@ARGV]);
+

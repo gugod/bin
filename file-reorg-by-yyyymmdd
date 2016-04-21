@@ -3,6 +3,7 @@ use v5.18;
 use strict;
 use warnings;
 
+use File::Copy qw(move);
 use File::Basename qw(fileparse);
 use File::Path qw(make_path);
 use File::Spec::Functions qw(catfile catdir);
@@ -40,8 +41,7 @@ sub main {
             say "mv $file $k";
         } else {
             make_path($new_dir) unless -d $new_dir;
-            link($file, $k);
-            unlink($file);
+            move($file, $k);
         }
     }
 }

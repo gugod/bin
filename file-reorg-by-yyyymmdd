@@ -24,7 +24,13 @@ sub main {
         my $filename = fileparse($file);
 
         my $new_dir  = catdir($yyyy, $yyyymmdd);
-        my $new_path = catfile($new_dir, $filename);
+        my $new_path;
+        if (defined($opts->{d}) && $opts->{d} ne "") {
+            $new_path = catfile($new_dir, $opts->{d}, $filename);
+        } else {
+            $new_path = catfile($new_dir, $filename);
+        }
+
         if (exists $plan{$new_path}) {
             die "File name Conflict:\n\t$plan{$new_path}\n\t$file\n";
         } else {
@@ -51,6 +57,7 @@ my %opts;
 GetOptions(
     \%opts,
     'i=s@',
+    'd=s',
     'n',
 );
 main(\%opts, [@ARGV]);

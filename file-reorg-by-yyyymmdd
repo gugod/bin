@@ -41,6 +41,7 @@ sub main {
             say "mv $file $k";
         } else {
             make_path($new_dir) unless -d $new_dir;
+            say "mv $file $k";
             move($file, $k);
         }
     }

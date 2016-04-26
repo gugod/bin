@@ -23,13 +23,13 @@ sub main {
         my $yyyymmdd = sprintf('%04d%02d%02d', $year, $month, $day);
         my $filename = fileparse($file);
 
-        my $new_dir  = catdir($yyyy, $yyyymmdd);
-        my $new_path;
+        my $new_dir;
         if (defined($opts->{d}) && $opts->{d} ne "") {
-            $new_path = catfile($new_dir, $opts->{d}, $filename);
+            $new_dir = catfile($yyyy, $yyyymmdd, $opts->{d});
         } else {
-            $new_path = catfile($new_dir, $filename);
+            $new_dir = catdir($yyyy, $yyyymmdd);
         }
+        my $new_path = catfile($new_dir, $filename);
 
         if (exists $plan{$new_path}) {
             die "File name Conflict:\n\t$plan{$new_path}\n\t$file\n";

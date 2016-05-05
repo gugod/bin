@@ -36,8 +36,14 @@ sub main {
         } else {
             $plan{$new_path} = [$file, $new_dir];
         }
+
         if (-e $new_path) {
-            die "File already exists: $new_path (from $file)";
+            my $msg = "File already exists: $new_path (from $file)";
+            if ($opts->{'ignore-existing'}) {
+                warn $msg;
+            } else {
+                die $msg;
+            }
         }
     }
 
@@ -59,6 +65,7 @@ GetOptions(
     'i=s@',
     'd=s',
     'n',
+    'ignore-existing'
 );
 main(\%opts, [@ARGV]);
 

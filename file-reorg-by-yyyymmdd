@@ -31,18 +31,18 @@ sub main {
         }
         my $new_path = catfile($new_dir, $filename);
 
-        if (exists $plan{$new_path}) {
-            die "File name Conflict:\n\t$plan{$new_path}\n\t$file\n";
-        } else {
-            $plan{$new_path} = [$file, $new_dir];
-        }
-
         if (-e $new_path) {
             my $msg = "File already exists: $new_path (from $file)";
             if ($opts->{'ignore-existing'}) {
                 warn $msg;
             } else {
                 die $msg;
+            }
+        } else {
+            if (exists $plan{$new_path}) {
+                die "File name Conflict:\n\t$plan{$new_path}\n\t$file\n";
+            } else {
+                $plan{$new_path} = [$file, $new_dir];
             }
         }
     }

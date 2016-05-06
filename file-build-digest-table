@@ -1,0 +1,25 @@
+#!/usr/bin/env perl
+use v5.18;use strict;use warnings;
+use Digest;
+use File::Next;
+use Getopt::Long;
+
+my %opts;
+GetOptions(
+    \%opts,
+    "i=s@",
+);
+
+for my $input_dir (@{$opts{i}}) {
+    my $files = File::Next::files($input_dir);
+    while(defined( my $file = $files->() )) {
+        my $digester = Digest->new("SHA-1");
+
+        open my $fh, "<", $file;
+        $digester->addfile($fh);
+        my $hd = $digester->hexdigest;
+        
+        close($fh);
+        say "$hd\t$file";
+    }
+}

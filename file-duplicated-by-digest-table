@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+use v5.18; use strict; use warnings;
+
+use Getopt::Long;
+
+my %opts;
+GetOptions(
+    \%opts,
+    "i=s@",
+);
+
+my %what;
+for (@{$opts{i}}) {
+    open my $fh, "<", $_;
+    while (<$fh>) {
+        chomp;
+        my ($digest, $file) = split /\s+/, $_;
+        push @{$what{$digest}}, $file;
+    }
+    close($fh);
+}
+
+while(my ($k,$v) = each %what) {
+    if (@$v > 1) {
+        say $k;
+        say "\t- $_" for @$v;
+        say "";
+    }
+}

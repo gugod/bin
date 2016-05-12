@@ -9,6 +9,15 @@ use File::Path qw(make_path);
 use File::Spec::Functions qw(catfile catdir);
 use File::Next;
 use Getopt::Long;
+use Digest::SHA1;
+
+sub sha1_digest {
+    my ($file) = @_;
+    open my $fh, "<", $file;
+    my $sha1 = Digest::SHA1->new;
+    $sha1->addfile($fh);
+    return $sha1->digest;
+}
 
 sub main {
     my ($opts, $args) = @_;
@@ -32,11 +41,19 @@ sub main {
         my $new_path = catfile($new_dir, $filename);
 
         if (-e $new_path) {
-            my $msg = "File already exists: $new_path (from $file)";
-            if ($opts->{'ignore-existing'}) {
-                warn $msg;
+            my $sha1_a = sha1_digest($new_path);
+            my $sha1_b = sha1_digest($file);
+
+            if ($sha1_a eq $sha1_b) {
+                say("rm $file # duplicate\t$file\t$new_path");
+                unlink($file);
             } else {
-                die $msg;
+                my $msg = "File already exists: $new_path (from $file)";
+                if ($opts->{'ignore-existing'}) {
+                    warn $msg;
+                } else {
+                    die $msg;
+                }
             }
         } else {
             if (exists $plan{$new_path}) {

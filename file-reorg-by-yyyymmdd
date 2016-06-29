@@ -57,7 +57,7 @@ sub main {
             }
         } else {
             if (exists $plan{$new_path}) {
-                die "File name Conflict:\n\t$plan{$new_path}\n\t$file\n";
+                die "File name Conflict:\n\t -> " . join("\n\t -> ", @{$plan{$new_path}}) . "\n\t <- $file\n";
             } else {
                 $plan{$new_path} = [$file, $new_dir];
             }

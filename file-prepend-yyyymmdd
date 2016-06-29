@@ -1,0 +1,54 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use File::Copy qw(move);
+use File::Basename qw(dirname fileparse);
+use File::Path qw(make_path);
+use File::Spec::Functions qw(catfile catdir);
+use File::Next;
+use Getopt::Long;
+use Digest::SHA1;
+
+sub sha1_digest {
+    my ($file) = @_;
+    open my $fh, "<", $file;
+    my $sha1 = Digest::SHA1->new;
+    $sha1->addfile($fh);
+    return $sha1->digest;
+}
+
+sub main {
+    my ($opts, $args) = @_;
+    my @input = grep { -f || -d } @{ $opts->{i} };
+    my $iter = File::Next::files(@input);
+    my %plan;
+    while (defined( my $file = $iter->() )) {
+        my $mtime = (stat($file))[9];
+        my ($year, $month, $day) = ( localtime($mtime) )[5,4,3];
+        $year += 1900; $month += 1;
+        my $yyyy     = sprintf('%04d', $year);
+        my $yyyymmdd = sprintf('%04d%02d%02d', $year, $month, $day);
+        my $filename = fileparse($file);
+        my $dirname  = dirname($file);
+
+        my $newfile = catfile($dirname, "$yyyymmdd-$filename");
+        if ($opts->{n}) {
+            say "mv $file $newfile";
+        } else {
+            move($file, $newfile);
+        }
+    }
+}
+
+my %opts;
+GetOptions(
+    \%opts,
+    'i=s@',
+    'd=s',
+    'n',
+    'ignore-existing'
+);
+main(\%opts, [@ARGV]);
+

@@ -1,0 +1,57 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use File::Copy qw(move);
+use File::Basename qw(fileparse);
+use File::Path qw(make_path);
+use File::Spec::Functions qw(catfile catdir);
+use File::Next;
+use Getopt::Long;
+use Digest::SHA1;
+
+use File::Touch;
+use Image::ExifTool qw(:Public);
+use Time::Moment;
+
+sub main {
+    my ($opts, $args) = @_;
+    my @input = grep { -f || -d } @{ $opts->{i} };
+    my $iter = File::Next::files(@input);
+    my %plan;
+    while (defined( my $file = $iter->() )) {
+        my $info = ImageInfo($file, 'DateTimeOriginal');
+        next unless $info->{DateTimeOriginal};
+
+        my @exif_dto = split /[ :]/, $info->{DateTimeOriginal};
+        my $tm_dto = Time::Moment->new(
+            year       => $exif_dto[0],
+            month      => $exif_dto[1],
+            day        => $exif_dto[2],
+            hour       => $exif_dto[3],
+            minute     => $exif_dto[4],
+            second     => $exif_dto[5],
+            # nanosecond => 0,
+            # offset     => 480, # UTC+0800
+        );
+
+        my $mtime = (stat($file))[9];
+        my $tm_mtime = Time::Moment->from_epoch($mtime);
+        if ($tm_mtime > $tm_dto) {
+            say "$tm_dto\t$file";
+            File::Touch->new( mtime => $tm_dto->epoch )->touch($file);
+        }
+    }
+}
+
+my %opts;
+GetOptions(
+    \%opts,
+    'i=s@',
+    'd=s',
+    'n',
+    'ignore-existing'
+);
+main(\%opts, [@ARGV]);
+

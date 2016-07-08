@@ -25,6 +25,8 @@ sub main {
     my $iter = File::Next::files(@input);
     my %plan;
     while (defined( my $file = $iter->() )) {
+        next if $file =~ / \.DS_Store \z/x;
+
         my $mtime = (stat($file))[9];
         my ($year, $month, $day) = ( localtime($mtime) )[5,4,3];
         $year += 1900; $month += 1;

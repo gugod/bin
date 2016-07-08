@@ -57,7 +57,12 @@ sub main {
             }
         } else {
             if (exists $plan{$new_path}) {
-                die "File name Conflict:\n\t -> " . join("\n\t -> ", @{$plan{$new_path}}) . "\n\t <- $file\n";
+                my $msg = "File name Conflict:\n\t -> " . join("\n\t -> ", @{$plan{$new_path}}) . "\n\t <- $file\n";
+                if ($opts->{'ignore-existing'}) {
+                    warn $msg;
+                } else {
+                    die $msg;
+                }
             } else {
                 $plan{$new_path} = [$file, $new_dir];
             }

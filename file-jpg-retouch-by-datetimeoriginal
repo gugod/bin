@@ -21,10 +21,12 @@ sub main {
     my $iter = File::Next::files(@input);
     my %plan;
     while (defined( my $file = $iter->() )) {
-        my $info = ImageInfo($file, 'DateTimeOriginal');
-        next unless $info->{DateTimeOriginal};
+        next unless $file =~ /\.jpg \z/xi;
 
-        my @exif_dto = split /[ :]/, $info->{DateTimeOriginal};
+        my $info = ImageInfo($file, 'DateTimeOriginal');
+        my $dto = $info->{DateTimeOriginal} or next;
+        next unless $dto =~ /\A \d\d\d\d:\d\d:\d\d \d\d:\d\d:\d\d \z/;
+        my @exif_dto = split /[ :]/, $dto;
         my $tm_dto = Time::Moment->new(
             year       => $exif_dto[0],
             month      => $exif_dto[1],

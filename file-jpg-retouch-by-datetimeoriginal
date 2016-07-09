@@ -21,11 +21,15 @@ sub main {
     my $iter = File::Next::files(@input);
     my %plan;
     while (defined( my $file = $iter->() )) {
-        next unless $file =~ /\.jpg \z/xi;
+        next unless $file =~ / \.jpg \z/xis;
 
         my $info = ImageInfo($file, 'DateTimeOriginal');
-        my $dto = $info->{DateTimeOriginal} or next;
-        next unless $dto =~ /\A \d\d\d\d:\d\d:\d\d \d\d:\d\d:\d\d \z/;
+        my $dto = $info->{DateTimeOriginal};
+        if (! $dto) {
+            say "SKIP: no DateTimeOriginal\t$file";
+            next;
+        }
+        next unless $dto =~ /\A [12][0-9]{3}:[0-9]{2}:[0-9]{2} \s [0-9]{2}:[0-9]{2}:[0-9]{2} \z/x;
         my @exif_dto = split /[ :]/, $dto;
         my $tm_dto = Time::Moment->new(
             year       => $exif_dto[0],
@@ -40,9 +44,11 @@ sub main {
 
         my $mtime = (stat($file))[9];
         my $tm_mtime = Time::Moment->from_epoch($mtime);
-        if ($tm_mtime > $tm_dto) {
+        if ($tm_mtime != $tm_dto) {
             say "$tm_dto\t$file";
             File::Touch->new( mtime => $tm_dto->epoch )->touch($file);
+        } else {
+            say "SKIP: DateTimeOriginal == mtime == $tm_dto\t$file";
         }
     }
 }

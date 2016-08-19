@@ -25,13 +25,16 @@ sub main {
     my $iter = File::Next::files(@input);
     my %plan;
     while (defined( my $file = $iter->() )) {
+        my $filename = fileparse($file);
+        my $dirname  = dirname($file);
+
+        next if ($filename =~ /\A \d{8} \- /x);
+
         my $mtime = (stat($file))[9];
         my ($year, $month, $day) = ( localtime($mtime) )[5,4,3];
         $year += 1900; $month += 1;
         my $yyyy     = sprintf('%04d', $year);
         my $yyyymmdd = sprintf('%04d%02d%02d', $year, $month, $day);
-        my $filename = fileparse($file);
-        my $dirname  = dirname($file);
 
         my $newfile = catfile($dirname, "$yyyymmdd-$filename");
         if ($opts->{n}) {

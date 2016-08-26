@@ -1,0 +1,84 @@
+#!/usr/bin/env perl
+
+=head1 NAME
+
+cpan-git-clone - a lazy script to git-clone a CPAN module
+
+=head1 SYNOPSIS
+
+For example
+
+=over 4
+
+cd ~/src
+# Clone one repo
+cpan-git-clone Sereal::Encoder
+
+# Clone multiple repos
+cpan-git-clone Alien::Base Alien::OTR Alien::Gcrypt
+
+=back
+
+That's pretty much it.
+
+Note: When a "github.com" url is seen, this program converts it to be
+an "https://" url if the discovered URL is "http://" or "git://". This
+is just a personal preference. It also stop on any errors, big or
+small.
+
+=cut
+
+use v5.18;
+use strict;
+use JSON::PP;
+use HTTP::Tiny;
+
+sub http_get_json {
+    my ($url, $error_cb) = @_;
+    my $res = HTTP::Tiny->new->get($url);
+    unless ($res->{success}) {
+        die "Failed to GET $url" unless $error_cb;
+        $error_cb->($res);
+    }
+    my $d = JSON::PP->new->utf8->decode($res->{content}) or die "Failed to decode response as JSON (url = $url)";
+    return $d;
+}
+
+sub query_dist_name {
+    my $module_name = $_[0];
+    my $dying_reason = "Failed to resolve the distribution name of module $module_name\n";
+    my $res = http_get_json(
+        'https://api.metacpan.org/module/' . $module_name,
+        sub { die $dying_reason }
+    );
+    my $dist_name = $res->{distribution} or die $dying_reason;
+    return $dist_name;
+}
+
+sub query_git_repo_url {
+    my $dist_name = $_[0];
+    my $dying_reason = "Failed to discover the git repository url for distribution $dist_name\n";
+    my $res = http_get_json('https://api.metacpan.org/release/' . $dist_name, sub { die $dying_reason });
+    my $url = $res->{metadata}{resources}{repository}{url} or die $dying_reason;
+    return $url;
+}
+
+sub prefer_https_url {
+    my $git_repo_url = $_[0];
+    for($git_repo_url) {
+        next unless index($_, "//github.com/") > 0;
+        s{\A (git|http)://}{https://}sx;
+    }
+    return $git_repo_url;
+}
+
+sub clone_by_module_name {
+    my $module_name = $_[0];
+    my $git_repo_url = prefer_https_url(query_git_repo_url( query_dist_name($module_name) ));
+    say "Cloning $git_repo_url";
+    die "Failed to clone $git_repo_url: error = $?\n" unless system("git", "clone", $git_repo_url) == 0;
+}
+
+for(@ARGV) {
+    clone_by_module_name($_);
+}

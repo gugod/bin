@@ -46,7 +46,7 @@ while(<>) {
 
 my $threshold = 5;
 for my $x (uniq((keys %lcontext), (keys %rcontext))) {
-    next if ($threshold <= (keys %{$lcontext{$x}}) || $threshold <= (keys %{$rcontext{$x}}));
+    next unless ($threshold <= (keys %{$lcontext{$x}}) && $threshold <= (keys %{$rcontext{$x}}));
     say encode_utf8($x);
 }
 

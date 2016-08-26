@@ -8,7 +8,11 @@ my %opts;
 GetOptions(
     \%opts,
     "i=s@",
+    "o=s",
 );
+
+die "Output file already exists: $opts{o}\n" if -f $opts{o};
+open(my $fh_output, ">", $opts{o}) or die $!;
 
 for my $input_dir (@{$opts{i}}) {
     my $files = File::Next::files($input_dir);
@@ -20,6 +24,6 @@ for my $input_dir (@{$opts{i}}) {
         my $hd = $digester->hexdigest;
         
         close($fh);
-        say "$hd\t$file";
+        say $fh_output "$hd\t$file";
     }
 }

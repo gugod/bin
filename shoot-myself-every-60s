@@ -22,6 +22,7 @@ while(1) {
     my $time = time;
     my ($day, $month, $year) = (localtime($time))[3, 4, 5];
     $year += 1900;
+    $month += 1;
 
     my $dir = "$ENV{HOME}/Pictures/shoot-myself/$year-$month-$day";
     io->dir($dir)->mkdir;

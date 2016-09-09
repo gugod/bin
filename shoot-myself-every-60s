@@ -23,15 +23,14 @@ while(1) {
     my ($day, $month, $year) = (localtime($time))[3, 4, 5];
     $year += 1900;
     $month += 1;
+    my $yyyymmdd = sprintf("%04d%02d%02d", $year, $month, $day);
 
-    my $dir = "$ENV{HOME}/Pictures/shoot-myself/$year-$month-$day";
-    io->dir($dir)->mkdir;
+    my $dir = "$ENV{HOME}/Pictures/shoot-myself/$yyyymmdd";
+    io->dir($dir)->mkdir unless -d $dir;
 
     my $file = "$dir/$time";
 
-    system("imagesnap ${file}.tiff >/dev/null 2>/dev/null");
-    system("convert ${file}.tiff ${file}.jpg");
-    unlink("${file}.tiff");
+    system("imagesnap -w 1.00 -q ${file}.jpg");
 
     sleep 60;
 }

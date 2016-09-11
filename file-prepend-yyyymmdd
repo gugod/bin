@@ -28,7 +28,7 @@ sub main {
         my $filename = fileparse($file);
         my $dirname  = dirname($file);
 
-        next if ($filename =~ /\A \d{8} \- /x);
+        next if (($filename =~ /\A \d{8} \- /x) || $filename =~ /\A \.DS_Store \z/x);
 
         my $mtime = (stat($file))[9];
         my ($year, $month, $day) = ( localtime($mtime) )[5,4,3];

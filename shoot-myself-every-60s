@@ -30,7 +30,7 @@ while(1) {
 
     my $file = "$dir/$time";
 
-    system("imagesnap -w 1.00 -q ${file}.jpg");
+    system("imagesnap -q ${file}.jpg");
 
     sleep 60;
 }

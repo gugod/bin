@@ -9,12 +9,12 @@ use File::Path qw(make_path);
 use File::Spec::Functions qw(catfile catdir);
 use File::Next;
 use Getopt::Long;
-use Digest::SHA1;
+use Digest::SHA;
 
 sub sha1_digest {
     my ($file) = @_;
     open my $fh, "<", $file;
-    my $sha1 = Digest::SHA1->new;
+    my $sha1 = Digest::SHA->new(1);
     $sha1->addfile($fh);
     return $sha1->digest;
 }

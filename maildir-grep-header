@@ -1,0 +1,31 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use File::Next;
+
+sub found {
+    my ($pattern, $file) = @_;
+    my $headers = "";
+    open my $fh, "<", $file;
+    while(<$fh>) {
+        last if $_ eq "\n";
+        $headers .= $_;
+    }
+    close($fh);
+
+    my $matched = $headers =~ m/${pattern}/sm;
+    return $matched;
+}
+
+my ($pattern, @paths) = @ARGV;
+push(@paths, ".") if @paths == 0;
+
+for(@paths) {
+    my $files = File::Next::files($_);
+    while(defined(my $file = $files->())) {
+        if (found($pattern, $file)) {
+            say $file;
+        }
+    }
+}

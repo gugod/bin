@@ -6,12 +6,12 @@ use FindBin qw($Bin);
 use lib "$Bin/lib";
 
 use YAML::Tiny qw(LoadFile);
-use Getopt::Std;
+use Encode qw(decode_utf8);
+use Getopt::Std qw(getopt);
 
 use PlurkPoster;
 
 my %opts;
-
 getopt('c', \%opts);
 
 die "Usage: $0 -c plurk.yml\n 'Bli blah Hogehoge'" unless $opts{c};
@@ -24,5 +24,6 @@ my $pp = PlurkPoster->new(
 );
 
 for(@ARGV) {
-    $pp->post("!TW $_");
+    my $txt = decode_utf8($_);
+    $pp->post($txt);
 }

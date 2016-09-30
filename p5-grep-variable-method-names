@@ -23,15 +23,25 @@ for (@ARGV) {
             }
         );
 
+        next unless $arrows;
+
         for (my $i = 0; $i < @$arrows; $i++) {
             my $op = $arrows->[$i];
             my $op_next = $op->snext_sibling;
-            next if $op_next->isa("PPI::Token::Word") || $op_next->isa("PPI::Structure::Subscript");
+            next if $op_next->isa("PPI::Token::Word") || $op_next->isa("PPI::Structure::Subscript") || $op_next->isa("PPI::Structure::List");
+
+            # Weird case from PPI. Consider this code:
+            #     $a = $b ? $o->foo : 1;
+            # The "foo :" part is parsed as one token. Which is wrong.
+            # Luckly it does not remove positive responoses if we exclude those here.
+            next if $op_next->isa("PPI::Token::Label");
+
             my $ln = $op->line_number;
             $hits{$ln} = 1;
         }
 
         if (%hits) {
+            print "$file\n----\n";
             my $line_number = 0;
             open my $fh, "<", $file;
             while(my $line = <$fh>) {

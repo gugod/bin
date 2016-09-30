@@ -11,8 +11,7 @@ for (@ARGV) {
     my $files = File::Next::files($_);
     while ( defined ( my $file = $files->() ) ) {
         my %hits;
-
-        my $doc = PPI::Document->new($file);
+        my $doc = PPI::Document->new($file) or next;
         $doc->index_locations;
 
         my $arrows = $doc->find(
@@ -21,9 +20,7 @@ for (@ARGV) {
                 return ($op->isa("PPI::Token::Operator") &&
                         $op->content eq '->')
             }
-        );
-
-        next unless $arrows;
+        ) or next;
 
         for (my $i = 0; $i < @$arrows; $i++) {
             my $op = $arrows->[$i];
@@ -41,13 +38,12 @@ for (@ARGV) {
         }
 
         if (%hits) {
-            print "$file\n----\n";
             my $line_number = 0;
             open my $fh, "<", $file;
             while(my $line = <$fh>) {
                 $line_number++;
                 if ($hits{$line_number}) {
-                    print "${line_number}:\t${line}";
+                    print "${file}:${line_number}:${line}";
                 }
             }
             close($fh);

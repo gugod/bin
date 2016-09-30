@@ -1,0 +1,46 @@
+#!/usr/bin/env perl
+use v5.18;
+
+use PPI;
+use PPI::Document;
+use File::Next;
+
+use Getopt::Long;
+
+for (@ARGV) {
+    my $files = File::Next::files($_);
+    while ( defined ( my $file = $files->() ) ) {
+        my %hits;
+
+        my $doc = PPI::Document->new($file);
+        $doc->index_locations;
+
+        my $arrows = $doc->find(
+            sub {
+                my $op = $_[1];
+                return ($op->isa("PPI::Token::Operator") &&
+                        $op->content eq '->')
+            }
+        );
+
+        for (my $i = 0; $i < @$arrows; $i++) {
+            my $op = $arrows->[$i];
+            my $op_next = $op->snext_sibling;
+            next if $op_next->isa("PPI::Token::Word") || $op_next->isa("PPI::Structure::Subscript");
+            my $ln = $op->line_number;
+            $hits{$ln} = 1;
+        }
+
+        if (%hits) {
+            my $line_number = 0;
+            open my $fh, "<", $file;
+            while(my $line = <$fh>) {
+                $line_number++;
+                if ($hits{$line_number}) {
+                    print "${line_number}:\t${line}";
+                }
+            }
+            close($fh);
+        }
+    }
+}

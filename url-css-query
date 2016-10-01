@@ -3,7 +3,7 @@ use v5.14;
 
 use Mojo::DOM;
 use Mojo::UserAgent;
-use JSON;
+use Mojo::JSON qw(encode_json);
 
 my ($url, $query, $out) = @ARGV;
 die "Need url and query" unless $url && $query;

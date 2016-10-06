@@ -49,7 +49,7 @@ for (@ARGV) {
         }
 
         if (%matched) {
-            print "$file\n----\n";
+            print "\n$file\n----\n";
             my $line_number = 0;
             open my $fh, "<", $file;
             while (my $line = <$fh>) {

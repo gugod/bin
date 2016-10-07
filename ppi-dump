@@ -4,6 +4,25 @@ use strict;
 use PPI;
 use PPI::Dumper;
 
-my $code = shift or die "No code ?";
+use Getopt::Std;
 
-PPI::Dumper->new( PPI::Document->new( -f $code ? $code : \$code ) )->print;
+my %opts;
+getopts('e:',\%opts);
+
+my $code;
+if ( exists $opts{e} ) {
+    $code = \"$opts{e}";
+} else {
+    $code = shift(@ARGV);
+    if (!defined($code)) {
+        die <<USAGE;
+Usage:
+
+   $0 file.pl
+   $0 -e '... perl code ...'
+
+USAGE
+    }
+}
+
+PPI::Dumper->new( PPI::Document->new( $code ) )->print;

@@ -1,0 +1,83 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use bytes;
+
+sub minmax {
+    my @n = @_;
+    my ($min, $max) = @n[0,0];
+    for (my $i = 1 ; $i < @n; $i++) {
+        $min = $n[$i] if $min > $n[$i];
+        $max = $n[$i] if $max < $n[$i];
+    }
+    return ($min, $max);
+}
+
+sub digits {
+    my ($n) = @_;
+    return 1 + int(log($n) / log(10));
+}
+
+sub main {
+    my $files = $_[0];
+
+    my (@numbers, @fail_multi_number, @fail_no_number);
+    for my $fn (@$files) {
+        my @n = $fn =~ /([0-9]+)/g;
+        if (@n == 0) {
+            push @fail_no_number, $fn;
+        } elsif (@n > 1) {
+            push @fail_multi_number, $fn;
+        } else {
+            push @numbers, [$fn, $n[0]];
+        }
+    }
+
+    if (@fail_multi_number) {
+        die join("",
+                 "These files have multiple numbers in them:\n\n    - ",
+                 join("\n    -", @fail_multi_number),
+                 "\n",
+                 "I cannot re-number them without breaking something.\n",
+                 "Please only feed me files with names containing a signle number.\n\n",
+                 "OKTHXBYE\n"
+             );
+    }
+    if (@fail_no_number) {
+        die join("",
+                 "These files have no numbers in them:\n\n    - ",
+                 join("\n    -", @fail_no_number),
+                 "\n",
+                 "Please only feed me files with names containing a signle number.\n\n",
+                 "OKTHXBYE\n"
+             );
+    }
+
+    my ($min, $max) = minmax(map { $_->[1] } @numbers);
+    my $max_digits = digits($max);
+    say "$min - $max : " . digits($min) . " - " . digits($max) ;
+    my $fmt = "%0" . (1+digits($max)) . "d"; # eg, "%05d" or "%08d"
+    my @plan;
+    for (@numbers) {
+        my ($fn, $number) = @$_;
+        push @plan, [
+            $fn,
+            $number,
+            sprintf($fmt, $number)
+        ]
+    }
+
+    for (@plan) {
+        my ($fn, $old_num, $new_num) = @$_;
+        my $fn2 = $fn;
+        substr($fn2, index($fn, $old_num), bytes::length($old_num)) = $new_num;
+
+        if (-e $fn2) {
+            die "About to rename from $fn to $fn2\nHowever $fn2 already exists. abort\n";
+        } else {
+            rename($fn, $fn2) or die "Failed to rename from $fn to $fn2\n";
+        }
+    }
+}
+main(\@ARGV);

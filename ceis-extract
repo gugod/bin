@@ -25,5 +25,5 @@ for (@ARGV) {
         wanted  => $opts->{q}
     );
 
-    say for $extractor->sentences;
+    say $extractor->fulltext;
 }

@@ -5,7 +5,7 @@ package Ceis::Extractor {
     use Moose;
     use Mojo::DOM;
     use List::MoreUtils qw(natatime);
-    use WWW::Mechanize::Cached;
+    use WWW::Mechanize;
     use CHI;
 
     has url => (
@@ -52,7 +52,7 @@ package Ceis::Extractor {
     };
 
     sub _build_ua {
-        state $ua = WWW::Mechanize::Cached->new;
+        state $ua = WWW::Mechanize->new;
 
         return $ua;
     }

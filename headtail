@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+my $number = 1;
+for(@ARGV) {
+    if (/^ \-([0-9]+) $/x) {
+        $number = $1;
+    }
+}
+
+my $cir_tail = -1;
+my $cir_length = $number;
+my @cir_array;
+
+print ">> head -$number\n";
+my $head_count = 0;
+while (<STDIN>) {
+    $cir_tail = ($cir_tail + 1) % $cir_length;
+    $cir_array[ $cir_tail ] = $_;
+
+    if ($head_count++ < $number) {
+        print;
+    }
+}
+
+print "\n>> tail -$number\n";
+
+my $j = ($cir_tail + 1) % $cir_length;
+for (my $i = 0; $i < $cir_length; $i++) {
+    print $cir_array[ $j ];
+    $j = ($j + 1) % $cir_length;
+}

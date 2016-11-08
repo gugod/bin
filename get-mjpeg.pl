@@ -21,7 +21,7 @@ sub on_mime_part {
 local $|;
 
 my $url = shift(@ARGV) or die;
-my ($boundary, $boundry_line);
+my ($boundary, $boundary_line);
 my $response_content = "";
 my $response_part = "";
 
@@ -73,8 +73,7 @@ $ua->get(
                 }
             }
         } else {
-            say "Ok, what's going on...: boundary=<$boundary>";
-            say "<" . substr($response_content, 0, length($boundary)*2) . ">";
+            die "Missing mime boundary <$boundary>\n" . "--\n" . (substr($response_content, 0, 140) =~ s/\P{ascii}/./r) . "--\n";
         }
         return 1;
 });

@@ -3,9 +3,8 @@
 use v5.18;
 use strict;
 
-use Sereal qw(encode_sereal decode_sereal);
-use Text::CSV;
-use Time::Moment;
+use JSON::PP;
+use Text::CSV_PP;
 use Getopt::Long qw(GetOptions);
 
 binmode STDOUT, ":utf8";
@@ -30,17 +29,17 @@ if ($opts{track}) {
 	open $fh, "<", $opts{track};
 	local $/ = undef;
 	my $content = <$fh>;
-	$track = decode_sereal($content);
+	$track = JSON::PP->new->utf8->decode($content);
 	close($fh);
     }
 }
 
-my $csv = Text::CSV->new({
+my $csv = Text::CSV_PP->new({
     sep_char => $opts{tsv} ? "\t" : $opts{delimiter},
     binary => "auto"
 });
 
-my $now = Time::Moment->now;;
+my $now = time;
 while (my $row = $csv->getline(\*STDIN)) {
     my $pk;
     $pk = $row->[ $opts{pk} ] if defined($opts{pk});
@@ -59,6 +58,6 @@ while (my $row = $csv->getline(\*STDIN)) {
 if ($track) {
     my $fh;
     open $fh, ">", $opts{track};
-    print $fh encode_sereal($track);
+    print $fh JSON::PP->new->utf8->encode($track);
     close($fh);
 }

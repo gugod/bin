@@ -1,0 +1,64 @@
+#!/usr/bin/env perl
+
+use v5.18;
+use strict;
+
+use Sereal qw(encode_sereal decode_sereal);
+use Text::CSV;
+use Time::Moment;
+use Getopt::Long qw(GetOptions);
+
+binmode STDOUT, ":utf8";
+
+my %opts;
+GetOptions(
+    \%opts,
+    "e=s",
+    "pk=n",
+    "delimiter=s",
+    "track=s",
+    "tsv",
+);
+
+$opts{delimiter} //= ",";
+
+my $track;
+if ($opts{track}) {
+    $track = {};
+    if (-f $opts{track}) {
+	my $fh;
+	open $fh, "<", $opts{track};
+	local $/ = undef;
+	my $content = <$fh>;
+	$track = decode_sereal($content);
+	close($fh);
+    }
+}
+
+my $csv = Text::CSV->new({
+    sep_char => $opts{tsv} ? "\t" : $opts{delimiter},
+    binary => "auto"
+});
+
+my $now = Time::Moment->now;;
+while (my $row = $csv->getline(\*STDIN)) {
+    my $pk;
+    $pk = $row->[ $opts{pk} ] if defined($opts{pk});
+    if ($opts{e}) {
+	local $_ = $row;
+	eval "$opts{e}; 1" or do { warn $@ };
+    }
+    if ($track && defined($pk)) {
+	unless (exists($track->{$pk})) {
+	    $track->{$pk}{first_seen} = $now;
+	}
+	$track->{$pk}{last_seen} = $now;
+    }
+}
+
+if ($track) {
+    my $fh;
+    open $fh, ">", $opts{track};
+    print $fh encode_sereal($track);
+    close($fh);
+}

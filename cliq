@@ -10,6 +10,7 @@ use JSON;
 my %opts;
 GetOptions(
     \%opts,
+    "e=s",
     "base-uri=s"
 );
 
@@ -55,5 +56,14 @@ $dom->find($selector)->each(
 	    $doc->{href} = URI->new_abs($doc->{attrs}{href}, $base_uri)->as_string;
 	}
 
-        print $json_encoder->encode($doc), "\n";
+	if (defined($opts{e})) {
+	    local $_ = $doc;
+	    my $r = eval "$opts{e}";
+	    $doc = $r;
+	}
+	if (ref($doc)) {
+	    print $json_encoder->encode($doc), "\n";
+	} else {
+	    print "$doc\n";
+	}
 });

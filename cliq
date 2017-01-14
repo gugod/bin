@@ -2,18 +2,28 @@
 use strict;
 use warnings;
 use Encode qw(decode_utf8);
+use Getopt::Long qw(GetOptions);
 use LWP::UserAgent;
 use Mojo::DOM;
+use JSON;
+
+my %opts;
+GetOptions(
+    \%opts,
+    "base-uri=s"
+);
+
 
 my ($url, $selector) = @ARGV;
 die "Usage: $0 url css-selecotr" unless $url && $selector;
 
 binmode STDOUT, ":utf8";
-
+my $base_uri;
 my $content;
 if ($url eq "-") {
     local $/ = undef;
     $content = decode_utf8(<STDIN>);
+    $base_uri = $opts{'base-uri'};
 } else {
     my $ua = LWP::UserAgent->new;
     my $response = $ua->get($url);
@@ -22,8 +32,11 @@ if ($url eq "-") {
     die "The response is not HTML" unless $response->header("Content-Type") =~ m{^text/html\s*(;|$)};
 
     $content = $response->decoded_content;
+    $base_uri = $url;
 }
 
+
+my $json_encoder = JSON->new->canonical;
 my $dom = Mojo::DOM->new;
 $dom->parse($content);
 
@@ -31,11 +44,16 @@ $dom->find($selector)->each(
     sub {
         my $el = shift;
         my $attrs = $el->attr;
-        print $el->type . ":\n";
-        for (keys %$attrs) {
-            print "  " . $_ . ": " . $attrs->{$_} . "\n";
-        }
-        print "  # " . $el->text;
+	my $doc = {};
 
-        print "\n\n";
+	$doc->{text} = $el->text;
+        for (keys %$attrs) {
+	    $doc->{attrs}{$_} = "". $attrs->{$_};
+        }
+
+	if (defined($doc->{attrs}{href}) && $base_uri) {
+	    $doc->{href} = URI->new_abs($doc->{attrs}{href}, $base_uri)->as_string;
+	}
+
+        print $json_encoder->encode($doc), "\n";
 });

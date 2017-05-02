@@ -19,45 +19,23 @@ $args{group_order_by} //= "length";
 
 my $input_dir = $args{i} or die "No input dir: -i <input_dir>";
 
+sub load_sereal {
+    my ($file) = @_;
+
+    my $content = do {
+        local $/ = undef;
+        open my $fh, "<", $file;
+        <$fh>;
+    };
+
+    my $srl_decoder = Sereal::Decoder->new;
+    return $srl_decoder->decode($content);
+}
+
 sub t2d {
     my ($t) = @_;
     my ($dd,$mm,$yyyy) = (localtime($t))[3,4,5];
     return sprintf('%04d-%02d-%02d', ($yyyy+1900), ($mm+1), $dd);
-}
-
-my $srl_decoder = Sereal::Decoder->new;
-
-my $yesterday = t2d(time - 86400);
-my $f = "${input_dir}/twitter-timeline-daily-${yesterday}.srl";
-
-unless (-f $f) {
-    say "Cannot find tweets from yesterday: $f";
-    exit(0);
-}
-
-my $content = do {
-    local $/ = undef;
-    open my $fh, "<", $f;
-    <$fh>;
-};
-
-my $mail_body;
-
-my $tweets = $srl_decoder->decode($content);
-
-my %group;
-
-if (defined(my $group_field = $args{group})) {
-    for my $tweet (@$tweets) {
-        my $g = $tweet->{$group_field};
-        push @{$group{$g}}, $tweet;
-    }
-} else {
-    for my $tweet (@$tweets) {
-        my @t = localtime($tweet->{created_at});
-        my $g = $t[2];          # hour of the day
-        push @{$group{$g}}, $tweet;
-    }
 }
 
 sub group_sorted_by {
@@ -76,6 +54,48 @@ sub group_sorted_by_length {
     return sort { @{$groups->{$a}} <=> @{$groups->{$b}} } keys %$groups;
 }
 
+my $today = t2d(time);
+my $yesterday = t2d(time - 86400);
+
+my $f = "${input_dir}/twitter-timeline-daily-${yesterday}.srl";
+
+unless (-f $f) {
+    say "Cannot find tweets from yesterday: $f";
+    exit(0);
+}
+
+my $f_users = "${input_dir}/twitter-timeline-daily-users-${today}.srl";
+
+my $tweets = load_sereal($f);
+my $users  = (-f $f_users) ? load_sereal($f_users) : {};
+
+for my $tweet (@$tweets) {
+    my $user = $users->{ $tweet->{"user.id"} };
+    if ($user) {
+        $tweet->{"user.name"}        = $user->{name};
+        $tweet->{"user.screen_name"} = "@" . $user->{screen_name};
+    } else {
+        $tweet->{"user.name"}        = "id:" . $tweet->{"user.id"};
+        $tweet->{"user.screen_name"} = "id:" . $tweet->{"user.id"};
+    }
+}
+
+my %group;
+
+if (defined(my $group_field = $args{group})) {
+    for my $tweet (@$tweets) {
+        my $g = $tweet->{$group_field};
+        push @{$group{$g}}, $tweet;
+    }
+} else {
+    for my $tweet (@$tweets) {
+        my @t = localtime($tweet->{created_at});
+        my $g = $t[2];          # hour of the day
+        push @{$group{$g}}, $tweet;
+    }
+}
+
+my $mail_body;
 for my $group_name (group_sorted_by($args{"group_order_by"}, \%group)) {
     $mail_body .= "# $group_name\n\n";
 

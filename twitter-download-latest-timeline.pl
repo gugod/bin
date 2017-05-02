@@ -17,6 +17,7 @@ my $t = Net::Twitter->new( traits   => ['API::RESTv1_1'], %$config );
 
 my $statuses = $t->home_timeline({ count => 400 });
 my @keep;
+my %users;
 
 my $datetime_parser = DateTime::Format::Strptime->new(pattern => '%a %b %d %T %z %Y');
 
@@ -28,10 +29,16 @@ for (@$statuses) {
     );
     @s{@fields} = @{$_}{@fields};
     push @keep, \%s;
+
+    $users{ $_->{user}{id} } //= $_->{user};
 }
 
 my $srl = Sereal::Encoder->new();
 my $ts = time;
 open my $fh, ">", "${output_dir}/twitter-timeline-${ts}.srl";
 print $fh "". $srl->encode(\@keep);
+close($fh);
+
+open my $fh, ">", "${output_dir}/twitter-timeline-users-${ts}.srl";
+print $fh "". $srl->encode(\%users);
 close($fh);

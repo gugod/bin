@@ -32,6 +32,15 @@ sub load_sereal {
     return $srl_decoder->decode($content);
 }
 
+sub trim_tweet_text {
+    my $txt = ($_[0] =~ s/\n/\n  /grs);
+    $txt =~ s/\n+\z//;
+    if ( length($txt) > 70 || index($txt,"\n") >= 0 ) {
+        $txt .= "\n";
+    }
+    return $txt;
+}
+
 sub t2d {
     my ($t) = @_;
     my ($dd,$mm,$yyyy) = (localtime($t))[3,4,5];
@@ -95,20 +104,31 @@ if (defined(my $group_field = $args{group})) {
     }
 }
 
-my $mail_body;
-for my $group_name (group_sorted_by($args{"group_order_by"}, \%group)) {
-    $mail_body .= "# $group_name\n\n";
+my @group_names = group_sorted_by($args{"group_order_by"}, \%group);
+my $mail_body = "";
 
-    for my $tweet (sort { $a->{created_at} <=> $b->{created_at} } @{$group{$group_name}}) {
-        my $txt = ($tweet->{text} =~ s/\n/\n  /grs);
-        $txt =~ s/\n+\z//;
+for my $group_name (@group_names) {
+    my $group_body = "";
 
-        if ( length($txt) > 70 || index($txt,"\n") >= 0 ) {
-            $txt .= "\n";
+    if (@{$group{$group_name}} == 1) {
+        my $tweet = $group{$group_name}->[0];
+        my $txt = trim_tweet_text($tweet->{text});
+        $group_body = "- $group_name: $txt\n";
+    } else {
+        $group_body = "# $group_name\n\n";
+    
+        for my $tweet (sort { $a->{created_at} <=> $b->{created_at} } @{$group{$group_name}}) {
+            my $txt = ($tweet->{text} =~ s/\n/\n  /grs);
+            $txt =~ s/\n+\z//;
+
+            if ( length($txt) > 70 || index($txt,"\n") >= 0 ) {
+                $txt .= "\n";
+            }
+            $group_body .= "- $txt\n";
         }
-        $mail_body .= "- $txt\n";
     }
-    $mail_body .= "\n";
+    $mail_body .= $group_body;
+
 }
 
 say encode_utf8($mail_body);

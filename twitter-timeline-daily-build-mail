@@ -2,15 +2,19 @@
 use v5.18;
 
 use Getopt::Long;
+use DateTime;
+use DateTime::Format::Strptime;
 
 use Encode qw(encode_utf8);
 use Sereal::Decoder;
+use Scalar::Util qw(looks_like_number);
 
 my %args;
 GetOptions(
     \%args,
     "i=s",
     "o=s",
+    "filter=s",
     "group=s",
     "group_order_by=s",
 );
@@ -67,6 +71,7 @@ sub group_sorted_by_length {
     return sort { @{$groups->{$a}} <=> @{$groups->{$b}} } keys %$groups;
 }
 
+my $datetime_parser = DateTime::Format::Strptime->new(pattern => '%a %b %d %T %z %Y');
 my $today = t2d(time);
 my $yesterday = t2d(time - 86400);
 
@@ -76,6 +81,8 @@ unless (-f $f) {
     say "Cannot find tweets from yesterday: $f";
     exit(0);
 }
+
+my ($filter_field, $filter_value) = split("=", ($args{filter} // ""), 2);
 
 my $f_users = "${input_dir}/twitter-timeline-daily-users-${today}.srl";
 
@@ -94,8 +101,12 @@ for my $tweet (@$tweets) {
         $tweet->{"user.screen_name"} = "id:" . $user_id;
     }
 
-    my @t = localtime($tweet->{created_at});
-    $tweet->{"_time.hour"} = sprintf '%02d', $t[2];
+    if (looks_like_number($tweet->{created_at})) {
+        $tweet->{"_time"} = DateTime->from_epoch( epoch => $tweet->{created_at} );
+    } else {
+        $tweet->{"_time"} = $datetime_parser->parse_datetime($tweet->{created_at});
+    }
+    $tweet->{"_time.hour"} = $tweet->{"_time"}->hour;
 
     $tweet_frequency{user}{ $user_id }++;
 }
@@ -111,6 +122,8 @@ for my $tweet (@$tweets) {
 for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_tweet_frequency", "user._log3_tweet_frequency") {
     my %partition;
     for my $tweet (@$tweets) {
+        next unless !$filter_field || $tweet->{$filter_field} eq $filter_value;
+
         my $g = $tweet->{$partition_field};
         push @{$partition{$g}}, $tweet;
     }
@@ -125,7 +138,11 @@ for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_
             }
 
             my @group_names = group_sorted_by($args{"group_order_by"}, \%group);
-            my $mail_body = "# $partition_field: $partition_value\n";
+            my $mail_body = "# $partition_field: $partition_value";
+            if ($filter_field) {
+                $mail_body .= " [$filter_field = $filter_value]";
+            }
+            $mail_body .= "\n";
 
             for my $group_name (@group_names) {
                 my $group_body = "\n## $group_name\n\n";
@@ -138,10 +155,9 @@ for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_
             }
 
             $partition_value =~ s/ /_/g;
-            open my $fh, ">", "${output_dir}/${yesterday}-${partition_field}-${partition_value}.md";
+            open my $fh, ">", "${output_dir}/${yesterday}". ($filter_field && "-${filter_field}=${filter_value}") . "-${partition_field}-${partition_value}.md";
             print $fh encode_utf8($mail_body);
             close $fh;
         }
     }
 }
-

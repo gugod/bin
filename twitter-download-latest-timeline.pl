@@ -34,22 +34,13 @@ while (my $tweet = shift @source) {
         next;
     }
 
-    my %s = (
-        'user.id' => $tweet->{user}{id},
-        'created_at' => $datetime_parser->parse_datetime($tweet->{created_at})->epoch
-    );
+    my $user = delete $tweet->{user};
 
-    for my $field (@fields) {
-        if (defined($tweet->{$field})) {
-            $s{$field} = $tweet->{$field};
-        }
-    }
+    $tweet->{"user.id"} = $user->{id};
+    $users{ $user->{id} } //= $user;
 
-    $users{ $tweet->{user}{id} } //= $tweet->{user};
-
-    push @keep, \%s;
+    push @keep, $tweet;
 }
-
 
 my $srl = Sereal::Encoder->new();
 my $ts = time;
@@ -60,8 +51,3 @@ close($fh);
 open $fh, ">", "${output_dir}/twitter-timeline-users-${ts}.srl";
 print $fh "". $srl->encode(\%users);
 close($fh);
-
-open $fh, ">", "${output_dir}/twitter-timeline-FULL-${ts}.srl";
-print $fh "". $srl->encode($statuses);
-close($fh);
-

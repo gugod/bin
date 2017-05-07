@@ -15,7 +15,7 @@ my $config = YAML::LoadFile($config_file);
 
 my $t = Net::Twitter->new( traits   => ['API::RESTv1_1'], %$config );
 
-my $statuses = $t->home_timeline({ count => 400 });
+my $statuses = $t->home_timeline({ count => 200 });
 my @keep;
 my %users;
 my %seen;

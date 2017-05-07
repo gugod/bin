@@ -81,22 +81,34 @@ my $f_users = "${input_dir}/twitter-timeline-daily-users-${today}.srl";
 
 my $tweets = load_sereal($f);
 my $users  = (-f $f_users) ? load_sereal($f_users) : {};
+my %tweet_frequency;
 
 for my $tweet (@$tweets) {
-    my $user = $users->{ $tweet->{"user.id"} };
+    my $user_id = $tweet->{"user.id"};
+    my $user = $users->{ $user_id };
     if ($user) {
         $tweet->{"user.name"}        = $user->{name};
         $tweet->{"user.screen_name"} = "@" . $user->{screen_name};
     } else {
-        $tweet->{"user.name"}        = "id:" . $tweet->{"user.id"};
-        $tweet->{"user.screen_name"} = "id:" . $tweet->{"user.id"};
+        $tweet->{"user.name"}        = "id:" . $user_id;
+        $tweet->{"user.screen_name"} = "id:" . $user_id;
     }
 
     my @t = localtime($tweet->{created_at});
-    $tweet->{"_time.hour"} = sprintf '%02d hour', $t[2];
+    $tweet->{"_time.hour"} = sprintf '%02d', $t[2];
+
+    $tweet_frequency{user}{ $user_id }++;
 }
 
-for my $partition_field ("_time.hour") {
+for my $tweet (@$tweets) {
+    my $user_id = $tweet->{"user.id"};
+    $tweet->{"user._tweet_frequency"} = $tweet_frequency{user}{$user_id};
+    $tweet->{"user._log_tweet_frequency"} = int( log($tweet_frequency{user}{$user_id}) );
+    $tweet->{"user._log2_tweet_frequency"} = int( log($tweet_frequency{user}{$user_id})/log(2) );
+    $tweet->{"user._log3_tweet_frequency"} = int( log($tweet_frequency{user}{$user_id})/log(3) );
+}
+
+for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_tweet_frequency", "user._log3_tweet_frequency") {
     my %partition;
     for my $tweet (@$tweets) {
         my $g = $tweet->{$partition_field};
@@ -113,7 +125,7 @@ for my $partition_field ("_time.hour") {
             }
 
             my @group_names = group_sorted_by($args{"group_order_by"}, \%group);
-            my $mail_body = "# $partition_value\n";
+            my $mail_body = "# $partition_field: $partition_value\n";
 
             for my $group_name (@group_names) {
                 my $group_body = "\n## $group_name\n\n";
@@ -126,8 +138,7 @@ for my $partition_field ("_time.hour") {
             }
 
             $partition_value =~ s/ /_/g;
-            mkdir("${output_dir}/${yesterday}");
-            open my $fh, ">", "${output_dir}/${yesterday}/${partition_field}-${partition_value}.md";
+            open my $fh, ">", "${output_dir}/${yesterday}-${partition_field}-${partition_value}.md";
             print $fh encode_utf8($mail_body);
             close $fh;
         }

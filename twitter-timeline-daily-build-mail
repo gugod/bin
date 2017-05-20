@@ -72,6 +72,25 @@ sub group_sorted_by_length {
     return sort { @{$groups->{$a}} <=> @{$groups->{$b}} } keys %$groups;
 }
 
+sub generate_mail_conversation {
+    my ($self, $threads) = @_;
+
+    my $tweet_idx = $self->{tweet_idx_by_id};
+
+    # Subject: Conversations
+    my $mail_body = "# Conversations\n\n";
+    for my $thread (@$threads) {
+        my @thread_tweets = sort { $a->{_time} <=> $b->{_time} } map { $tweet_idx->{$_} } uniq(@$thread);
+        my @authors = map { $_->{"user.screen_name"} } @thread_tweets;
+        $mail_body .= "+++ " . join(", ", uniq(@authors)) . "\n\n";
+        for my $tweet (@thread_tweets) {
+            $mail_body .= $tweet->{"user.screen_name"} . "> " . trim_tweet_text($tweet->{text}) . "\n";
+        }
+        $mail_body .= "\n---\n\n";
+    }
+    return $mail_body;
+}
+
 my $datetime_parser = DateTime::Format::Strptime->new(pattern => '%a %b %d %T %z %Y');
 my $today = t2d(time);
 my $yesterday = t2d(time - 86400);
@@ -147,20 +166,12 @@ for my $tweet (@$tweets) {
     }
 }
 
-# Subject: Conversations
-my $mail_body = "# Conversations\n\n";
-for my $thread (@threads) {
-    my @thread_tweets = map { $tweet_idx_by_id{$_} } uniq(@$thread);
-    my @authors = map { $_->{"user.screen_name"} } @thread_tweets;
-    $mail_body .= "+++ " . join(", ", uniq(@authors)) . "\n\n";
-    for my $tweet (@thread_tweets) {
-        $mail_body .= $tweet->{"user.screen_name"} . "> " . trim_tweet_text($tweet->{text}) . "\n";
-    }
-    $mail_body .= "\n---\n\n";
-}
+
+my $mail_body = generate_mail_conversation({ tweet_idx_by_id => \%tweet_idx_by_id }, \@threads);
 open my $fh, ">", "${output_dir}/${yesterday}-conversations.md";
 print $fh encode_utf8($mail_body);
-close $fh;
+close $fh;    
+
 
 # Non-conversation groups
 for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_tweet_frequency", "user._log3_tweet_frequency") {
@@ -206,3 +217,4 @@ for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_
         }
     }
 }
+

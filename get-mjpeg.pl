@@ -6,7 +6,7 @@ use warnings;
 use Carp::Always;
 
 use constant CRLF => "\015\012";
-my $CRLF = CRLF();
+my $CRLF = CRLF;
 
 use Time::HiRes ();
 use Data::Dumper qw(Dumper);
@@ -28,7 +28,9 @@ sub extract_one_part_maybe {
     my ($response_content, $boundary, $output_dir) = @_;
     my $error;
 
-    if ($response_content =~ /\A\s*$boundary/x) {
+    $response_content =~ s/\A(${CRLF})+//;
+    if ($response_content =~ /\A$boundary/x) {
+        my $length_delimiter = length("${CRLF}${CRLF}");
         my $head_pos = index($response_content, "${CRLF}${CRLF}");
         my $head = substr($response_content, length($boundary), $head_pos - length($boundary));
         my @headers = map { split(/:\s*/, $_, 2) } split(/${CRLF}/, $head);
@@ -49,13 +51,10 @@ sub extract_one_part_maybe {
             }
         }
 
-        if (length($response_content) >= length($boundary) + length($head) + 4 + $content_length) {
-            my $part = substr($response_content, $head_pos + 4, $content_length);
+        if (length($response_content) >= length($boundary) + length($head) + $length_delimiter + $content_length) {
+            my $part = substr($response_content, $head_pos + $length_delimiter, $content_length);
             on_mime_part($content_type, $content_length, $part, $output_dir);
-            substr($response_content, 0, $head_pos + 4 + $content_length) = "";
-            while (index($response_content, $CRLF) == 0) {
-                substr($response_content, 0, length($CRLF)) = "";
-            }
+            substr($response_content, 0, $head_pos + $length_delimiter + $content_length) = "";
         }
     } else {
         $error = "Missing mime boundary <$boundary>\n" . (substr($response_content, 0, 140) =~ s/\P{ascii}/./r) . "--\n";
@@ -87,6 +86,7 @@ unless (-d $output_dir) {
 
 my $ua = LWP::UserAgent->new(
     timeout => 60,
+    agent => 'Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0',
 );
 
 $ua->add_handler(
@@ -120,7 +120,3 @@ my $died = $res->header("X-Died");
 if ($died) {
     say "ERR: $died";
 }
-
-__END__
-
-DEBUG: http://210.241.63.120/abs2mjpg/bmjpg?camera=264&1497299198151

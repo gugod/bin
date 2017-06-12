@@ -9,21 +9,38 @@ use Time::HiRes ();
 use Data::Dumper qw(Dumper);
 use LWP::UserAgent;
 use File::Slurp qw(write_file);
+use File::Path qw(make_path);
+use File::Spec;
+use Getopt::Long qw(GetOptions);
 
 sub on_mime_part {
-    my ($content_type, $content_length, $part) = @_;
+    my ($content_type, $content_length, $part, $output_dir) = @_;
     my $t = int(1000*Time::HiRes::time());
-    my $ofh ="/tmp/img-${t}.jpg";
+    my $ofh = File::Spec->catfile($output_dir, "img-${t}.jpg");
     write_file($ofh, $part);
     say "$ofh <= $content_type $content_length";
 }
 
 local $|;
 
+my %opts;
+GetOptios(
+    \%opts,
+    "o|output=s",
+);
+
 my $url = shift(@ARGV) or die;
 my ($boundary, $boundary_line);
 my $response_content = "";
 my $response_part = "";
+my $output_dir = $opts{o} // $opts{output};
+
+unless (-d $output_dir) {
+    if (-e $output_dir) {
+        die "ERROR: The path $output_dir already exists and it is not a directory.";
+    }
+    make_path($output_dir);
+}
 
 my $ua = LWP::UserAgent->new;
 $ua->add_handler(

@@ -68,7 +68,7 @@ $ua->add_handler(
 
         $response_content .= $chunk;
 
-        if ($response_content =~ /\A\s+${boundary_line}/x) {
+        if ($response_content =~ /\A\s*${boundary_line}/x) {
             my $head_pos = index($response_content, "${CRLF}${CRLF}");
             my $head = substr($response_content, length($boundary_line), $head_pos - length($boundary_line));
             my @headers = map { split(/:\s*/, $_, 2) } split(/${CRLF}/, $head);
@@ -98,14 +98,14 @@ $ua->add_handler(
                 }
             }
         } else {
-            die "Missing mime boundary <$boundary>\n" . "--\n" . (substr($response_content, 0, 140) =~ s/\P{ascii}/./r) . "--\n";
+            die "Missing mime boundary <$boundary>\n" . (substr($response_content, 0, 140) =~ s/\P{ascii}/./r) . "--\n";
         }
 
         return 1;
     }
 );
 my $res = $ua->get($url);
-my $died = $res->headers("X-Died");
+my $died = $res->header("X-Died");
 if ($died) {
     say "ERR: $died";
 }

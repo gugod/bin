@@ -32,29 +32,44 @@ sub extract_one_part_maybe {
     if ($response_content =~ /\A$boundary/x) {
         my $length_delimiter = length("${CRLF}${CRLF}");
         my $head_pos = index($response_content, "${CRLF}${CRLF}");
-        my $head = substr($response_content, length($boundary), $head_pos - length($boundary));
-        my @headers = map { split(/:\s*/, $_, 2) } split(/${CRLF}/, $head);
+        if ($head_pos > 0) {
+            my $head = substr($response_content, length($boundary), $head_pos - length($boundary));
+            my @headers = map { split(/:\s*/, $_, 2) } split(/${CRLF}/, $head);
 
-        if (@headers % 2 == 1 && $headers[0] =~ /\A--/) {
-            shift @headers;
-        }
-
-        my ($content_type, $content_length);
-        for (my $i = 0; $i < @headers; $i += 2) {
-            my $field = lc($headers[$i]);
-            my $value = $headers[$i+1];
-            if ( (!defined($content_type)) && ($field eq 'content-type') ) {
-                $content_type = $value;
+            if (@headers % 2 == 1 && $headers[0] =~ /\A--/) {
+                shift @headers;
             }
-            if ( (!defined($content_length)) && ($field eq 'content-length') ) {
-                $content_length = $value;
-            }
-        }
 
-        if (length($response_content) >= length($boundary) + length($head) + $length_delimiter + $content_length) {
-            my $part = substr($response_content, $head_pos + $length_delimiter, $content_length);
-            on_mime_part($content_type, $content_length, $part, $output_dir);
-            substr($response_content, 0, $head_pos + $length_delimiter + $content_length) = "";
+            my ($content_type, $content_length);
+            for (my $i = 0; $i < @headers; $i += 2) {
+                my $field = lc($headers[$i]);
+                my $value = $headers[$i+1];
+                if ( (!defined($content_type)) && ($field eq 'content-type') ) {
+                    $content_type = $value;
+                }
+                if ( (!defined($content_length)) && ($field eq 'content-length') ) {
+                    $content_length = $value;
+                }
+            }
+
+            if (defined($content_type)) {
+                if (defined($content_length)) {
+                    if (length($response_content) >= length($boundary) + length($head) + $length_delimiter + $content_length) {
+                        my $part = substr($response_content, $head_pos + $length_delimiter, $content_length);
+                        on_mime_part($content_type, $content_length, $part, $output_dir);
+                        substr($response_content, 0, $head_pos + $length_delimiter + $content_length) = "";
+                    }
+                } else {
+                    my $headless_response_content = substr($response_content, $head_pos + $length_delimiter);
+                    my @parts = split(/\Q$boundary\E/, $headless_response_content, 2);
+                    if (@parts == 2) {
+                        my $part = $parts[0];
+                        $response_content = $boundary . $parts[1];
+                        $part =~ s/(${CRLF})+\z//;
+                        on_mime_part($content_type, length($part), $part, $output_dir);
+                    }
+                }
+            }
         }
     } else {
         $error = "Missing mime boundary <$boundary>\n" . (substr($response_content, 0, 140) =~ s/\P{ascii}/./r) . "--\n";
@@ -108,6 +123,7 @@ $ua->add_handler(
 
         $response_content .= $chunk;
 
+        # say "Length: " . length($response_content);
         ($response_content, my $error) = extract_one_part_maybe($response_content, $boundary, $output_dir);
         if ($error) {
             die $error;

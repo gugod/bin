@@ -78,7 +78,61 @@ sub extract_one_part_maybe {
     return ($response_content, $error);
 }
 
-local $|;
+sub MAIN {
+    my ($self) = @_;
+
+    my $url = $self->{args}[0] or die "Requires an URL";
+
+    my $boundary;
+    my $response_content = "";
+    my $response_part = "";
+    my $output_dir = $self->{opts}{o} // $self->{opts}{output};
+
+    unless (-d $output_dir) {
+        if (-e $output_dir) {
+            die "ERROR: The path $output_dir already exists and it is not a directory.";
+        }
+        make_path($output_dir);
+    }
+
+    my $ua = LWP::UserAgent->new(
+        timeout => 60,
+        agent => 'Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0',
+    );
+
+    $ua->add_handler(
+        response_header =>  sub {
+            my ($response, $ua, $h) = @_;
+            die "Non-successful response." unless $response->is_success;
+            my $ct = $response->header("Content-Type");
+            ($boundary) = $ct =~ m{\A multipart/x-mixed-replace; \s* boundary=(.+) \z}x;
+            die "No boundary separator" unless $boundary;
+            if ($boundary !~ /\A--/) {
+                $boundary = "--$boundary";
+            }
+            return 1;
+        }
+    );
+    $ua->add_handler(
+        response_data => sub {
+            my ($response, $ua, $h, $chunk) = @_;
+
+            $response_content .= $chunk;
+
+            # say "Length: " . length($response_content);
+            ($response_content, my $error) = extract_one_part_maybe($response_content, $boundary, $output_dir);
+            if ($error) {
+                die $error;
+            }
+            return 1;
+        }
+    );
+    my $res = $ua->get($url);
+    my $died = $res->header("X-Died");
+    if ($died) {
+        say "ERR: $died";
+    }
+}
 
 my %opts;
 GetOptions(
@@ -86,53 +140,7 @@ GetOptions(
     "o|output=s",
 );
 
-my $url = shift(@ARGV) or die "Requires an URL";
-my $boundary;
-my $response_content = "";
-my $response_part = "";
-my $output_dir = $opts{o} // $opts{output};
-
-unless (-d $output_dir) {
-    if (-e $output_dir) {
-        die "ERROR: The path $output_dir already exists and it is not a directory.";
-    }
-    make_path($output_dir);
-}
-
-my $ua = LWP::UserAgent->new(
-    timeout => 60,
-    agent => 'Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0',
-);
-
-$ua->add_handler(
-    response_header =>  sub {
-        my ($response, $ua, $h) = @_;
-        die "Non-successful response." unless $response->is_success;
-        my $ct = $response->header("Content-Type");
-        ($boundary) = $ct =~ m{\A multipart/x-mixed-replace; \s* boundary=(.+) \z}x;
-        die "No boundary separator" unless $boundary;
-        if ($boundary !~ /\A--/) {
-            $boundary = "--$boundary";
-        }
-        return 1;
-    }
-);
-$ua->add_handler(
-    response_data => sub {
-        my ($response, $ua, $h, $chunk) = @_;
-
-        $response_content .= $chunk;
-
-        # say "Length: " . length($response_content);
-        ($response_content, my $error) = extract_one_part_maybe($response_content, $boundary, $output_dir);
-        if ($error) {
-            die $error;
-        }
-        return 1;
-    }
-);
-my $res = $ua->get($url);
-my $died = $res->header("X-Died");
-if ($died) {
-    say "ERR: $died";
-}
+(bless {
+    opts => \%opts,
+    args => \@ARGV,
+} => __PACKAGE__)->MAIN();

@@ -109,7 +109,7 @@ $ua->add_handler(
         my ($response, $ua, $h) = @_;
         die "Non-successful response." unless $response->is_success;
         my $ct = $response->header("Content-Type");
-        ($boundary) = $ct =~ m{multipart/x-mixed-replace; boundary=(.+)$};
+        ($boundary) = $ct =~ m{\A multipart/x-mixed-replace; \s* boundary=(.+) \z}x;
         die "No boundary separator" unless $boundary;
         if ($boundary !~ /\A--/) {
             $boundary = "--$boundary";

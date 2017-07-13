@@ -9,13 +9,40 @@ use File::Next;
 use PPI::Document;
 use Scalar::Util qw(refaddr);
 
+use constant OP_PRIORITY => do {
+    # perldoc perlop
+
+    my %priority;
+    my $p = 100;
+    $priority{$_} = $p for ('++', '--');
+    $p--;
+
+    $priority{$_} = $p for ('**');
+    $p--;
+
+    $priority{$_} = $p for ('<', '>', '<=', '>=', 'lt', 'gt', 'le', 'ge');
+    $p--;
+
+    $priority{$_} = $p for ('==', '!=', '<=>', 'eq', 'ne', 'cmp', '~~');
+    $p--;
+
+    $priority{$_} = $p for ('&&');
+    $p--;
+
+    $priority{$_} = $p for ('//', '||');
+    $p--;
+
+    \%priority
+};
+
 sub sayit {
     my ($file, $found) = @_;
 
     say "# " . $file . ":" . $found->[0]->line_number;
     say $found->[0]->parent->content;
-    say "Operators: " . join " ... ", map { $_->content } @$found;
-    say "";
+    say "Operators: " . join " ... ", map { $_->content . '('. OP_PRIORITY->{$_->content} . ')' } @$found;
+ 
+   say "";
 }
 
 sub search_and_say {
@@ -24,19 +51,12 @@ sub search_and_say {
     my $doc = PPI::Document->new($file, readonly => 1);
     $doc->index_locations;
 
-    my %wanted = map { ($_ => 1) } (
-        '++', '--', '**',
-        '//', '||', '&&', '<', '>', '<=', '>=',
-        'lt', 'gt', 'le', 'ge', '==', '!=', '<=>',
-        'eq', 'ne', 'cmp', '~~'
-    );
-
     my $tokens = $doc->find(
         sub {
             my ($el) = $_[1];
             return 0 unless $el->significant && $el->isa("PPI::Token::Operator");
             my $op = $el->content();
-            return $wanted{$op};
+            return !!(OP_PRIORITY->{$op});
         }
     ) or return;
 

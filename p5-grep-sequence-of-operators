@@ -13,12 +13,7 @@ use constant OP_PRIORITY => do {
     # perldoc perlop
 
     my %priority;
-    my $p = 100;
-    $priority{$_} = $p for ('++', '--');
-    $p--;
-
-    $priority{$_} = $p for ('**');
-    $p--;
+    my $p = 9;
 
     $priority{$_} = $p for ('<', '>', '<=', '>=', 'lt', 'gt', 'le', 'ge');
     $p--;
@@ -40,8 +35,24 @@ sub sayit {
 
     say "# " . $file . ":" . $found->[0]->line_number;
     say $found->[0]->parent->content;
-    say "Operators: " . join " ... ", map { $_->content . '('. OP_PRIORITY->{$_->content} . ')' } @$found;
- 
+
+    # strings, the best data structure for humanity.
+    my @found_op = map { "". $_->content } @$found;
+
+    say "Operators: " . join " ... ", map { $_ . '('. OP_PRIORITY->{$_} . ')' } @found_op;
+
+    # Special deal for '//' and '||'
+    for (my $i = 1; $i < @found_op; $i++) {
+        my $op = $found_op[$i];
+        my $op_left = $found_op[$i - 1];
+
+        if ($op_left eq '//' || $op_left eq '||') {
+            if (OP_PRIORITY->{$op} > OP_PRIORITY->{$op_left}) {
+                say "WARN: PRIORITY CHAOS DETECTED";
+            }
+        }
+    }
+
    say "";
 }
 
@@ -89,7 +100,3 @@ my $files = File::Next::files({
 while (defined( my $file = $files->())) {
     search_and_say($file);
 }
-
-$a = rand();
-
-say "meh" unless $a // 0 > 0.5;

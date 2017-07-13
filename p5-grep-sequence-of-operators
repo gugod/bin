@@ -60,17 +60,13 @@ sub search_and_say {
         }
     ) or return;
 
-    my @found;
+    my @found = (shift @$tokens);
     for (@$tokens) {
-        if (@found) {
-            if ( refaddr($found[0]->parent) == refaddr($_->parent) ) {
-                push @found, $_;
-            } else {
-                sayit($file, \@found) if @found > 1;
-                @found = ();
-            }
-        } else {
+        if ( refaddr($found[0]->parent) == refaddr($_->parent) ) {
             push @found, $_;
+        } else {
+            sayit($file, \@found) if @found > 1;
+            @found = ($_);
         }
     }
     sayit($file, \@found) if @found > 1;

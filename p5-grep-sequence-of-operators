@@ -15,6 +15,9 @@ use constant OP_PRIORITY => do {
     my %priority;
     my $p = 9;
 
+    $priority{$_} = $p for ('!', '~', "\\");
+    $p--;
+
     $priority{$_} = $p for ('<', '>', '<=', '>=', 'lt', 'gt', 'le', 'ge');
     $p--;
 
@@ -35,7 +38,6 @@ sub sayit {
 
     # strings, the best data structure for humanity.
     my @found_op = map { "". $_->content } @$found;
-
 
     # Special deal for '//' and '||'
     if ($found_op[0] eq '//' || $found_op[0] eq '||') {

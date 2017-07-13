@@ -33,22 +33,21 @@ use constant OP_PRIORITY => do {
 sub sayit {
     my ($file, $found) = @_;
 
-    say "# " . $file . ":" . $found->[0]->line_number;
-    say $found->[0]->parent->content;
-
     # strings, the best data structure for humanity.
     my @found_op = map { "". $_->content } @$found;
 
-    say "Operators: " . join " ... ", map { $_ . '('. OP_PRIORITY->{$_} . ')' } @found_op;
 
     # Special deal for '//' and '||'
     if ($found_op[0] eq '//' || $found_op[0] eq '||') {
         if (OP_PRIORITY->{ $found_op[1] } > OP_PRIORITY->{ $found_op[0] }) {
-            say "WARN: Bad smells of operations here, add parenthesis to disambiguate.";
+            say "# WARN: Bad smells of operations, add parenthesis to disambiguate.";
         }
     }
 
-   say "";
+    say "# " . $file . ":" . $found->[0]->line_number;
+    say $found->[0]->parent->content;
+    say "Operators: " . join " ... ", map { $_ . '('. OP_PRIORITY->{$_} . ')' } @found_op;
+    say "";
 }
 
 sub search_and_say {

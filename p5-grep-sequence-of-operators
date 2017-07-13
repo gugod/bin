@@ -1,0 +1,79 @@
+#!/usr/bin/env perl
+
+use v5.18;
+use strict;
+use warnings;
+
+use File::Spec;
+use File::Next;
+use PPI::Document;
+use Scalar::Util qw(refaddr);
+
+sub sayit {
+    my ($file, $found) = @_;
+
+    say "# " . $file . ":" . $found->[0]->line_number;
+    say $found->[0]->parent->content;
+    say "Operators: " . join " ... ", map { $_->content } @$found;
+    say "";
+}
+
+sub search_and_say {
+    my ($file) = @_;
+
+    my $doc = PPI::Document->new($file, readonly => 1);
+    $doc->index_locations;
+
+    my %wanted = map { ($_ => 1) } (
+        '++', '--', '**',
+        '//', '||', '&&', '<', '>', '<=', '>=',
+        'lt', 'gt', 'le', 'ge', '==', '!=', '<=>',
+        'eq', 'ne', 'cmp', '~~'
+    );
+
+    my $tokens = $doc->find(
+        sub {
+            my ($el) = $_[1];
+            return 0 unless $el->significant && $el->isa("PPI::Token::Operator");
+            my $op = $el->content();
+            return $wanted{$op};
+        }
+    ) or return;
+
+    my @found;
+    for (@$tokens) {
+        if (@found) {
+            if ( refaddr($found[0]->parent) == refaddr($_->parent) ) {
+                push @found, $_;
+            } else {
+                sayit($file, \@found) if @found > 1;
+                @found = ();
+            }
+        } else {
+            push @found, $_;
+        }
+    }
+    sayit($file, \@found) if @found > 1;
+}
+
+my $files = File::Next::files({
+    file_filter => sub {
+        return 1 if /\.p[ml]\z/i;
+        return 0 if !/\A\./i && /\./i;
+
+        my $file = $_;
+        if (open my $fh, '<', $file) {
+            my $line = <$fh>;
+            return 1 if $line =~ m{^#!.*perl};
+        }
+        return 0;
+    }
+}, $ARGV[0] // '.');
+
+while (defined( my $file = $files->())) {
+    search_and_say($file);
+}
+
+$a = rand();
+
+say "meh" unless $a // 0 > 0.5;

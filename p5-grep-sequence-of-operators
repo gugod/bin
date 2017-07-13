@@ -48,7 +48,7 @@ sub sayit {
 
         if ($op_left eq '//' || $op_left eq '||') {
             if (OP_PRIORITY->{$op} > OP_PRIORITY->{$op_left}) {
-                say "WARN: Bad smells of operators here, add parenthesis to disambiguate.";
+                say "WARN: Bad smells of operations here, add parenthesis to disambiguate.";
             }
         }
     }

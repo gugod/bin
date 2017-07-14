@@ -87,7 +87,7 @@ my $files = File::Next::files({
         my $file = $_;
         if (open my $fh, '<', $file) {
             my $line = <$fh>;
-            return 1 if $line =~ m{^#!.*perl};
+            return 1 if $line && $line =~ m{^#!.*perl};
         }
         return 0;
     }

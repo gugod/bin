@@ -92,6 +92,7 @@ for my $f (sort { $b cmp $a } @$users_unmerged) {
         };
     } else {
         say STDERR "Does not look like Sereal: $f";
+        unlink($f);
     }
 }
 

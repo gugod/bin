@@ -40,13 +40,10 @@ sub load_sereal {
 }
 
 sub trim_tweet_text {
-    my $txt = ($_[0] =~ s/\n/\n  /grs);
-    $txt =~ s/\n+\z//;
-    $txt =~s /\n/\n  /gs;
-
-    if ( length($txt) > 70 || index($txt,"\n") >= 0 ) {
-        $txt .= "\n";
-    }
+    my $txt = $_[0];
+    $txt =~s /\s/ /gs;
+    $txt =~s / +\z//s;
+    $txt =~s /\A +//s;
     return $txt;
 }
 
@@ -54,6 +51,22 @@ sub t2d {
     my ($t) = @_;
     my ($dd,$mm,$yyyy) = (localtime($t))[3,4,5];
     return sprintf('%04d-%02d-%02d', ($yyyy+1900), ($mm+1), $dd);
+}
+
+my @markers = (
+    "\N{DIGIT ZERO COMMA}",
+    "\N{DIGIT ONE COMMA}",
+    "\N{DIGIT TWO COMMA}",
+    "\N{DIGIT THREE COMMA}",
+    "\N{DIGIT FOUR COMMA}",
+    "\N{DIGIT FIVE COMMA}",
+    "\N{DIGIT SIX COMMA}",
+    "\N{DIGIT SEVEN COMMA}",
+    "\N{DIGIT EIGHT COMMA}",
+    "\N{DIGIT NINE COMMA}",
+);
+sub item_marker {
+    return $markers[ $_[0] % @markers ];
 }
 
 sub group_sorted_by {
@@ -201,10 +214,10 @@ for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_
             $mail_body .= "\n";
 
             for my $group_name (@group_names) {
+                my $count = 0;
                 my $group_body = "\n## $group_name\n\n";
                 for my $tweet (sort { $a->{created_at} <=> $b->{created_at} } @{$group{$group_name}}) {
-                    my $txt = trim_tweet_text( $tweet->{text} );
-                    $group_body .= "- $txt\n";
+                    $group_body .= item_marker($count++) . " " . trim_tweet_text( $tweet->{text} ) . "\n";
                 }
 
                 $mail_body .= $group_body;

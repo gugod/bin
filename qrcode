@@ -8,8 +8,9 @@ use Imager::QRCode;
 my $text = shift || die 'text?';
 my $qrcode = Imager::QRCode->new();
 
-
 my $img = $qrcode->plot($text);
 $img->write( file => "/tmp/qrcode.png" );
 
-system("open /tmp/qrcode.png");
+my $prog = ($^O eq 'linux') ? 'xdg-open' : 'open';
+
+system($prog, "/tmp/qrcode.png");

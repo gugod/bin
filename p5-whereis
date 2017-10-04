@@ -1,0 +1,32 @@
+#!/bin/bash
+
+: <<'END_OF_COMMENT'
+
+This is slightly better then `perldoc -l`, which only give you .pod
+file in some cases.
+
+    > perldoc -l IO::All
+    /home/gugod/.perlbrew/libs/v22@default/lib/perl5/IO/All.pod
+
+    > p5-whereis IO::All         
+    /home/gugod/.perlbrew/libs/v22@default/lib/perl5/IO/All.pm
+    /home/gugod/.perlbrew/libs/v22@default/lib/perl5/IO/All.pod
+
+END_OF_COMMENT
+
+PERL=${PERL:=perl}
+
+wanted=$1
+wanted_file=${wanted/::/\/}
+
+pm_wanted=${wanted_file}.pm
+pod_wanted=${wanted_file}.pod
+
+for inc in $($PERL -le 'print for @INC')
+do
+    pm_file=$inc/${pm_wanted}
+    pod_file=$inc/${pod_wanted}
+
+    if [[ -f $pm_file ]];  then echo $pm_file;  fi
+    if [[ -f $pod_file ]]; then echo $pod_file; fi
+done

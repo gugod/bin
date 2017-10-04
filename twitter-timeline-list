@@ -27,7 +27,7 @@ for my $f (@sources) {
         eval {
             $rows = $srl_decoder->decode($d);
             for my $tweet (@$rows) {
-                say encode_utf8($tweet->{text});
+                say encode_utf8($tweet->{"user.id"} . ": " . $tweet->{text});
             }
             1;
         } or do {

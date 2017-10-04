@@ -3,13 +3,23 @@ use v5.18;
 use strict;
 use warnings;
 
+use Getopt::Long qw(GetOptions);
+
 use File::Basename 'basename';
 use List::MoreUtils 'uniq';
+
+my %args;
+GetOptions(
+    \%args,
+    "i=s"
+);
 
 my $output_dir_base = "/tmp/gopro-timelapse";
 mkdir($output_dir_base) unless -d $output_dir_base;
 
-my @pic = </Volumes/*/DCIM/*GOPRO/G*.JPG>;
+my $input_dir = $args{i};
+
+my @pic = <${input_dir}/*GOPRO/G*.JPG>;
 my %pic_groups;
 for my $f (@pic) {
     my $g = substr(basename($f), 0, 4);

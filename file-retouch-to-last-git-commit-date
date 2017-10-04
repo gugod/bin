@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for _file in $*
+do
+    _date=$(git log -1 --format=%ai $_file)
+    touch --date="$_date" $_file
+done

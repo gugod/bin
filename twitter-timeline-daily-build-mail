@@ -1,0 +1,233 @@
+#!/usr/bin/env perl
+use v5.18;
+
+use Getopt::Long;
+use DateTime;
+use DateTime::Format::Strptime;
+
+use List::MoreUtils qw(uniq);
+use Encode qw(encode_utf8);
+use Sereal::Decoder;
+use Scalar::Util qw(looks_like_number);
+
+my %args;
+GetOptions(
+    \%args,
+    "i=s",
+    "o=s",
+    "filter=s",
+    "group=s",
+    "group_order_by=s",
+);
+
+$args{group} //= "user.id";
+$args{group_order_by} //= "length";
+
+my $input_dir = $args{i} or die "No input dir: -i <input_dir>";
+my $output_dir = $args{o} or die "No output dir: -o <output_dir>";
+
+sub load_sereal {
+    my ($file) = @_;
+
+    my $content = do {
+        local $/ = undef;
+        open my $fh, "<", $file;
+        <$fh>;
+    };
+
+    my $srl_decoder = Sereal::Decoder->new;
+    return $srl_decoder->decode($content);
+}
+
+sub trim_tweet_text {
+    my $txt = $_[0];
+    $txt =~s /\s/ /gs;
+    $txt =~s / +\z//s;
+    $txt =~s /\A +//s;
+    return $txt;
+}
+
+sub t2d {
+    my ($t) = @_;
+    my ($dd,$mm,$yyyy) = (localtime($t))[3,4,5];
+    return sprintf('%04d-%02d-%02d', ($yyyy+1900), ($mm+1), $dd);
+}
+
+my @markers = (
+    "\N{DIGIT ZERO COMMA}",
+    "\N{DIGIT ONE COMMA}",
+    "\N{DIGIT TWO COMMA}",
+    "\N{DIGIT THREE COMMA}",
+    "\N{DIGIT FOUR COMMA}",
+    "\N{DIGIT FIVE COMMA}",
+    "\N{DIGIT SIX COMMA}",
+    "\N{DIGIT SEVEN COMMA}",
+    "\N{DIGIT EIGHT COMMA}",
+    "\N{DIGIT NINE COMMA}",
+);
+sub item_marker {
+    return $markers[ $_[0] % @markers ];
+}
+
+sub group_sorted_by {
+    my ($sorter, $groups) = @_;
+    my $sub = main->can("group_sorted_by_${sorter}") or die "Unknown sorter: $sorter";
+    return $sub->($groups);
+}
+
+sub group_sorted_by_name {
+    my $groups = shift;
+    return sort { $a cmp $b } keys %$groups;
+}
+
+sub group_sorted_by_length {
+    my $groups = shift;
+    return sort { @{$groups->{$a}} <=> @{$groups->{$b}} } keys %$groups;
+}
+
+sub generate_mail_conversation {
+    my ($self, $threads) = @_;
+
+    my $tweet_idx = $self->{tweet_idx_by_id};
+
+    # Subject: Conversations
+    my $mail_body = "# Conversations\n\n";
+    for my $thread (@$threads) {
+        my @thread_tweets = sort { $a->{_time} <=> $b->{_time} } map { $tweet_idx->{$_} } uniq(@$thread);
+        my @authors = map { $_->{"user.screen_name"} } @thread_tweets;
+        $mail_body .= "+++ " . join(", ", uniq(@authors)) . "\n\n";
+        for my $tweet (@thread_tweets) {
+            $mail_body .= $tweet->{"user.screen_name"} . "> " . trim_tweet_text($tweet->{text}) . "\n";
+        }
+        $mail_body .= "\n---\n\n";
+    }
+    return $mail_body;
+}
+
+my $datetime_parser = DateTime::Format::Strptime->new(pattern => '%a %b %d %T %z %Y');
+my $today = t2d(time);
+my $yesterday = t2d(time - 86400);
+
+my $f = "${input_dir}/twitter-timeline-daily-${yesterday}.srl";
+
+unless (-f $f) {
+    say "Cannot find tweets from yesterday: $f";
+    exit(0);
+}
+
+my ($filter_field, $filter_value) = split("=", ($args{filter} // ""), 2);
+
+my $f_users = "${input_dir}/twitter-timeline-daily-users-${today}.srl";
+
+my $tweets = load_sereal($f);
+my $users  = (-f $f_users) ? load_sereal($f_users) : {};
+my %tweet_frequency;
+my %tweet_idx_by_id;
+
+for my $tweet (@$tweets) {
+    $tweet_idx_by_id{$tweet->{id}} = $tweet;
+
+    my $user_id = $tweet->{"user.id"};
+    my $user = $users->{ $user_id };
+    if ($user) {
+        $tweet->{"user.name"}        = $user->{name};
+        $tweet->{"user.screen_name"} = "@" . $user->{screen_name};
+    } else {
+        $tweet->{"user.name"}        = "id:" . $user_id;
+        $tweet->{"user.screen_name"} = "id:" . $user_id;
+    }
+
+    if (looks_like_number($tweet->{created_at})) {
+        $tweet->{"_time"} = DateTime->from_epoch( epoch => $tweet->{created_at} );
+    } else {
+        $tweet->{"_time"} = $datetime_parser->parse_datetime($tweet->{created_at});
+    }
+    $tweet->{"_time.hour"} = $tweet->{"_time"}->hour;
+
+    $tweet_frequency{user}{ $user_id }++;
+}
+
+my @threads;
+for my $tweet (@$tweets) {
+    my $user_id = $tweet->{"user.id"};
+    $tweet->{"user._tweet_frequency"} = $tweet_frequency{user}{$user_id};
+    $tweet->{"user._log_tweet_frequency"} = int( log($tweet_frequency{user}{$user_id}) );
+    $tweet->{"user._log2_tweet_frequency"} = int( log($tweet_frequency{user}{$user_id})/log(2) );
+    $tweet->{"user._log3_tweet_frequency"} = int( log($tweet_frequency{user}{$user_id})/log(3) );
+
+    if ($tweet->{in_reply_to_status_id} && !$tweet->{_thread}) {
+        my $merged;
+        my $thread = [];
+        my $t = $tweet;
+        while($t) {
+            if ($t->{_thread} && !$merged) {
+                push @{$t->{_thread}}, @$thread;
+                $thread = $t->{_thread};
+                $merged = 1;
+            }
+            push @$thread, $t->{id};
+
+            $t = $tweet_idx_by_id{$t->{in_reply_to_status_id}};
+        }
+        for my $id (@$thread) {
+            my $t = $tweet_idx_by_id{$id};
+            $t->{_thread} //= $thread;
+        }
+        if (!$merged) {
+            push @threads, $thread;
+        }
+    }
+}
+
+
+my $mail_body = generate_mail_conversation({ tweet_idx_by_id => \%tweet_idx_by_id }, \@threads);
+open my $fh, ">", "${output_dir}/${yesterday}-conversations.md";
+print $fh encode_utf8($mail_body);
+close $fh;    
+
+
+# Non-conversation groups
+for my $partition_field ("_time.hour", "user._log_tweet_frequency", "user._log2_tweet_frequency", "user._log3_tweet_frequency") {
+    my %partition;
+    for my $tweet (@$tweets) {
+        next if $tweet->{_thread};
+        next unless !$filter_field || $tweet->{$filter_field} eq $filter_value;
+
+        my $g = $tweet->{$partition_field};
+        push @{$partition{$g}}, $tweet;
+    }
+
+    for my $partition_value (keys %partition) {
+        for my $group_field ("user.screen_name") {
+            my %group;
+
+            for my $tweet (@{ $partition{$partition_value} }) {
+                my $g = $tweet->{$group_field};
+                push @{$group{$g}}, $tweet;
+            }
+
+            my @group_names = group_sorted_by($args{"group_order_by"}, \%group);
+            my $mail_body = "# $partition_field: $partition_value";
+            if ($filter_field) {
+                $mail_body .= " [$filter_field = $filter_value]";
+            }
+            $mail_body .= "\n";
+
+            for my $group_name (@group_names) {
+                my $count = 0;
+                my $group_body = "\n## $group_name\n\n";
+                for my $tweet (sort { $a->{created_at} <=> $b->{created_at} } @{$group{$group_name}}) {
+                    $group_body .= item_marker($count++) . " " . trim_tweet_text( $tweet->{text} ) . "\n";
+                }
+
+                $mail_body .= $group_body;
+            }
+
+            $partition_value =~ s/ /_/g;
+            open my $fh, ">", "${output_dir}/${yesterday}". ($filter_field && "-${filter_field}=${filter_value}") . "-${partition_field}-${partition_value}.md";
+            print $fh encode_utf8($mail_body);
+            close $fh;
+        }
+    }
+}
+

@@ -13,13 +13,13 @@ sub module_releases {
     state $http_client = HTTP::Tiny->new;
     state $json = JSON::PP->new;
     my $module = shift;
-    my $res = $http_client->get("http://api.metacpan.org/v0/module/" . $module);
+    my $res = $http_client->get("https://fastapi.metacpan.org/v1/module/" . $module);
 
     return unless $res->{success};
 
     my $thing = $json->decode($res->{content});
 
-    return $thing->{version};
+    return $thing->{module}[0]{version};
 }
 
 # deplist

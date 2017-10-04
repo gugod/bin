@@ -4,7 +4,7 @@ use Sereal::Decoder;
 use JSON;
 use Encode qw<encode_utf8>;
 
-my $JSON = JSON->new->pretty;
+my $JSON = JSON->new->pretty->canonical;
 
 my $decoder = Sereal::Decoder->new;
 my $sereal_string = "";

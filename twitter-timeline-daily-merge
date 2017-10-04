@@ -15,18 +15,24 @@ sub t2d {
     return sprintf('%04d-%02d-%02d', ($yyyy+1900), ($mm+1), $dd);
 }
 
-my $srl_decoder = Sereal::Decoder->new;
-
 my $today = t2d(time);
 my $unmerged = [];
-for ( glob($input_dir . "/twitter-timeline-*.srl") ) {
-    if (/\/ twitter-timeline-(?<ts>[0-9]+).srl \z/x) {
+my $users_unmerged = [];
+for my $f ( glob($input_dir . "/twitter-timeline-*.srl") ) {
+    if ($f =~ /\/ twitter-timeline-(?<ts>[0-9]+).srl \z/x) {
         my $p = t2d($+{ts});
-        next if $p eq $today;
-        push @$unmerged, [$p, my $f = $_];
+        if ($p ne $today) {
+            push @$unmerged, [$p, $f];
+        }
+    }
+    if ($f =~ /\/ twitter-timeline-users-(?<ts>[0-9]+).srl \z/x) {
+        push @$users_unmerged, $f;
     }
 }
+
 @$unmerged = sort { $a->[0] cmp $b->[0] } @$unmerged;
+
+my $srl_decoder = Sereal::Decoder->new;
 
 while ($unmerged && @$unmerged) {
     (my $batch, $unmerged) = part { ($_->[0] eq $unmerged->[0][0]) ? 0 : 1 } @$unmerged;
@@ -36,9 +42,11 @@ while ($unmerged && @$unmerged) {
     my %seen;
     for (@$batch) {
         my $f = $_->[1];
-        open(my $fh, "<", $f)or die $!;
-        local $/ = undef;
-        my $d = <$fh>;
+        my $d = do {
+		open(my $fh, "<", $f)or die $!;
+		local $/ = undef;
+		<$fh>;
+	};
         if ($srl_decoder->looks_like_sereal($d)) {
             my $rows;
             eval {
@@ -51,7 +59,6 @@ while ($unmerged && @$unmerged) {
         } else {
             say STDERR "Does not look like Sereal: $f";
         }
-        close($fh);
     }
 
     my $srl_encoder = Sereal::Encoder->new;
@@ -62,4 +69,38 @@ while ($unmerged && @$unmerged) {
     for (@$batch) {
         unlink($_->[1]);
     }
+}
+
+my $users_merged = {};
+for my $f (sort { $b cmp $a } @$users_unmerged) {
+    my $f = shift @$users_unmerged;
+    my $d = do {
+	    open(my $fh, "<", $f)or die $!;
+	    local $/ = undef;
+	    <$fh>;
+    };
+    if ($srl_decoder->looks_like_sereal($d)) {
+        my $u;
+        eval {
+            $u = $srl_decoder->decode($d);
+            for (keys %$u) {
+                $users_merged->{$_} //= $u->{$_};
+            }
+            1;
+        } or do {
+            warn "$f is broken";
+        };
+    } else {
+        say STDERR "Does not look like Sereal: $f";
+        unlink($f);
+    }
+}
+
+my $srl_encoder = Sereal::Encoder->new;
+open(my $fh, ">", "${output_dir}/twitter-timeline-daily-users-${today}.srl") or die $!;
+print $fh $srl_encoder->encode($users_merged);
+close($fh);
+
+for(@$users_unmerged) {
+    unlink($_);
 }

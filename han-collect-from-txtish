@@ -1,0 +1,48 @@
+#!/usr/bin/env perl
+# txt-ish == .txt, .json.
+
+use v5.18;
+use strict;
+use warnings;
+use Encode ('decode_utf8', 'encode_utf8');
+
+use constant HAN_SEQUENCE_LOOKUP => "$ENV{HOME}/var/han-sequence-lookup.tsv";
+
+my %lookup;
+my $id_max = 0;
+
+if (-f HAN_SEQUENCE_LOOKUP) {
+    open my $fh, "<", HAN_SEQUENCE_LOOKUP;
+    while (<$fh>) {
+        chomp;
+        my $line = decode_utf8($_);
+        my ($id, $s) = split /\t/, $line, 2;
+        $id_max = $id if $id_max < $id;
+        $lookup{$s} = $id;
+    }
+    close($fh);
+}
+
+my $new_lookup = 0;
+
+while(<>) {
+    chomp;
+    my $s = decode_utf8($_);
+
+    my ($han_sequence) = $s =~ /(\p{Han}+)/g;
+    next unless (defined($han_sequence) && $han_sequence ne "");
+    unless (exists $lookup{$han_sequence}) {
+        $new_lookup = 1;
+        $id_max += 1;
+        $lookup{$han_sequence} = $id_max;
+    }
+}
+
+if ($new_lookup) {
+    open my $fh, ">", HAN_SEQUENCE_LOOKUP;
+    for my $s (keys %lookup) {
+        my $id = $lookup{$s};
+        print $fh encode_utf8("$id\t$s\n");
+    }
+    close($fh);
+}

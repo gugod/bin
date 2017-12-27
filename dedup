@@ -1,0 +1,9 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+my %seen;
+while(<>) {
+    next if $seen{$_};
+    $seen{$_} = 1;
+    print;
+}

@@ -30,12 +30,14 @@ package App::p5critic::Report {
 
     sub print_errors {
         my ($self) = @_;
-        say for @{ $self->errors };
+        # U+2620:  SKULL AND CROSSBONES
+        say for map { $_ = "\x{2620}: $_"; utf8::encode($_); $_; } @{ $self->errors };
     }
 
     sub print_notices {
         my ($self) = @_;
-        say for @{ $self->notices };
+        # U+2139: INFORMATION SOURCE
+        say for map { $_ = "\x{2139}: $_"; utf8::encode($_); $_; } @{ $self->notices };
     }
 }
 
@@ -132,6 +134,19 @@ package App::p5critic {
     use File::Slurp qw(read_file);
     use File::Next;
 
+    sub looks_like_a_perl_src_file {
+        my ($file) = @_;
+
+        return 1 if $file =~ / \.(?: t|p[ml]|pod|comp ) $/xi;
+        return 0 if $file =~ / \. /xi;
+
+        if (open my $fh, '<', $file) {
+            my $line = <$fh>;
+            return 1 if $line =~ m{^#!.*perl};
+        }
+        return 0;
+    }
+
     sub new {
         my ($class, $args) = @_;
         return bless { src_paths => $args }, __PACKAGE__;
@@ -141,28 +156,25 @@ package App::p5critic {
         my ($self) = @_;
         my $iter = File::Next::files( @{$self->{src_paths}} );
         while(defined( my $file = $iter->() )) {
+            next unless looks_like_a_perl_src_file($file);
             my $o = App::p5critic::PerlCodeCritic->new(
                 src_file => $file,
             );
             my $report = $o->check();
 
             if ($report->has_errors || $report->has_notices) {
-                say "# " . $file;
+                say "\n# " . $file;
                 if ($report->has_errors) {
                     $report->print_errors;
                 } elsif ($report->has_notices) {
                     $report->print_notices;
                 }
                 print "\n";
-            } else {
-                # U+1F638: GRINNING CAT FACE WITH SMILING EYES
-                my $msg = "\x{1F638}\t$file";
-                utf8::encode($msg);
-                say $msg;
             }
         }
     }
 };
 
-@ARGV or die "No files?";
-App::p5critic->new(\@ARGV)->run;
+my @paths = @ARGV;
+@paths = (".") unless @paths;
+App::p5critic->new(\@paths)->run;

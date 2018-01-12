@@ -3,30 +3,77 @@ use v5.26;
 use strict;
 use warnings;
 
-package Appppp {
+package App::p5critic::Report {
+    use Mo qw'default is required';
+    has errors  => ( isa => "ArrayRef", lazy => 1, default => sub { [] });
+    has notices => ( isa => "ArrayRef", lazy => 1, default => sub { [] });
+
+    sub has_errors {
+        my ($self) = @_;
+        return (@{ $self->errors } > 0);
+    }
+
+    sub has_notices {
+        my ($self) = @_;
+        return (@{ $self->notices } > 0);
+    }
+
+    sub error {
+        my ($self, $o) = @_;
+        push @{$self->errors}, $o;
+    }
+
+    sub notice {
+        my ($self, $o) = @_;
+        push @{$self->notices}, $o;
+    }
+
+    sub print_errors {
+        my ($self) = @_;
+        say for @{ $self->errors };
+    }
+
+    sub print_notices {
+        my ($self) = @_;
+        say for @{ $self->notices };
+    }
+}
+
+package App::p5critic::PerlCodeCritic {
+    use Mo qw'default is required';
     use Data::Dumper;
     use PPR;
     use PPI;
     use PPI::Dumper;
     use File::Slurp qw(read_file);
 
-    sub new {
-        my ($class, $src_file) = @_;
-        return bless { src_file => $src_file }, __PACKAGE__;
-    }
+    has src_file => ( required => 1, isa => "File", is => "ro", );
+    has src_code => ( is => "rw", lazy => 1, default => sub { scalar read_file( $_[0]->src_file ) } );
 
-    sub run {
+    has reporter => (
+        is => "ro",
+        lazy => 1,
+        default => sub { App::p5critic::Report->new() },
+    );
+
+    sub check {
         my ($self) = @_;
-        $self->{src_code} = read_file( $self->{src_file });
-        $self->must_be_parsable;
-        $self->should_have_no_imported_by_unused_subroutine;
+
+        for my $checker (
+            "must_be_parsable",
+            "should_have_no_imported_by_unused_subroutine"
+        ) {
+            $self->$checker;
+            last if $self->reporter->has_errors;
+        }
+        return $self->reporter;
     }
 
     sub must_be_parsable {
         my $self = shift;
         # Parsable
-        unless ($self->{src_code} =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x) {
-            die "Your code is not PPR-parsable.";
+        unless ($self->src_code =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x) {
+            $self->reporter->error("The code is not PPR-parsable.");
         }
     }
 
@@ -60,10 +107,10 @@ package Appppp {
                         }
                     }
                 } else {
-                    die "Failed to grok this: $src";
+                    $self->reporter->error("Failed to grok this: $src");
                 }
             } else {
-                die "Failed to grok this: $src";
+                $self->reporter->error("Failed to grok this: $src");
             }
         }
 
@@ -75,12 +122,47 @@ package Appppp {
 
         for my $tok (sort keys %imported) {
             unless ($used{$tok}) {
-                say "Unused imports: $tok";
+                $self->reporter->notice("Unused imports: $tok");
+            }
+        }
+    }
+};
+
+package App::p5critic {
+    use File::Slurp qw(read_file);
+    use File::Next;
+
+    sub new {
+        my ($class, $args) = @_;
+        return bless { src_paths => $args }, __PACKAGE__;
+    }
+
+    sub run {
+        my ($self) = @_;
+        my $iter = File::Next::files( @{$self->{src_paths}} );
+        while(defined( my $file = $iter->() )) {
+            my $o = App::p5critic::PerlCodeCritic->new(
+                src_file => $file,
+            );
+            my $report = $o->check();
+
+            if ($report->has_errors || $report->has_notices) {
+                say "# " . $file;
+                if ($report->has_errors) {
+                    $report->print_errors;
+                } elsif ($report->has_notices) {
+                    $report->print_notices;
+                }
+                print "\n";
+            } else {
+                # U+1F638: GRINNING CAT FACE WITH SMILING EYES
+                my $msg = "\x{1F638}\t$file";
+                utf8::encode($msg);
+                say $msg;
             }
         }
     }
 };
 
 @ARGV or die "No files?";
-Appppp->new($ARGV[0])->run;
-
+App::p5critic->new(\@ARGV)->run;

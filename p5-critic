@@ -95,7 +95,7 @@ package App::p5critic::PerlCodeCritic {
             if (@$expr_qw == 1) {
                 my $expr = $expr_qw->[0];
                 my $el = $expr->sprevious_sibling;
-                if ($el->isa("PPI::Token::Word")) {
+                if ($el && $el->isa("PPI::Token::Word")) {
                     my $expr_str = "$expr";
 
                     unless ($is_special{"$el"}) {

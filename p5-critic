@@ -1,0 +1,86 @@
+#!/usr/bin/env perl
+use v5.26;
+use strict;
+use warnings;
+
+package Appppp {
+    use Data::Dumper;
+    use PPR;
+    use PPI;
+    use PPI::Dumper;
+    use File::Slurp qw(read_file);
+
+    sub new {
+        my ($class, $src_file) = @_;
+        return bless { src_file => $src_file }, __PACKAGE__;
+    }
+
+    sub run {
+        my ($self) = @_;
+        $self->{src_code} = read_file( $self->{src_file });
+        $self->must_be_parsable;
+        $self->should_have_no_imported_by_unused_subroutine;
+    }
+
+    sub must_be_parsable {
+        my $self = shift;
+        # Parsable
+        unless ($self->{src_code} =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x) {
+            die "Your code is not PPR-parsable.";
+        }
+    }
+
+    sub should_have_no_imported_by_unused_subroutine {
+        my $self = shift;
+        # Explicity imported, but unused subroutine.
+
+        my %imported;
+        my %is_special = map { $_ => 1 } qw(use parent base);
+        while ($self->{src_code} =~ m{ (?&PerlOWS) ((?&PerlUseStatement)) (?&PerlOWS) $PPR::GRAMMAR }gxo) {
+            my $src = $1;
+            next if $src =~ /\Ano/;
+            my $ppi_doc = PPI::Document->new(\$src);
+
+            my $expr_qw = $ppi_doc->find( sub { $_[1]->isa('PPI::Token::QuoteLike::Words'); });
+            next unless $expr_qw;
+            if (@$expr_qw == 1) {
+                my $expr = $expr_qw->[0];
+                my $el = $expr->sprevious_sibling;
+                if ($el->isa("PPI::Token::Word")) {
+                    my $expr_str = "$expr";
+
+                    unless ($is_special{"$el"}) {
+                        # Given that both PPI and PPR parse this correctly, I don't care about what are the characters used for quoting. We can remove the characters at the position that are supposed to be quoting characters.
+                        substr($expr_str, 0, 3) = "";
+                        substr($expr_str, -1, 1) = "";
+
+                        my @words = split ' ', $expr_str;
+                        for my $w (@words) {
+                            $imported{$w}++
+                        }
+                    }
+                } else {
+                    die "Failed to grok this: $src";
+                }
+            } else {
+                die "Failed to grok this: $src";
+            }
+        }
+
+        my %used;
+        my $ppi_src = PPI::Document->new(\$self->{src_code});
+        for my $el_word (@{ $ppi_src->find( sub { $_[1]->isa("PPI::Token::Word") }) //[]}) {
+            $used{"$el_word"}++;
+        }
+
+        for my $tok (sort keys %imported) {
+            unless ($used{$tok}) {
+                say "Unused imports: $tok";
+            }
+        }
+    }
+};
+
+@ARGV or die "No files?";
+Appppp->new($ARGV[0])->run;
+

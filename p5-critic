@@ -43,10 +43,8 @@ package App::p5critic::Report {
 
 package App::p5critic::PerlCodeCritic {
     use Mo qw'default is required';
-    use Data::Dumper;
     use PPR;
     use PPI;
-    use PPI::Dumper;
     use File::Slurp qw(read_file);
 
     has src_file => ( required => 1, isa => "File", is => "ro", );

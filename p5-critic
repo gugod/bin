@@ -83,10 +83,10 @@ package App::p5critic::PerlCodeCritic {
 
         my %imported;
         my %is_special = map { $_ => 1 } qw(use parent base);
-        while ($self->{src_code} =~ m{ (?&PerlOWS) ((?&PerlUseStatement)) (?&PerlOWS) $PPR::GRAMMAR }gxo) {
+        while ($self->{src_code} =~ m{ (?&PerlOWS) ((?&PerlUseStatement)) (?&PerlOWS) $PPR::GRAMMAR }gxop) {
             my $src = $1;
             next if $src =~ /\Ano/;
-            my $pos_statement = pos($self->{src_code}) - length($src);
+            my $pos_statement = pos($self->{src_code}) - length(${^MATCH});
             my $ppi_doc = PPI::Document->new(\$src);
             my $expr_qw = $ppi_doc->find( sub { $_[1]->isa('PPI::Token::QuoteLike::Words'); });
             next unless $expr_qw;

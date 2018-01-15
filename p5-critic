@@ -86,8 +86,8 @@ package App::p5critic::PerlCodeCritic {
         while ($self->{src_code} =~ m{ (?&PerlOWS) ((?&PerlUseStatement)) (?&PerlOWS) $PPR::GRAMMAR }gxo) {
             my $src = $1;
             next if $src =~ /\Ano/;
+            my $pos_statement = pos($self->{src_code}) - length($src);
             my $ppi_doc = PPI::Document->new(\$src);
-
             my $expr_qw = $ppi_doc->find( sub { $_[1]->isa('PPI::Token::QuoteLike::Words'); });
             next unless $expr_qw;
             if (@$expr_qw == 1) {
@@ -103,7 +103,8 @@ package App::p5critic::PerlCodeCritic {
 
                         my @words = split ' ', $expr_str;
                         for my $w (@words) {
-                            $imported{$w}++
+                            next if $w =~ /\A [:\-]/x;
+                            push @{ $imported{$w} //=[] }, $pos_statement;
                         }
                     }
                 } else {
@@ -120,11 +121,32 @@ package App::p5critic::PerlCodeCritic {
             $used{"$el_word"}++;
         }
 
-        for my $tok (sort keys %imported) {
-            unless ($used{$tok}) {
-                $self->reporter->notice("Unused imports: $tok");
-            }
+        my @to_report = grep { !$used{$_} } (sort keys %imported);
+        my %pos_to_line_number = $self->resolve_pos_to_line_number([ map { @{$imported{$_}} } @to_report ]);
+
+        for my $tok (@to_report) {
+            $self->reporter->notice("unused imports: <$tok>, at line: " . join(",", map { $pos_to_line_number{$_} } @{$imported{$tok}}));
         }
+    }
+
+    sub resolve_pos_to_line_number {
+        my ($self, $positions) = @_;
+
+        my %pos_to_line;
+        my @nl_pos;
+        while($self->{src_code} =~ /\n/g) {
+            push @nl_pos, pos($self->{src_code});
+        }
+
+        my ($nl_pos, $ln) = ($nl_pos[0],0);
+        for my $p (sort { $a <=> $b } @$positions) {
+            while ($nl_pos < $p) {
+                $nl_pos = $nl_pos[$ln++];
+            }
+            $pos_to_line{$p} = $ln;
+        }
+
+        return %pos_to_line;
     }
 };
 

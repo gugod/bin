@@ -61,7 +61,7 @@ package App::p5critic::PerlCodeCritic {
 
         for my $checker (
             "must_be_parsable",
-            "should_have_no_imported_by_unused_subroutine"
+            "should_have_no_imported_but_unused_subroutine"
         ) {
             $self->$checker;
             last if $self->reporter->has_errors;
@@ -77,7 +77,7 @@ package App::p5critic::PerlCodeCritic {
         }
     }
 
-    sub should_have_no_imported_by_unused_subroutine {
+    sub should_have_no_imported_but_unused_subroutine {
         my $self = shift;
         # Explicity imported, but unused subroutine.
 

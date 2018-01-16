@@ -75,6 +75,13 @@ package App::p5critic::PerlCodeCritic {
         unless ($self->src_code =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x) {
             $self->reporter->error("The code is not PPR-parsable.");
         }
+        my $ppi_doc = PPI::Document->new(\$self->{src_code});
+        unless ($ppi_doc) {
+            $self->reporter->error("The code is not PPI-parsable: " . PPI::Document->errstr);
+        }
+        $ppi_doc->index_locations;
+
+        $self->{ppi_src_code} = $ppi_doc;
     }
 
     sub should_have_no_imported_but_unused_subroutine {
@@ -84,10 +91,9 @@ package App::p5critic::PerlCodeCritic {
         my %imported;
         my %is_special = map { $_ => 1 } qw(use parent base constant);
 
-        my $ppi_doc = PPI::Document->new(\$self->{src_code});
-        $ppi_doc->index_locations;
+        my $ppi_doc = $self->{ppi_src_code};
 
-        my $include_statements = $ppi_doc->find(sub { $_[1]->isa('PPI::Statement::Include') }) // [];
+        my $include_statements = $ppi_doc->find(sub { $_[1]->isa('PPI::Statement::Include') }) || [];
         for my $st (@$include_statements) {
             my $expr_qw = $st->find( sub { $_[1]->isa('PPI::Token::QuoteLike::Words'); }) or next;
             if (@$expr_qw == 1) {
@@ -142,7 +148,7 @@ package App::p5critic {
 
         if (open my $fh, '<', $file) {
             my $line = <$fh>;
-            return 1 if $line =~ m{^#!.*perl};
+            return 1 if defined($line) && $line =~ m{^#!.*perl};
         }
         return 0;
     }

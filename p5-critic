@@ -83,13 +83,13 @@ package App::p5critic::PerlCodeCritic {
 
         my %imported;
         my %is_special = map { $_ => 1 } qw(use parent base constant);
-        while ($self->{src_code} =~ m{ (?&PerlOWS) ((?&PerlUseStatement)) (?&PerlOWS) $PPR::GRAMMAR }gxop) {
-            my $src = $1;
-            next if $src =~ /\Ano/;
-            my $pos_statement = pos($self->{src_code}) - length(${^MATCH});
-            my $ppi_doc = PPI::Document->new(\$src);
-            my $expr_qw = $ppi_doc->find( sub { $_[1]->isa('PPI::Token::QuoteLike::Words'); });
-            next unless $expr_qw;
+
+        my $ppi_doc = PPI::Document->new(\$self->{src_code});
+        $ppi_doc->index_locations;
+
+        my $include_statements = $ppi_doc->find(sub { $_[1]->isa('PPI::Statement::Include') }) // [];
+        for my $st (@$include_statements) {
+            my $expr_qw = $st->find( sub { $_[1]->isa('PPI::Token::QuoteLike::Words'); }) or next;
             if (@$expr_qw == 1) {
                 my $expr = $expr_qw->[0];
                 my $el = $expr->sprevious_sibling;
@@ -104,14 +104,14 @@ package App::p5critic::PerlCodeCritic {
                         my @words = split ' ', $expr_str;
                         for my $w (@words) {
                             next if $w =~ /\A [:\-]/x;
-                            push @{ $imported{$w} //=[] }, $pos_statement;
+                            push @{ $imported{$w} //=[] }, $el->line_number;
                         }
                     }
                 } else {
-                    $self->reporter->error("Failed to grok this: $src");
+                    $self->reporter->error("Failed to grok this: $st");
                 }
             } else {
-                $self->reporter->error("Failed to grok this: $src");
+                $self->reporter->error("Failed to grok this: $st");
             }
         }
 
@@ -122,31 +122,10 @@ package App::p5critic::PerlCodeCritic {
         }
 
         my @to_report = grep { !$used{$_} } (sort keys %imported);
-        my %pos_to_line_number = $self->resolve_pos_to_line_number([ map { @{$imported{$_}} } @to_report ]);
 
         for my $tok (@to_report) {
-            $self->reporter->notice("unused imports: <$tok>, at line: " . join(",", map { $pos_to_line_number{$_} } @{$imported{$tok}}));
+            $self->reporter->notice("unused imports: <$tok>, at line: " . join(",", @{$imported{$tok}}));
         }
-    }
-
-    sub resolve_pos_to_line_number {
-        my ($self, $positions) = @_;
-
-        my %pos_to_line;
-        my @nl_pos;
-        while($self->{src_code} =~ /\n/g) {
-            push @nl_pos, pos($self->{src_code});
-        }
-
-        my ($nl_pos, $ln) = ($nl_pos[0],0);
-        for my $p (sort { $a <=> $b } @$positions) {
-            while ($nl_pos < $p) {
-                $nl_pos = $nl_pos[$ln++];
-            }
-            $pos_to_line{$p} = $ln;
-        }
-
-        return %pos_to_line;
     }
 };
 

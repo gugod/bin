@@ -82,7 +82,7 @@ package App::p5critic::PerlCodeCritic {
         # Explicity imported, but unused subroutine.
 
         my %imported;
-        my %is_special = map { $_ => 1 } qw(use parent base);
+        my %is_special = map { $_ => 1 } qw(use parent base constant);
         while ($self->{src_code} =~ m{ (?&PerlOWS) ((?&PerlUseStatement)) (?&PerlOWS) $PPR::GRAMMAR }gxop) {
             my $src = $1;
             next if $src =~ /\Ano/;

@@ -151,6 +151,7 @@ package App::p5critic::PerlCodeCritic {
 };
 
 package App::p5critic {
+    use Encode qw'encode_utf8';
     use File::Slurp qw(read_file);
     use File::Next;
 
@@ -183,13 +184,17 @@ package App::p5critic {
             my $report = $o->check();
 
             if ($report->has_errors || $report->has_notices) {
-                say "\n# " . $file;
+                # U+1F611 EXPRESSIONLESS FACE
+                say encode_utf8("\n\x{1F611}  $file");
                 if ($report->has_errors) {
                     $report->print_errors;
                 } elsif ($report->has_notices) {
                     $report->print_notices;
                 }
                 print "\n";
+            } else {
+                # U+1F44D THUMBS UP SIGN
+                say encode_utf8("\n\x{1F44D}  $file");
             }
         }
     }

@@ -2,7 +2,7 @@
 
 # cpanm: Mo PPI PPR File::Next File::Slurp Encode
 
-use v5.26;
+use v5.18;
 use strict;
 use warnings;
 

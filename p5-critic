@@ -1,4 +1,7 @@
 #!/usr/bin/env perl
+
+# cpanm: Mo PPI PPR File::Next File::Slurp Encode
+
 use v5.26;
 use strict;
 use warnings;
@@ -95,26 +98,25 @@ package App::p5critic::PerlCodeCritic {
 
         my $include_statements = $ppi_doc->find(sub { $_[1]->isa('PPI::Statement::Include') }) || [];
         for my $st (@$include_statements) {
+            next if $st->schild(0) eq "no";
             my $expr_qw = $st->find( sub { $_[1]->isa('PPI::Token::QuoteLike::Words'); }) or next;
+
+            my $included_module = $st->schild(1);
+            next if $is_special{"$included_module"};
+
             if (@$expr_qw == 1) {
                 my $expr = $expr_qw->[0];
-                my $el = $expr->sprevious_sibling;
-                if ($el && $el->isa("PPI::Token::Word")) {
-                    my $expr_str = "$expr";
 
-                    unless ($is_special{"$el"}) {
-                        # Given that both PPI and PPR parse this correctly, I don't care about what are the characters used for quoting. We can remove the characters at the position that are supposed to be quoting characters.
-                        substr($expr_str, 0, 3) = "";
-                        substr($expr_str, -1, 1) = "";
+                my $expr_str = "$expr";
 
-                        my @words = split ' ', $expr_str;
-                        for my $w (@words) {
-                            next if $w =~ /\A [:\-]/x;
-                            push @{ $imported{$w} //=[] }, $el->line_number;
-                        }
-                    }
-                } else {
-                    $self->reporter->error("Failed to grok this: $st");
+                # Given that both PPI and PPR parse this correctly, I don't care about what are the characters used for quoting. We can remove the characters at the position that are supposed to be quoting characters.
+                substr($expr_str, 0, 3) = "";
+                substr($expr_str, -1, 1) = "";
+
+                my @words = split ' ', $expr_str;
+                for my $w (@words) {
+                    next if $w =~ /\A [:\-]/x;
+                    push @{ $imported{$w} //=[] }, $included_module->line_number;
                 }
             } else {
                 $self->reporter->error("Failed to grok this: $st");

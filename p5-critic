@@ -74,17 +74,22 @@ package App::p5critic::PerlCodeCritic {
 
     sub must_be_parsable {
         my $self = shift;
-        # Parsable
-        unless ($self->src_code =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x) {
-            $self->reporter->error("The code is not PPR-parsable.");
-        }
-        my $ppi_doc = PPI::Document->new(\$self->{src_code});
-        unless ($ppi_doc) {
+
+        my $ppi_doc = PPI::Document->new(\($self->src_code));
+        if ($ppi_doc) {
+            $ppi_doc->index_locations;
+            $self->{ppi_src_code} = $ppi_doc;
+        } else {
             $self->reporter->error("The code is not PPI-parsable: " . PPI::Document->errstr);
         }
-        $ppi_doc->index_locations;
 
-        $self->{ppi_src_code} = $ppi_doc;
+        unless ($self->src_code =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x) {
+            if (!$ppi_doc) {
+                $self->reporter->error("This code is neither PPR-parable nor PPI-parsable. It is probably wrong.");
+            } else {
+                $self->reporter->notice("This code is not PPR-parable, but PPI-parsable. That's rare...");
+            }
+        }
     }
 
     sub should_have_no_imported_but_unused_subroutine {
@@ -162,6 +167,11 @@ package App::p5critic {
 
     sub run {
         my ($self) = @_;
+        my $src_paths = $self->{src_paths};
+        my $report_success = 0;
+        @$src_paths = ('.') unless @$src_paths;
+        $report_success = 1 if @$src_paths > 1;
+
         my $iter = File::Next::files( @{$self->{src_paths}} );
         while(defined( my $file = $iter->() )) {
             next unless looks_like_a_perl_src_file($file);
@@ -179,7 +189,7 @@ package App::p5critic {
                     $report->print_notices;
                 }
                 print "\n";
-            } else {
+            } elsif ($report_success) {
                 # U+1F44D THUMBS UP SIGN
                 say encode_utf8("\n\x{1F44D}  $file");
             }
@@ -188,5 +198,4 @@ package App::p5critic {
 };
 
 my @paths = @ARGV;
-@paths = (".") unless @paths;
 App::p5critic->new(\@paths)->run;

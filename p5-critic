@@ -64,7 +64,8 @@ package App::p5critic::PerlCodeCritic {
 
         for my $checker (
             "must_be_parsable",
-            "should_have_no_imported_but_unused_subroutine"
+            "should_have_no_imported_but_unused_subroutine",
+            "should_use_all_defined_constants",
         ) {
             $self->$checker;
             last if $self->reporter->has_errors;
@@ -137,6 +138,46 @@ package App::p5critic::PerlCodeCritic {
 
         for my $tok (@to_report) {
             $self->reporter->notice("unused imports: <$tok>, at line: " . join(",", @{$imported{$tok}}));
+        }
+    }
+
+    sub should_use_all_defined_constants {
+        my $self = shift;
+        my $ppi_doc = $self->{ppi_src_code};
+
+        my %defined_constants;
+        my %used;
+
+        my $include_statements = $ppi_doc->find(sub { $_[1]->isa('PPI::Statement::Include') }) || [];
+        for my $st (@$include_statements) {
+            next unless $st->schild(0) eq "use" && $st->schild(1) eq "constant";
+            if ($st->schild(2)->isa("PPI::Token::Word")) {
+                my $constant_name = $st->schild(2);
+                push @{ $defined_constants{"$constant_name"} }, $st->line_number;
+            }
+            elsif ($st->schild(2)->isa("PPI::Structure::Constructor")) {
+                my $odd = 0;
+                my @elems = @{ $st->schild(2)->find(sub { $_[1]->isa("PPI::Token") && (! $_[1]->isa("PPI::Token::Whitespace")) && (! $_[1]->isa("PPI::Token::Operator")) && ($odd = 1 - $odd) }) };
+                for my $el (@elems) {
+                    push @{ $defined_constants{"$el"} }, $st->line_number;
+                }
+            }
+        }
+
+
+        for my $el_word (@{ $ppi_doc->find( sub { $_[1]->isa("PPI::Token::Word") }) //[]}) {
+            my $st = $el_word;
+            while ($st) {
+                last if ($st->isa("PPI::Statement::Include"));
+                $st = $st->parent;
+            }
+            next if $st;
+            $used{"$el_word"}++;
+        }
+
+        my @to_report = grep { !$used{$_} } (sort keys %defined_constants);
+        for my $tok (@to_report) {
+            $self->reporter->notice("unused constant: <$tok>, at line: " . join(",", @{$defined_constants{$tok}}));
         }
     }
 };

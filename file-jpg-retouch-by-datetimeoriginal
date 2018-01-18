@@ -3,14 +3,9 @@ use v5.18;
 use strict;
 use warnings;
 
-use File::Copy qw(move);
-use File::Basename qw(fileparse);
-use File::Path qw(make_path);
-use File::Spec::Functions qw(catfile catdir);
 use File::Next;
 use Getopt::Long;
 use Digest::SHA1;
-
 use File::Touch;
 use Image::ExifTool qw(:Public);
 use Time::Moment;

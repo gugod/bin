@@ -129,8 +129,7 @@ package App::p5critic::PerlCodeCritic {
         }
 
         my %used;
-        my $ppi_src = PPI::Document->new(\$self->{src_code});
-        for my $el_word (@{ $ppi_src->find( sub { $_[1]->isa("PPI::Token::Word") }) //[]}) {
+        for my $el_word (@{ $ppi_doc->find( sub { $_[1]->isa("PPI::Token::Word") }) //[]}) {
             $used{"$el_word"}++;
         }
 

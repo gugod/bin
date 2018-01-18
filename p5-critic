@@ -153,13 +153,13 @@ package App::p5critic::PerlCodeCritic {
             next unless $st->schild(0) eq "use" && $st->schild(1) eq "constant";
             if ($st->schild(2)->isa("PPI::Token::Word")) {
                 my $constant_name = $st->schild(2);
-                push @{ $defined_constants{"$constant_name"} }, $st->line_number;
+                push @{ $defined_constants{"$constant_name"} }, $constant_name->line_number;
             }
             elsif ($st->schild(2)->isa("PPI::Structure::Constructor")) {
                 my $odd = 0;
                 my @elems = @{ $st->schild(2)->find(sub { $_[1]->isa("PPI::Token") && (! $_[1]->isa("PPI::Token::Whitespace")) && (! $_[1]->isa("PPI::Token::Operator")) && ($odd = 1 - $odd) }) };
                 for my $el (@elems) {
-                    push @{ $defined_constants{"$el"} }, $st->line_number;
+                    push @{ $defined_constants{"$el"} }, $el->line_number;
                 }
             }
         }

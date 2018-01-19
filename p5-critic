@@ -131,7 +131,7 @@ package App::p5critic::PerlCodeCritic {
         }
 
         my %used;
-        for my $el_word (@{ $ppi_doc->find( sub { $_[1]->isa("PPI::Token::Word") }) //[]}) {
+        for my $el_word (@{ $ppi_doc->find( sub { $_[1]->isa("PPI::Token::Word") }) ||[]}) {
             $used{"$el_word"}++;
         }
 
@@ -166,7 +166,7 @@ package App::p5critic::PerlCodeCritic {
         }
 
 
-        for my $el_word (@{ $ppi_doc->find( sub { $_[1]->isa("PPI::Token::Word") }) //[]}) {
+        for my $el_word (@{ $ppi_doc->find( sub { $_[1]->isa("PPI::Token::Word") }) ||[]}) {
             my $st = $el_word;
             while ($st) {
                 last if ($st->isa("PPI::Statement::Include"));

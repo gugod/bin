@@ -66,6 +66,7 @@ package App::p5critic::PerlCodeCritic {
             "must_be_parsable",
             "should_have_no_imported_but_unused_subroutine",
             "should_use_all_defined_constants",
+            "should_not_use_utf8_unnecessarily",
         ) {
             $self->$checker;
             last if $self->reporter->has_errors;
@@ -157,7 +158,7 @@ package App::p5critic::PerlCodeCritic {
             }
             elsif ($st->schild(2)->isa("PPI::Structure::Constructor")) {
                 my $odd = 0;
-                my @elems = @{ $st->schild(2)->find(sub { $_[1]->isa("PPI::Token") && (! $_[1]->isa("PPI::Token::Whitespace")) && (! $_[1]->isa("PPI::Token::Operator")) && ($odd = 1 - $odd) }) };
+                my @elems = @{ $st->schild(2)->find(sub { $_[1]->isa("PPI::Token") && $_[1]->significant && (! $_[1]->isa("PPI::Token::Operator")) && ($odd = 1 - $odd) }) };
                 for my $el (@elems) {
                     push @{ $defined_constants{"$el"} }, $el->line_number;
                 }
@@ -178,6 +179,38 @@ package App::p5critic::PerlCodeCritic {
         my @to_report = grep { !$used{$_} } (sort keys %defined_constants);
         for my $tok (@to_report) {
             $self->reporter->notice("unused constant: <$tok>, at line: " . join(",", @{$defined_constants{$tok}}));
+        }
+    }
+
+    sub should_not_use_utf8_unnecessarily {
+        my $self = shift;
+        my $ppi_doc = $self->{ppi_src_code};
+        my $use_utf8_statements = $ppi_doc->find(
+            sub {
+                my $st = $_[1];
+                $st->isa('PPI::Statement::Include') && $st->schild(0) eq "use" && $st->schild(1) eq "utf8";
+            }
+        );
+        return unless $use_utf8_statements;
+
+        my $chars_outside_ascii_range = 0;
+        for (my $tok = $ppi_doc->first_token; $tok; $tok = $tok->next_token) {
+            next unless $tok->significant;
+            my $src = $tok->content;
+            utf8::decode($src);
+
+            my @c = split "", $src;
+            for (my $i = 0; $i < @c; $i++) {
+                if (ord($c[$i]) > 127) {
+                    $chars_outside_ascii_range++;
+                }
+            }
+            last if $chars_outside_ascii_range;
+            $tok = $tok->next_token;
+        }
+
+        unless ($chars_outside_ascii_range) {
+            $self->reporter->notice("'use utf8;' seems to be unnecessary. All characters in the source code are within ASCII range.");
         }
     }
 };

@@ -85,7 +85,7 @@ package App::p5critic::PerlCodeCritic {
             $self->reporter->error("The code is not PPI-parsable: " . PPI::Document->errstr);
         }
 
-        unless ($self->src_code =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x) {
+        unless (eval { $self->src_code =~ m{\A (?&PerlDocument) \Z $PPR::GRAMMAR }x }) {
             if (!$ppi_doc) {
                 $self->reporter->error("This code is neither PPR-parable nor PPI-parsable. It is probably wrong.");
             } else {
@@ -206,7 +206,6 @@ package App::p5critic::PerlCodeCritic {
                 }
             }
             last if $chars_outside_ascii_range;
-            $tok = $tok->next_token;
         }
 
         unless ($chars_outside_ascii_range) {

@@ -15,7 +15,6 @@ die "Require both `token` and `chat-id`" unless $opts{token} && $opts{chat_id};
 
 my $bot = WWW::Telegram::BotAPI->new( token => $opts{token} );
 my $tx = $bot->api_request('getMe');
-$tx = $bot->api_request('getUpdates', { offset => 0 });
 
 while(<>) {
     chomp;

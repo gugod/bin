@@ -2,11 +2,13 @@
 use v5.18;
 use strict;
 use warnings;
+
 use JSON::PP;
 use WWW::Telegram::BotAPI;
 use Getopt::Long qw(GetOptions);
 use File::Slurp qw(write_file);
 use File::Spec::Functions qw(catfile);
+use List::MoreUtils qw(minmax);
 
 my %opts;
 GetOptions(
@@ -24,20 +26,34 @@ if (exists $opts{o}) {
     $output_directory = $opts{o};
 }
 
+my $offset;
+if ($output_directory) {
+    my @previous_output = glob( catfile($output_directory, "telegram-getUpdates-*-*.json") );
+    if (@previous_output) {
+        (undef, $offset) = minmax(map { (split /[-\.]/)[4] } @previous_output );
+        $offset += 1;
+        print $offset;
+    }
+}
+
 my $JSON = JSON::PP->new->utf8->canonical;
 my $bot = WWW::Telegram::BotAPI->new( token => $opts{token} );
 my $res = $bot->api_request('getMe');
 
 $res = $bot->api_request(
     'getUpdates',
-    { timeout => 60 },
+    { timeout => 12, ($offset ? (offset => $offset): ()) },
 );
 
 if ($res && $res->{ok} && $res->{result}) {
     if ($output_directory) {
-        my $ts = time();
-        my $output = catfile($output_directory, "telegram-getUpdates-$ts.json");
-        write_file($output, $JSON->encode($res));
+        if ($res->{ok} &&  @{$res->{result}}) {
+            my ($min,$max) = minmax(map { $_->{update_id} } @{$res->{result}} );
+            my $output = catfile($output_directory, "telegram-getUpdates-$min-$max.json");
+            write_file($output, $JSON->encode($res));
+        } else {
+            warn "FAIL";
+        }
     }
     else {
         say $JSON->encode($res);

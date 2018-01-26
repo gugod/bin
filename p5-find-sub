@@ -1,0 +1,38 @@
+#!/usr/bin/env perl
+
+use v5.18;
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Fun 'foreach_perl_source_file';
+
+use PPI;
+use PPI::Document;
+
+foreach_perl_source_file \@ARGV => sub {
+    my ($file) = @_;
+    my $doc = PPI::Document->new($file) or return;
+
+    my $o = $doc->find(
+        sub {
+            my $el = $_[1];
+            return (
+                ($el->isa("PPI::Token::Word") && $el eq "sub") && (
+                    $el->parent->isa("PPI::Statement::Sub") ||
+                    $el->snext_sibling()->isa("PPI::Structure::Block")
+                )
+            );
+        }
+    ) or return;
+
+    for my $token (@$o) {
+        # $token is the word "sub"
+
+        my $tok2 = $token->snext_sibling;
+        my $sub_name = $tok2->isa("PPI::Token::Word") ? "$tok2" : "(anonymous)";
+
+        say join ":", $file, $token->line_number, $sub_name;
+    }
+};

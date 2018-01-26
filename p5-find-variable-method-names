@@ -3,56 +3,49 @@ use v5.18;
 
 use FindBin;
 use lib "$FindBin::Bin/lib";
-use Fun qw'is_perl';
+use Fun qw'foreach_perl_source_file';
 
 use PPI;
 use PPI::Document;
-use File::Next;
 
-use Getopt::Long;
+foreach_perl_source_file \@ARGV, sub {
+    my ($file) = @_;
+    my %hits;
+    my $doc = PPI::Document->new($file) or return;
+    $doc->index_locations;
 
-for (@ARGV) {
-    my $files = File::Next::files($_);
-    while ( defined ( my $file = $files->() ) ) {
-        next unless is_perl($file);
-
-        my %hits;
-        my $doc = PPI::Document->new($file) or next;
-        $doc->index_locations;
-
-        my $arrows = $doc->find(
-            sub {
-                my $op = $_[1];
-                return ($op->isa("PPI::Token::Operator") &&
-                        $op->content eq '->')
-            }
-        ) or next;
-
-        for (my $i = 0; $i < @$arrows; $i++) {
-            my $op = $arrows->[$i];
-            my $op_next = $op->snext_sibling;
-            next if $op_next->isa("PPI::Token::Word") || $op_next->isa("PPI::Structure::Subscript") || $op_next->isa("PPI::Structure::List");
-
-            # Weird case from PPI. Consider this code:
-            #     $a = $b ? $o->foo : 1;
-            # The "foo :" part is parsed as one token. Which is wrong.
-            # Luckly it does not remove positive responoses if we exclude those here.
-            next if $op_next->isa("PPI::Token::Label");
-
-            my $ln = $op->line_number;
-            $hits{$ln} = 1;
+    my $arrows = $doc->find(
+        sub {
+            my $op = $_[1];
+            return ($op->isa("PPI::Token::Operator") &&
+                    $op->content eq '->')
         }
+    ) or next;
 
-        if (%hits) {
-            my $line_number = 0;
-            open my $fh, "<", $file;
-            while(my $line = <$fh>) {
-                $line_number++;
-                if ($hits{$line_number}) {
-                    print "${file}:${line_number}:${line}";
-                }
-            }
-            close($fh);
-        }
+    for (my $i = 0; $i < @$arrows; $i++) {
+        my $op = $arrows->[$i];
+        my $op_next = $op->snext_sibling;
+        next if $op_next->isa("PPI::Token::Word") || $op_next->isa("PPI::Structure::Subscript") || $op_next->isa("PPI::Structure::List");
+
+        # Weird case from PPI. Consider this code:
+        #     $a = $b ? $o->foo : 1;
+        # The "foo :" part is parsed as one token. Which is wrong.
+        # Luckly it does not remove positive responoses if we exclude those here.
+        next if $op_next->isa("PPI::Token::Label");
+
+        my $ln = $op->line_number;
+        $hits{$ln} = 1;
     }
-}
+
+    if (%hits) {
+        my $line_number = 0;
+        open my $fh, "<", $file;
+        while (my $line = <$fh>) {
+            $line_number++;
+            if ($hits{$line_number}) {
+                print "${file}:${line_number}:${line}";
+            }
+        }
+        close($fh);
+    }
+};

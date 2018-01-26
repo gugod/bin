@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'Exporter';
 
-our @EXPORT_OK = qw'is_perl';
+our @EXPORT_OK = qw'is_perl foreach_perl_source_file';
 
 sub is_perl {
     my ($file) = @_;
@@ -17,6 +17,18 @@ sub is_perl {
     }
 
     return 0;
+}
+
+use File::Next;
+sub foreach_perl_source_file {
+    my ($input, $cb) = @_;
+    for (@$input) {
+        my $files = File::Next::files($_);
+        while ( defined ( my $file = $files->() ) ) {
+            next unless is_perl($file);
+            $cb->($file);
+        }
+    }
 }
 
 1;

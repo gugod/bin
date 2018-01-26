@@ -19,7 +19,7 @@ foreach_perl_source_file \@ARGV => sub {
         sub {
             my $el = $_[1];
             return (
-                ($el->isa("PPI::Token::Word") && $el eq "sub") && (
+                $el->isa("PPI::Token::Word") && $el eq "sub" && (
                     $el->parent->isa("PPI::Statement::Sub") ||
                     $el->snext_sibling()->isa("PPI::Structure::Block")
                 )

@@ -11,7 +11,7 @@ use File::Next;
 sub is_perl {
     my ($file) = @_;
 
-    return 1 if $file =~ / \.(?: t|p[ml]|pod|comp ) $/xi;
+    return 1 if $file =~ / \.(?: t|p[ml]|pod|comp|psgi ) $/xi;
     return 0 if basename($file) =~ / \. /xi;
 
     if (open my $fh, '<', $file) {

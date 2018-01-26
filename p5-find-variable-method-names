@@ -20,7 +20,7 @@ foreach_perl_source_file \@ARGV, sub {
             return ($op->isa("PPI::Token::Operator") &&
                     $op->content eq '->')
         }
-    ) or next;
+    ) or return;
 
     for (my $i = 0; $i < @$arrows; $i++) {
         my $op = $arrows->[$i];

@@ -29,10 +29,8 @@ foreach_perl_source_file \@ARGV => sub {
 
     for my $token (@$o) {
         # $token is the word "sub"
-
-        my $tok2 = $token->snext_sibling;
-        my $sub_name = $tok2->isa("PPI::Token::Word") ? "$tok2" : "(anonymous)";
-
+        my $el = $token->parent;
+        my $sub_name = $el->isa("PPI::Statement::Sub") ? $el->name : "(anonymous)";
         say join ":", $file, $token->line_number, $sub_name;
     }
 };

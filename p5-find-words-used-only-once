@@ -1,0 +1,64 @@
+#!/usr/bin/env perl
+
+use v5.18;
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Fun 'foreach_perl_source_file';
+
+use PPI;
+use PPI::Document;
+use PPIx::QuoteLike;
+my %idx;
+
+my @args = @ARGV;
+@args = (".") if !@args;
+foreach_perl_source_file \@args => sub {
+    my ($file) = @_;
+    my $doc = PPI::Document->new($file) or return;
+    $doc->index_locations;
+    say "... $file";
+    my $o;
+
+    $o = $doc->find(sub { $_[1]->isa("PPI::Token::QuoteLike::Words") }) ||[];
+    for my $token (@$o) {
+        for my $word ($token->literal) {
+            if (defined($idx{"$word"})) {
+                $idx{"$word"}{frequency}++;
+            } else {
+                $idx{"$word"} = +{
+                    frequency => 1,
+                    WHERE => [
+                        $file,
+                        $token->line_number,
+                        $token->column_number,
+                    ]
+                };
+            }
+        }
+    }
+
+    $o = $doc->find(sub { $_[1]->isa("PPI::Token::Word") }) ||[];
+    for my $token (@$o) {
+        if (defined($idx{"$token"})) {
+            $idx{"$token"}{frequency}++;
+        } else {
+            $idx{"$token"} = +{
+                frequency => 1,
+                WHERE => [
+                    $file,
+                    $token->line_number,
+                    $token->column_number,
+                ]
+            };
+        }
+    }
+
+};
+
+for my $tok (keys %idx) {
+    next unless $idx{$tok}{frequency} == 1;
+    say join ":", @{$idx{$tok}{WHERE}}, $tok;
+}

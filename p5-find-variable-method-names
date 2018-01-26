@@ -1,25 +1,15 @@
 #!/usr/bin/env perl
 use v5.18;
 
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Fun qw'is_perl';
+
 use PPI;
 use PPI::Document;
 use File::Next;
 
 use Getopt::Long;
-
-sub is_perl {
-    my ($file) = @_;
-
-    return 1 if $file =~ / \.(?: t|p[ml]|pod|comp ) $/xi;
-    return 0 if $file =~ / \. /xi;
-
-    if (open my $fh, '<', $file) {
-        my $line = <$fh>;
-        return 1 if $line =~ m{^#!.*perl};
-    }
-
-    return 0;
-}
 
 for (@ARGV) {
     my $files = File::Next::files($_);

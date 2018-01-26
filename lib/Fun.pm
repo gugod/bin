@@ -1,15 +1,18 @@
 package Fun;
 use strict;
 use warnings;
-use parent 'Exporter';
 
+use parent 'Exporter';
 our @EXPORT_OK = qw'is_perl foreach_perl_source_file';
+
+use File::Basename 'basename';
+use File::Next;
 
 sub is_perl {
     my ($file) = @_;
 
     return 1 if $file =~ / \.(?: t|p[ml]|pod|comp ) $/xi;
-    return 0 if $file =~ / \. /xi;
+    return 0 if basename($file) =~ / \. /xi;
 
     if (open my $fh, '<', $file) {
         my $line = <$fh>;
@@ -19,7 +22,6 @@ sub is_perl {
     return 0;
 }
 
-use File::Next;
 sub foreach_perl_source_file {
     my ($input, $cb) = @_;
     for (@$input) {
@@ -32,4 +34,3 @@ sub foreach_perl_source_file {
 }
 
 1;
-

@@ -11,7 +11,9 @@ use Fun 'foreach_perl_source_file';
 use PPI;
 use PPI::Document;
 
-foreach_perl_source_file \@ARGV => sub {
+my @args = @ARGV;
+@args = (".") if !@args;
+foreach_perl_source_file \@args => sub {
     my ($file) = @_;
     my $doc = PPI::Document->new($file) or return;
 

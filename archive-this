@@ -11,7 +11,7 @@ my $archivers = [
     sub {
         my $res = Hijk::request({
             method => "GET",
-            host   => "archive.today",
+            host   => "archive.is",
             port   => "80",
             path   => "/submit/",
             body   => "url=$url",

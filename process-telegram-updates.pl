@@ -7,18 +7,22 @@ use JSON::PP;
 use File::Slurp qw(read_file write_file);
 use Regexp::Common 'URI';
 use Hijk;
-
 use Getopt::Long qw(GetOptions);
+
+use FindBin;
+use lib $FindBin::Bin."/lib";
+use Fun::Web 'extract_title_and_text';
 
 my %opts;
 GetOptions(
     \%opts,
-    "dir|d=s"
+    "dir|d=s",
+    "org=s",
 );
 
-merge_get_updates($opts{dir});
-
 my $JSON = JSON::PP->new->utf8;
+
+merge_get_updates($opts{dir});
 for my $merged_updates (glob("$opts{dir}/merged-getUpdates-*.json")) {
     say $merged_updates;
 
@@ -86,6 +90,10 @@ sub archive_this {
     my $url = shift;
     my $archivers = [
         sub {
+            extract_and_store_to_org_note(@_);
+            return undef;
+        },
+        sub {
             say "archive.is: $url";
             my $res = Hijk::request({
                 method => "GET",
@@ -113,11 +121,29 @@ sub archive_this {
     for my $archiver (@$archivers) {
         my $kid = fork();
         unless ($kid) {
-            my $res = $archiver->();
-            say $res->{status}, " ", (substr( ($res->{status} =~ /^3/) ? $res->{head}{Location} : $res->{body} , 0, 64) =~ s/\n/\\n/gr);
+            my $res = $archiver->($url);
+            if ($res) {
+                say $res->{status}, " ", (substr( ($res->{status} =~ /^3/) ? $res->{head}{Location} : $res->{body} , 0, 64) =~ s/\n/\\n/gr);
+            }
             exit;
         }
     }
     wait() for @$archivers;
     return;
+}
+
+sub extract_and_store_to_org_note {
+    return unless $opts{org};
+
+    my ($url) = @_;
+    my $o = extract_title_and_text($url);
+
+    $o->{title} =~ s{(\r?\n)+}{ }gs;
+    $o->{text} =~ s{\n(\*+ )}{ "\n" . "-" x (length($1)-1) . " " }ge;
+
+    my $org_text = "* ${url}\n\n" . $o->{title} . "\n\n" . $o->{text} . "\n\n";
+
+    open my $fh, ">>", $opts{org};
+    print $fh Encode::encode_utf8($org_text);
+    close($fh);
 }

@@ -1,0 +1,118 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+package App::p5repocritic::Code {
+    use Moo;
+    use PPI;
+    has src_file => ( required => 1, is => "ro", isa => "Str" );
+    has dom => ( required => 1, isa => "PPI::Document", lazy => 1 );
+
+    sub _build_dom {
+        my ($self) = @_;
+        return PPI::Document->new( $self->src_file );
+    }
+};
+
+package App::p5repocritic::Repo {
+    use Moo;
+    has codes => (
+        required => 1,
+        isa => "ArrayRef[App::p5repocritic::Code]",
+        default => sub { [] },
+    );
+
+    sub put {
+        my ($self, $o) = @_;
+        die "Can't feed me that." unless $o->isa('App::p5repocritic::Code');
+        push @{ $self->codes }, $o;
+    }
+
+    sub iter {
+        my ($self) = @_;
+        my $i = 0;
+        return sub {
+            if ($i < @{ $self->code }) {
+                return $self->code->[$i++];
+            }
+            return undef;
+        }
+    }
+};
+
+package App::p5repocritic::Critic {
+    use Moo;
+    has repo => (
+        required => 1,
+        isa => "App::p5repocritic::Repo",
+    );
+
+    sub run {
+        my ($self) = @_;
+    }
+
+    sub locate_subroutine_without_invocation {
+        my ($self) = @_;
+
+        my @invocations, @definitions;
+        my $it = $self->repo->iter;
+        while (my $code = $it->()) {
+            push @definitions, $code->subrotine_definition;
+            push @invocations, $code->subrotine_invocation;
+        }
+
+        my %invoked;
+        for (@invocations) {
+            $invoked{$_}++;
+        }
+        for my $x (@definitions) {
+            if ( $invoked{$x} ) {
+                say "Unused subroutine: $x";
+            }
+        }
+    }
+};
+
+package App::p5repocritic {
+    use strict;
+    use warnings;
+    use File::Next;
+
+    sub new {
+        my ($class, $args) = @_;
+        return bless { src_paths => $args }, __PACKAGE__;
+    }
+
+    sub looks_like_a_perl_src_file {
+        my ($file) = @_;
+
+        return 1 if $file =~ / \.(?: t|p[ml]|pod|comp ) $/xi;
+        return 0 if $file =~ / \. /xi;
+
+        if (open my $fh, '<', $file) {
+            my $line = <$fh>;
+            return 1 if defined($line) && $line =~ m{^#!.*perl};
+        }
+        return 0;
+    }
+
+    sub run {
+        my ($self) = @_;
+        my $src_paths = $self->{src_paths};
+        my $report_success = 0;
+        @$src_paths = ('.') unless @$src_paths;
+        $report_success = 1 if @$src_paths > 1;
+
+        my $repo = App::p5repocritic::Repo->new( src_paths => $src_paths );
+        my $iter = File::Next::files( @{$self->{src_paths}} );
+        while(defined( my $file = $iter->() )) {
+            next unless looks_like_a_perl_src_file($file);
+            my $o = App::p5repocritic::Code->new( src_file => $file );
+            $repo->put( $o );
+        }
+        App::p5repocritic::Critic->new( repo => $repo )->run;
+    }
+};
+
+my @paths = @ARGV;
+App::p5repocritic->new(@ARGV)->run;

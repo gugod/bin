@@ -139,6 +139,7 @@ sub extract_and_store_to_org_note {
     my $o = extract_title_and_text($url);
 
     $o->{title} =~ s{(\r?\n)+}{ }gs;
+    $o->{text} =~ s{\r\n}{\n}g;
     $o->{text} =~ s{\n(\*+ )}{ "\n" . "-" x (length($1)-1) . " " }ge;
 
     my $org_text = "* ${url}\n\n" . $o->{title} . "\n\n" . $o->{text} . "\n\n";

@@ -136,6 +136,10 @@ sub extract_and_store_to_org_note {
     return unless $opts{org};
 
     my ($url) = @_;
+
+    # Skip if the URL is already found
+    return if read_file($opts{org}) =~ /\* \Q$url\E/;
+
     my $o = extract_title_and_text($url);
 
     $o->{title} =~ s{(\r?\n)+}{ }gs;

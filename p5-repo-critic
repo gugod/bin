@@ -1,24 +1,67 @@
 #!/usr/bin/env perl
+use v5.18;
 use strict;
 use warnings;
 
-package App::p5repocritic::Code {
-    use Moo;
-    use PPI;
-    has src_file => ( required => 1, is => "ro", isa => "Str" );
-    has dom => ( required => 1, isa => "PPI::Document", lazy => 1 );
+package App::p5repocritic::Evidence {
+    use Moose;
+    use Types::Standard qw( Str Int );
 
-    sub _build_dom {
+    has name => ( required => 1, is => "ro", isa => Str );
+    has src_file => ( required => 1, is => "ro", isa => Str );
+    has element_type => ( required => 1, is => "ro", isa => Str );
+    has line_number =>  ( required => 1, is => "ro", isa => Int );
+
+    use overload '""' => sub { $_[0]->name };
+};
+
+package App::p5repocritic::Code {
+    use Moose;
+    use Types::Standard qw(Str);
+    use PPI;
+    has src_file => ( required => 1, is => "ro", isa => Str );
+    has ppi_doc => (
+        required => 1,
+        lazy_build => 1,
+        is => "ro",
+        isa => "PPI::Document",
+    );
+
+    sub _build_ppi_doc {
         my ($self) = @_;
-        return PPI::Document->new( $self->src_file );
+        my $doc = PPI::Document->new( $self->src_file );
+        $doc->index_locations;
+        return $doc;
+    }
+
+    sub subrotine_definition {
+        my ($self) = @_;
+        my $found = $self->ppi_doc->find( sub { $_[1]->isa("PPI::Statement::Sub") and $_[1]->name }) or return ();
+        my @o;
+        for my $tok (@$found) {
+            my $o = App::p5repocritic::Evidence->new(
+                src_file => $self->src_file,
+                element_type => "PPI::Statement::Sub",
+                line_number => $tok->line_number,
+                name => $tok->name,
+            );
+            push @o, $o;
+        }
+        return @o;
+    }
+
+    sub subrotine_invocation {
+        my ($self) = @_;
+        return ();
     }
 };
 
 package App::p5repocritic::Repo {
-    use Moo;
+    use Moose;
     has codes => (
+        is => "ro",
         required => 1,
-        isa => "ArrayRef[App::p5repocritic::Code]",
+        # isa => "ArrayRef[App::p5repocritic::Code]",
         default => sub { [] },
     );
 
@@ -32,8 +75,8 @@ package App::p5repocritic::Repo {
         my ($self) = @_;
         my $i = 0;
         return sub {
-            if ($i < @{ $self->code }) {
-                return $self->code->[$i++];
+            if ($i < @{ $self->codes }) {
+                return $self->codes->[$i++];
             }
             return undef;
         }
@@ -41,20 +84,22 @@ package App::p5repocritic::Repo {
 };
 
 package App::p5repocritic::Critic {
-    use Moo;
+    use Moose;
     has repo => (
+        is => "ro",
         required => 1,
         isa => "App::p5repocritic::Repo",
     );
 
     sub run {
         my ($self) = @_;
+        $self->locate_subroutine_without_invocation;
     }
 
     sub locate_subroutine_without_invocation {
         my ($self) = @_;
 
-        my @invocations, @definitions;
+        my (@invocations, @definitions);
         my $it = $self->repo->iter;
         while (my $code = $it->()) {
             push @definitions, $code->subrotine_definition;
@@ -100,7 +145,7 @@ package App::p5repocritic {
         my ($self) = @_;
         my $src_paths = $self->{src_paths};
         my $report_success = 0;
-        @$src_paths = ('.') unless @$src_paths;
+        @$src_paths = ('.') unless $src_paths;
         $report_success = 1 if @$src_paths > 1;
 
         my $repo = App::p5repocritic::Repo->new( src_paths => $src_paths );
@@ -115,4 +160,4 @@ package App::p5repocritic {
 };
 
 my @paths = @ARGV;
-App::p5repocritic->new(@ARGV)->run;
+App::p5repocritic->new(\@paths)->run;

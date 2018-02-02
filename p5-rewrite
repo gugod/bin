@@ -36,6 +36,9 @@ sub rewrite_ref_eq {
             my $WHAT = $el_next->string;
             return 0 unless $replace{$WHAT};
 
+            # The rest of this subroutine finds "ref" and store it $el_ref.
+            # The the document ranged $el_ref ... $el is the range we wish to rewrite.
+
             my $el_ref;
             my $el_prev = $el->sprevious_sibling;
             if ($el_prev->isa('PPI::Structure::List')) {

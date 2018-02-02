@@ -8,6 +8,8 @@ use Fun 'foreach_perl_source_file';
 
 use PPI;
 use PPI::Document;
+use PPI::Element;
+
 use Scalar::Util qw(refaddr);
 
 sub rewrite_ref_eq {
@@ -16,6 +18,7 @@ sub rewrite_ref_eq {
         'ARRAY' => 'is_plain_arrayref',
         'HASH'  => 'is_plain_hashref',
     );
+    my %replaced = ();
 
     my %partner;
     my $tokens = $doc->find(
@@ -53,6 +56,8 @@ sub rewrite_ref_eq {
         my $el_WHAT = $el_eq->snext_sibling;
 
         $el_ref->set_content( $replace{$WHAT} );
+        $replaced{$replace{$WHAT}}++;
+
         my @to_remove = ($el_eq, $el_WHAT);
         unless ($el_eq->previous_sibling->significant) {
             push @to_remove, $el_eq->previous_sibling;
@@ -68,6 +73,28 @@ sub rewrite_ref_eq {
         }
         for (@to_remove) {
             $_->delete;
+        }
+    }
+
+    my $include = 'use Ref::Util qw(' . join(' ', sort keys %replaced) . ");\n\n";
+    my ($el_include) = PPI::Document->new(\$include);
+
+    my $preamble_started = 0;
+    my $preamble_ended = 0;
+    my @children = $doc->schildren();
+    for my $o (@children) {
+        if ($preamble_started) {
+            if (!$o->isa('PPI::Statement::Include')) {
+                $doc->__insert_before_child(
+                    $o,
+                    $el_include
+                );
+                last;
+            }
+        } else {
+            if ($o->isa('PPI::Statement::Include')) {
+                $preamble_started = 1;
+            }
         }
     }
 }

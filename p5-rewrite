@@ -5,6 +5,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use Fun 'foreach_perl_source_file';
+use Fun::P5 qw(inject_include);
 
 use PPI;
 use PPI::Document;
@@ -25,7 +26,8 @@ sub rewrite_ref_eq {
         sub {
             # This subroutine find this 2 form of ref calls (with paren):
             #    - ref(...) eq "ARRAY"
-            #    - ref(...) eq "HASh"
+            #    - ref(...) eq "HASH"
+            # It collects the element for "eq" operator, and use that as a reference point.
 
             my $el = $_[1];
             return 0 unless $el->isa('PPI::Token::Operator') && "$el" eq "eq";
@@ -34,15 +36,28 @@ sub rewrite_ref_eq {
             my $WHAT = $el_next->string;
             return 0 unless $replace{$WHAT};
 
+            my $el_ref;
             my $el_prev = $el->sprevious_sibling;
-            return 0 unless $el_prev->isa('PPI::Structure::List');
+            if ($el_prev->isa('PPI::Structure::List')) {
+                # This part discover all cases when ref() comes with parens
+                $el_prev = $el_prev->sprevious_sibling;
+                if ($el_prev->isa('PPI::Token::Word') && "$el_prev" eq "ref" && !$el_prev->method_call) {
+                    $el_ref = $el_prev;
+                }
+            } elsif ($el_prev->isa('PPI::Token::Symbol')) {
+                # This part covers a trivial case:
+                #     ref $z eq 'ARRAY'
+                $el_prev = $el_prev->sprevious_sibling;
+                if ($el_prev->isa('PPI::Token::Word') && "$el_prev" eq "ref" && !$el_prev->method_call) {
+                    $el_ref = $el_prev;
+                }
+            }
 
-            $el_prev = $el_prev->sprevious_sibling;
-            return 0 unless $el_prev->isa('PPI::Token::Word') && "$el_prev" eq "ref" && !$el_prev->method_call;
+            return 0 unless $el_ref;
 
             my $addr = refaddr($el);
             $partner{$addr} = [
-                $el_prev,
+                $el_ref,
                 $WHAT,
             ];
             return 1;
@@ -76,27 +91,11 @@ sub rewrite_ref_eq {
         }
     }
 
-    my $include = 'use Ref::Util qw(' . join(' ', sort keys %replaced) . ");\n\n";
-    my ($el_include) = PPI::Document->new(\$include);
-
-    my $preamble_started = 0;
-    my $preamble_ended = 0;
-    my @children = $doc->schildren();
-    for my $o (@children) {
-        if ($preamble_started) {
-            if (!$o->isa('PPI::Statement::Include')) {
-                $doc->__insert_before_child(
-                    $o,
-                    $el_include
-                );
-                last;
-            }
-        } else {
-            if ($o->isa('PPI::Statement::Include')) {
-                $preamble_started = 1;
-            }
-        }
-    }
+    inject_include(
+        $doc,
+        'Ref::Util',
+        sort keys %replaced,
+    );
 }
 
 my @args = @ARGV;
@@ -107,5 +106,5 @@ foreach_perl_source_file \@args => sub {
     my $doc = PPI::Document->new($file) or return;
     # $doc->index_locations;
     rewrite_ref_eq($doc);
-    $doc->save($file . ".rewritten");
+    $doc->save($file);
 };

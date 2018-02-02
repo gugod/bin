@@ -1,0 +1,84 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Fun 'foreach_perl_source_file';
+
+use PPI;
+use PPI::Document;
+use Scalar::Util qw(refaddr);
+
+sub rewrite_ref_eq {
+    my ($doc) = @_;
+    my %replace = (
+        'ARRAY' => 'is_plain_arrayref',
+        'HASH'  => 'is_plain_hashref',
+    );
+
+    my %partner;
+    my $tokens = $doc->find(
+        sub {
+            # This subroutine find this 2 form of ref calls (with paren):
+            #    - ref(...) eq "ARRAY"
+            #    - ref(...) eq "HASh"
+
+            my $el = $_[1];
+            return 0 unless $el->isa('PPI::Token::Operator') && "$el" eq "eq";
+            my $el_next = $el->snext_sibling;
+            return 0 unless $el_next->isa('PPI::Token::Quote');
+            my $WHAT = $el_next->string;
+            return 0 unless $replace{$WHAT};
+
+            my $el_prev = $el->sprevious_sibling;
+            return 0 unless $el_prev->isa('PPI::Structure::List');
+
+            $el_prev = $el_prev->sprevious_sibling;
+            return 0 unless $el_prev->isa('PPI::Token::Word') && "$el_prev" eq "ref" && !$el_prev->method_call;
+
+            my $addr = refaddr($el);
+            $partner{$addr} = [
+                $el_prev,
+                $WHAT,
+            ];
+            return 1;
+        }
+    ) or return;
+
+    for my $el_eq (@$tokens) {
+        my $el_eq_addr = refaddr($el_eq);
+        my $el_ref = $partner{$el_eq_addr}[0];
+        my $WHAT   = $partner{$el_eq_addr}[1];
+        my $el_WHAT = $el_eq->snext_sibling;
+
+        $el_ref->set_content( $replace{$WHAT} );
+        my @to_remove = ($el_eq, $el_WHAT);
+        unless ($el_eq->previous_sibling->significant) {
+            push @to_remove, $el_eq->previous_sibling;
+        }
+
+        my $el_next = $el_eq->next_sibling;
+        my $el_WHAT_addr = refaddr($el_WHAT);
+        my $addr = refaddr($el_next);
+        while ($addr != $el_WHAT_addr) {
+            push @to_remove, $el_next;
+            $el_next = $el_next->next_sibling;
+            $addr = refaddr($el_next);
+        }
+        for (@to_remove) {
+            $_->delete;
+        }
+    }
+}
+
+my @args = @ARGV;
+@args = (".") if !@args;
+foreach_perl_source_file \@args => sub {
+    my ($file) = @_;
+    say "... $file";
+    my $doc = PPI::Document->new($file) or return;
+    # $doc->index_locations;
+    rewrite_ref_eq($doc);
+    $doc->save($file . ".rewritten");
+};

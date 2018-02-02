@@ -9,6 +9,7 @@ use PPI::Token::Word;
 use PPI::Token::Operator;
 use PPI::Token::Whitespace;
 use PPI::Token::Quote::Single;
+use PPIx::Literal;
 
 sub main {
     my ($file, $module, @imports) = @_;
@@ -36,9 +37,11 @@ sub _inject_module_imports {
             $semi->insert_before( $new_imports );
 
         } elsif (@args == 1) {
+            my @literals = PPIx::Literal->convert(@args);
+            my %imported = map { $_ => 1 } @literals;
+
             if ($args[0]->isa('PPI::Token::QuoteLike::Words')) {
-                my @words = $args[0]->literal;
-                my %imported = map { $_ => 1 } @words;
+                my @words = @literals;
                 for my $x (@imports) {
                     push(@words, $x) unless $imported{$x};
                 }
@@ -47,13 +50,15 @@ sub _inject_module_imports {
 
                 $args[0]->set_content('qw' . $left . join(" ", @words) . $right);
             } elsif ($args[0]->isa('PPI::Structure::List')) {
-                for my $new_word (@imports) {
+                for my $x (@imports) {
+                    next if $imported{$x};
                     for my $t (
                         PPI::Token::Operator->new(','),
                         PPI::Token::Whitespace->new(' '),
-                        PPI::Token::Quote::Single->new("'${new_word}'"),
+                        PPI::Token::Quote::Single->new("'$x'"),
                     ) {
-                        $args[0]->add_element($t)
+                        say "Append $t";
+                        $args[0]->add_element($t);
                     }
                 }
             } else {

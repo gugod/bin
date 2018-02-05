@@ -24,10 +24,8 @@ sub rewrite_ref_eq {
     my %partner;
     my $tokens = $doc->find(
         sub {
-            # This subroutine find this 2 form of ref calls (with paren):
-            #    - ref(...) eq "ARRAY"
-            #    - ref(...) eq "HASH"
-            # It collects the element for "eq" operator, and use that as a reference point.
+            # This subroutine gather then element for an `eq` operator, if it is followed by
+            # "ARRAY"/"HASH", and preceeed by a "ref" keyword that looks like a ref() call.
 
             my $el = $_[1];
             return 0 unless $el->isa('PPI::Token::Operator') && "$el" eq "eq";
@@ -43,6 +41,9 @@ sub rewrite_ref_eq {
             my $el_prev = $el->sprevious_sibling;
             if ($el_prev->isa('PPI::Structure::List')) {
                 # This part discover all cases when ref() comes with parens
+                #    - ref(...) eq "ARRAY"
+                #    - ref(...) eq "HASH"
+
                 $el_prev = $el_prev->sprevious_sibling;
                 if ($el_prev->isa('PPI::Token::Word') && "$el_prev" eq "ref" && !$el_prev->method_call) {
                     $el_ref = $el_prev;

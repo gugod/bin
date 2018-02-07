@@ -3,14 +3,13 @@ use v5.18;
 use strict;
 use warnings;
 
-use Sereal::Decoder;
-use Sereal::Encoder;
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun::File qw(srl_slurp srl_spew);
 
 my %args = @ARGV;
 my $input_dir   = $args{'-i'} or die "No input dir -i";
 my $output_dir  = $args{'-o'} or die "No output dir -o";
-
-my $srl_decoder = Sereal::Decoder->new;
 
 my @all_inputs = sort { $b cmp $a } glob($input_dir . "/twitter-timeline-daily-users-*.srl");
 my $users = {};
@@ -24,10 +23,7 @@ if (-f $output) {
     slurp_and_merge($users, $output);
 }
 
-my $srl_encoder = Sereal::Encoder->new;
-open(my $fh, ">", "${output_dir}/twitter-user-merged.srl") or die $!;
-print $fh $srl_encoder->encode($users);
-close($fh);
+srl_spew("${output_dir}/twitter-user-merged.srl", $users);
 
 unlink($_) for grep { -f $_ } @all_inputs;
 
@@ -50,19 +46,4 @@ sub hash_left_merge {
         $h1->{$_} //= $h2->{$_};
     }
     return;
-}
-
-sub srl_slurp {
-    my ($file) = @_;
-    my $d = do {
-        open(my $fh, "<", $file) or die $!;
-        local $/ = undef;
-        <$fh>;
-    };
-    my $u;
-    my $srl_decoder = Sereal::Decoder->new;
-    if ($srl_decoder->looks_like_sereal($d)) {
-        $u = $srl_decoder->decode($d);
-    }
-    return $u;
 }

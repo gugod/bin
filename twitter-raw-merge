@@ -18,6 +18,9 @@ my ($status, $user);
 my $output_status = "${output_dir}/twitter-status.srl";
 my $output_user   = "${output_dir}/twitter-user.srl";
 
+my @materials = sort { $a cmp $b } glob($input_dir . "/twitter-raw-*.srl");
+exit(0) unless @materials;
+
 if (-f $output_status) {
     $status = srl_slurp($output_status);
 }
@@ -25,7 +28,6 @@ if (-f $output_user) {
     $user = srl_slurp($output_user);
 }
 
-my @materials = sort { $a cmp $b } glob($input_dir . "/twitter-raw-*.srl");
 for my $f (@materials) {
     say $f;
     my $res = srl_slurp($f);

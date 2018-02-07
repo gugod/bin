@@ -4,7 +4,8 @@ use strict;
 use warnings;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(srl_slurp srl_spew);
+use Module::Functions;
+our @EXPORT_OK = get_public_functions();
 
 use Sereal::Decoder;
 use Sereal::Encoder;
@@ -29,6 +30,13 @@ sub srl_spew {
     my $srl_encoder = Sereal::Encoder->new;
     open(my $fh, ">", $file) or die $!;
     print $fh $srl_encoder->encode($o);
+    close($fh);
+}
+
+sub txt_spew {
+    my ($file, $content) = @_;
+    open(my $fh, ">", $file) or die $!;
+    print $fh $content;
     close($fh);
 }
 

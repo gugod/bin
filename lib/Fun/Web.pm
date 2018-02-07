@@ -11,6 +11,25 @@ use Mojo::UserAgent;
 use Encode;
 use HTML::ExtractContent;
 use URI;
+use URI::QueryParam;
+
+sub url_remove_tracking_params {
+    my ($url) = @_;
+    my $o = URI->new($url);
+    for my $k ($o->query_param) {
+        if ($k =~ /\A utm_[a-z0-9]+ \z/x) {
+            $o->query_param_delete($k);
+        }
+    }
+    return "$o";
+}
+
+sub url_unshorten {
+    my $url = shift;
+    my $ua = Mojo::UserAgent->new->max_redirects(10)->max_response_size(4096);
+    my $tx = $ua->get($url);
+    return $tx->req->url->to_abs . "";
+}
 
 sub extract_title_and_text {
     my $url = shift;

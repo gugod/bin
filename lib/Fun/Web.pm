@@ -73,4 +73,22 @@ sub extract_title_and_text {
     }
 }
 
+my %sns_hosts = map { $_ => 1 } (
+    "twitter.com",
+    "facebook.com",
+    "www.facebook.com",
+    "www.instagram.com",
+);
+sub host_is_sns {
+    return $sns_hosts{$_[0]};
+}
+
+my %video_hosts = map { $_ => 1 } (
+    "www.youtube.com",
+    "www.twitch.tv",
+);
+sub host_is_video {
+    return $video_hosts{$_[0]}
+}
+
 1;

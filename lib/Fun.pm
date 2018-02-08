@@ -2,8 +2,9 @@ package Fun;
 use strict;
 use warnings;
 
-use parent 'Exporter';
-our @EXPORT_OK = qw'is_perl foreach_perl_source_file';
+use Exporter 'import';
+use Module::Functions;
+our @EXPORT_OK = get_public_functions();
 
 use File::Basename 'basename';
 use File::Next;
@@ -31,6 +32,14 @@ sub foreach_perl_source_file {
             $cb->($file);
         }
     }
+}
+
+sub hash_left_merge {
+    my ($h1, $h2) = @_;
+    for (keys %$h2) {
+        $h1->{$_} //= $h2->{$_};
+    }
+    return;
 }
 
 1;

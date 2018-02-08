@@ -32,16 +32,22 @@ sub url_unshorten {
 }
 
 sub extract_title_and_text {
-    my $url = shift;
-    my $ua = Mojo::UserAgent->new->max_redirects(10);
-    my $tx = $ua->get($url);
+    my ($url, $res);
 
-    my $base_url = URI->new($url);
-    my $dom = $tx->res->dom;
-    my $content_type = $tx->res->headers->content_type;
+    if (! ref($_[0])) {
+        $url = $_[0];
+        my $ua = Mojo::UserAgent->new->max_redirects(10);
+        my $tx = $ua->get($url);
+        $res = $tx->res;
+    } else {
+        $res = $_[0];
+    }
+    
+    my $dom = $res->dom;
 
     my $charset;
-    if ($content_type =~ m!charset=(.+)[;\s]?!) {
+    my $content_type = $res->headers->content_type;
+    if ( $content_type && $content_type =~ m!charset=(.+)[;\s]?!) {
         $charset = $1;
     }
     if (!$charset) {
@@ -51,7 +57,7 @@ sub extract_title_and_text {
     }
     $charset ||= "utf-8";
 
-    my $html = Encode::decode($charset, $tx->res->body);
+    my $html = Encode::decode($charset, $res->body);
 
     my $title = $dom->find("title");
     if ($title->size > 0) {

@@ -78,6 +78,7 @@ my %sns_hosts = map { $_ => 1 } (
     "facebook.com",
     "www.facebook.com",
     "www.instagram.com",
+    "m.facebook.com",
 );
 sub host_is_sns {
     return $sns_hosts{$_[0]};
@@ -89,6 +90,20 @@ my %video_hosts = map { $_ => 1 } (
 );
 sub host_is_video {
     return $video_hosts{$_[0]}
+}
+
+my %news_hosts = map { $_ => 1 } (
+    "udn.com",
+    "newtalk.tw",
+    "www3.nhk.or.jp",
+);
+sub host_is_news {
+    my ($host) = @_;
+    return 1 if $host =~ /\A www\.huffingtonpost\.(fr|jp) /x;
+    return 1 if $host =~ /\A [a-z]+\.cnn.com /x;
+    return 1 if $host =~ / news\.yahoo\. /x;
+    return 1 if $news_hosts{$host};
+    return 0;
 }
 
 1;

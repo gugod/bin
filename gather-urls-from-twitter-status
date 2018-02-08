@@ -1,0 +1,37 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun qw(hash_left_merge);
+use Fun::File qw(srl_slurp srl_spew txt_spew);
+use Fun::Web qw(url_unshorten url_remove_tracking_params host_is_news host_is_sns host_is_video);
+
+my %args = @ARGV;
+my $input_dir  = $args{'-i'} or die "No input dir -i";
+my $output_dir = $args{'-o'} or die "No output dir -o";
+
+my $status = {};
+for my $f (glob("${input_dir}/twitter-status*.srl")) {
+    say $f;
+    hash_left_merge($status, srl_slurp($f));
+}
+
+my %idx;
+for my $s (values %$status) {
+    if ($s->{entities} && $s->{entities}{urls} && @{$s->{entities}{urls}}) {
+        for my $url (map { $_->{expanded_url} } @{$s->{entities}{urls}}) {
+            $idx{$url} = 1;
+        }
+    }
+}
+
+my $output_content = "";
+for my $url (sort keys %idx) {
+    $output_content .= "$url\n";
+}
+
+my $ts = time;
+txt_spew($output_dir . "/url-$ts.txt", $output_content);

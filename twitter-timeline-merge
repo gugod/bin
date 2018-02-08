@@ -5,6 +5,7 @@ use warnings;
 
 use FindBin;
 use lib $FindBin::Bin . "/lib";
+use Fun qw(hash_left_merge);
 use Fun::File qw(srl_slurp srl_spew);
 
 my %args = @ARGV;
@@ -38,12 +39,4 @@ sub slurp_and_merge {
         say STDERR "Does not look like Sereal: $output";
         unlink($file);
     }
-}
-
-sub hash_left_merge {
-    my ($h1, $h2) = @_;
-    for (keys %$h2) {
-        $h1->{$_} //= $h2->{$_};
-    }
-    return;
 }

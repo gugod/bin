@@ -13,20 +13,10 @@ my %args = @ARGV;
 my $input_dir  = $args{'-i'} or die "No input dir -i";
 my $output_dir = $args{'-o'} or die "No output dir -o";
 
-my ($status, $user);
-
-my $output_status = "${output_dir}/twitter-status.srl";
-my $output_user   = "${output_dir}/twitter-user.srl";
+my ($status, $user) = ({},{});
 
 my @materials = sort { $a cmp $b } glob($input_dir . "/twitter-raw-*.srl");
-exit(0) unless @materials;
-
-if (-f $output_status) {
-    $status = srl_slurp($output_status);
-}
-if (-f $output_user) {
-    $user = srl_slurp($output_user);
-}
+exit(0) if @materials < 2;
 
 for my $f (@materials) {
     say $f;
@@ -40,10 +30,13 @@ for my $f (@materials) {
     }
 }
 
+my $ts = time();
+my $output_status = "${output_dir}/twitter-status-${ts}.srl";
+my $output_user   = "${output_dir}/twitter-user-${ts}.srl";
+
 srl_spew($output_status, $status);
 srl_spew($output_user, $user);
 
 for my $f (@materials) {
     unlink($f);
 }
-

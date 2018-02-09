@@ -55,11 +55,4 @@ sub srl_spew {
     close($fh);
 }
 
-sub txt_spew {
-    my ($file, $content) = @_;
-    open(my $fh, ">", $file) or die $!;
-    print $fh $content;
-    close($fh);
-}
-
 1;

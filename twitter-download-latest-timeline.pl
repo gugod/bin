@@ -8,7 +8,7 @@ use YAML;
 
 use FindBin;
 use lib $FindBin::Bin . "/lib";
-use Fun::File qw(srl_slurp srl_spew);
+use Fun::File qw(srl spew);
 
 my %args = @ARGV;
 my $config_file = $args{'-c'} or die;
@@ -44,5 +44,5 @@ while (my $tweet = shift @source) {
 }
 
 my $ts = time;
-srl_spew("${output_dir}/twitter-timeline-${ts}.srl", \@keep);
-srl_spew("${output_dir}/twitter-timeline-users-${ts}.srl", \%users);
+spew("${output_dir}/twitter-timeline-${ts}.srl", srl(\@keep));
+spew("${output_dir}/twitter-timeline-users-${ts}.srl", srl(\%users));

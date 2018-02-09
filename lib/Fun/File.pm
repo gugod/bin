@@ -10,6 +10,28 @@ our @EXPORT_OK = get_public_functions();
 use Sereal::Decoder;
 use Sereal::Encoder;
 
+sub srl {
+    my $o = shift;
+    return ref($o) ? Sereal::Encoder->new()->encode($o) : Sereal::Decoder->new()->decode($o);
+}
+
+sub spew {
+    my ($file, $content) = @_;
+    open(my $fh, ">", $file) or die $!;
+    print $fh $content;
+    close($fh);
+}
+
+sub slurp {
+    my ($file) = @_;
+    my $d = do {
+        open(my $fh, "<", $file) or die $!;
+        local $/ = undef;
+        <$fh>;
+    };
+    return $d;
+}
+
 sub srl_slurp {
     my ($file) = @_;
     my $d = do {

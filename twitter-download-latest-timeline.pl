@@ -5,7 +5,10 @@ use warnings;
 
 use Net::Twitter;
 use YAML;
-use Sereal::Encoder;
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun::File qw(srl_slurp srl_spew);
 
 my %args = @ARGV;
 my $config_file = $args{'-c'} or die;
@@ -40,12 +43,6 @@ while (my $tweet = shift @source) {
     push @keep, $tweet;
 }
 
-my $srl = Sereal::Encoder->new();
 my $ts = time;
-open my $fh, ">", "${output_dir}/twitter-timeline-${ts}.srl";
-print $fh "". $srl->encode(\@keep);
-close($fh);
-
-open $fh, ">", "${output_dir}/twitter-timeline-users-${ts}.srl";
-print $fh "". $srl->encode(\%users);
-close($fh);
+srl_spew("${output_dir}/twitter-timeline-${ts}.srl", \@keep);
+srl_spew("${output_dir}/twitter-timeline-users-${ts}.srl", \%users);

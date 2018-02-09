@@ -9,7 +9,7 @@ use Getopt::Long 'GetOptions';
 
 use FindBin;
 use lib $FindBin::Bin . "/lib";
-use Fun::File qw(srl_slurp srl_spew);
+use Fun::File qw(srl spew);
 
 my %opts;
 GetOptions(
@@ -33,7 +33,7 @@ for (@search_terms) {
 
     my $res = $t->search({ q => $_, count => 100 });
     my $ts = time;
-    srl_spew("${output_dir}/twitter-raw-search-${ts}.srl", $res);
+    spew("${output_dir}/twitter-raw-search-${ts}.srl", srl($res));
     say $_;
     sleep 1;
 }

@@ -6,7 +6,7 @@ use warnings;
 use FindBin;
 use lib $FindBin::Bin . "/lib";
 use Fun qw(hash_left_merge);
-use Fun::File qw(srl_slurp srl_spew);
+use Fun::File qw(slurp srl spew);
 
 my %args = @ARGV;
 my $input_dir   = $args{'-i'} or die "No input dir -i";
@@ -24,7 +24,7 @@ if (-f $output) {
     slurp_and_merge($users, $output);
 }
 
-srl_spew("${output_dir}/twitter-user-merged.srl", $users);
+spew("${output_dir}/twitter-user-merged.srl", srl($users));
 
 unlink($_) for grep { -f $_ } @all_inputs;
 
@@ -32,7 +32,7 @@ exit;
 
 sub slurp_and_merge {
     my ($users, $file) = @_;
-    my $u = srl_slurp($file);
+    my $u = srl(slurp($file));
     if ($u) {
         hash_left_merge($users, $u);
     } else {

@@ -3,8 +3,6 @@ use v5.18;
 use strict;
 use warnings;
 
-use Data::Dumper;
-
 use FindBin;
 use lib $FindBin::Bin . "/lib";
 use Fun::File qw(srl_slurp srl_spew);

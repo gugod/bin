@@ -1,11 +1,11 @@
 #!/usr/bin/env perl
 use v5.18;
+use strict;
+use warnings;
 
 use Net::Twitter;
 use YAML;
 use Sereal::Encoder;
-use DateTime;
-use DateTime::Format::Strptime;
 
 my %args = @ARGV;
 my $config_file = $args{'-c'} or die;
@@ -19,8 +19,6 @@ my $statuses = $t->home_timeline({ count => 200 });
 my @keep;
 my %users;
 my %seen;
-
-my $datetime_parser = DateTime::Format::Strptime->new(pattern => '%a %b %d %T %z %Y');
 
 my @source;
 push @source, @$statuses;

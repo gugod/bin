@@ -1,0 +1,50 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun qw(hash_left_merge);
+use Fun::File qw(srl slurp spew);
+
+my %args = @ARGV;
+my $input_dir  = $args{'-i'} or die "No input dir -i";
+
+my ($status, $user, $seen) = ([],{},{});
+
+if ( (my @materials = sort { $b cmp $a } glob($input_dir . "/twitter-user-*.srl")) > 2 ) {
+    my $user = {};
+    for my $f (@materials) {
+        say $f;
+        my $u = srl(slurp($f));
+        hash_left_merge($user, $u);
+    }
+
+    my $ts = time();
+    my $output = "${input_dir}/twitter-user-${ts}.srl";
+    spew($output, srl($user));
+
+    unlink @materials;
+}
+
+if ( (my @materials = sort { $b cmp $a } glob($input_dir . "/twitter-status-*.srl")) > 2 ) {
+    my $status = [];
+    my %seen;
+    for my $f (@materials) {
+        say $f;
+        my $s = srl(slurp($f));
+
+        for my $o (@$s) {
+            next if $seen{$o->{id}};
+            $seen{$o->{id}} = 1;
+            push @$status, $o;
+        }
+    }
+
+    my $ts = time();
+    my $output = "${input_dir}/twitter-status-${ts}.srl";
+    spew($output, srl($status));
+
+    unlink @materials;
+}

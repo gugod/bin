@@ -62,6 +62,4 @@ my $output_user   = "${output_dir}/twitter-user-${ts}.srl";
 spew($output_status, srl($status));
 spew($output_user, srl($user));
 
-for my $f (@materials) {
-    unlink($f);
-}
+unlink(@materials);

@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use Encode qw(encode_utf8);
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun::File qw(srl slurp);
+
+my %args = @ARGV;
+my $input_dir   = $args{'-i'} or die "No input dir -i";
+
+my $srl_decoder = Sereal::Decoder->new;
+
+my @sources = glob($input_dir . "/twitter-status-*.srl");
+
+for my $f (@sources) {
+    my $rows = srl(slurp($f));
+    for my $tweet (@$rows) {
+        my $txt = $tweet->{text};
+        $txt =~ s/\n/\n    /g;
+        say encode_utf8($tweet->{"user.id"} . ":\n\t" . $txt . "\n");
+    }
+}

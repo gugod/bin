@@ -1,9 +1,14 @@
 #!/usr/bin/env perl
 use v5.18;
+use strict;
+use warnings;
 
 use List::MoreUtils qw(part);
 use Sereal::Decoder;
-use Sereal::Encoder;
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun::File qw(srl spew slurp);
 
 my %args = @ARGV;
 my $input_dir   = $args{'-i'} or die "No input dir -i";
@@ -18,14 +23,14 @@ sub t2d {
 my $today = t2d(time);
 my $unmerged = [];
 my $users_unmerged = [];
-for my $f ( glob($input_dir . "/twitter-timeline-*.srl") ) {
-    if ($f =~ /\/ twitter-timeline-(?<ts>[0-9]+).srl \z/x) {
+for my $f ( glob($input_dir . "/twitter-*.srl") ) {
+    if ($f =~ /\/ twitter-status-(?<ts>[0-9]+).srl \z/x) {
         my $p = t2d($+{ts});
         if ($p ne $today) {
             push @$unmerged, [$p, $f];
         }
     }
-    if ($f =~ /\/ twitter-timeline-users-(?<ts>[0-9]+).srl \z/x) {
+    if ($f =~ /\/ twitter-users-(?<ts>[0-9]+).srl \z/x) {
         push @$users_unmerged, $f;
     }
 }
@@ -61,10 +66,7 @@ while ($unmerged && @$unmerged) {
         }
     }
 
-    my $srl_encoder = Sereal::Encoder->new;
-    open(my $fh, ">", "${output_dir}/twitter-timeline-daily-${date}.srl") or die $!;
-    print $fh $srl_encoder->encode(\@rows);
-    close($fh);
+    spew("${output_dir}/twitter-status-${date}.srl", \@rows);
 
     for (@$batch) {
         unlink($_->[1]);
@@ -96,11 +98,6 @@ for my $f (sort { $b cmp $a } @$users_unmerged) {
     }
 }
 
-my $srl_encoder = Sereal::Encoder->new;
-open(my $fh, ">", "${output_dir}/twitter-timeline-daily-users-${today}.srl") or die $!;
-print $fh $srl_encoder->encode($users_merged);
-close($fh);
+spew("${output_dir}/twitter-users-${today}.srl", srl($users_merged));
 
-for(@$users_unmerged) {
-    unlink($_);
-}
+unlink(@$users_unmerged);

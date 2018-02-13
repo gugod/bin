@@ -13,12 +13,21 @@ my $input_dir  = $args{'-i'} or die "No input dir -i";
 
 my ($status, $user, $seen) = ([],{},{});
 
-if ( (my @materials = sort { $b cmp $a } glob($input_dir . "/twitter-user-*.srl")) > 2 ) {
+if ( (my @materials = glob($input_dir . "/twitter-user-*.srl")) > 2 ) {
     my $user = {};
     for my $f (@materials) {
         say $f;
-        my $u = srl(slurp($f));
-        hash_left_merge($user, $u);
+        my $u;
+        eval {
+            $u = srl(slurp($f));
+            1;
+        } or do {
+            my $error = $@;
+            warn "ERROR Slurping file $f: $error";
+        };
+        if ($u) {
+            hash_left_merge($user, $u);
+        }
     }
 
     my $ts = time();

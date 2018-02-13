@@ -44,5 +44,5 @@ while (my $tweet = shift @source) {
 }
 
 my $ts = time;
-spew("${output_dir}/twitter-timeline-${ts}.srl", srl(\@keep));
-spew("${output_dir}/twitter-timeline-users-${ts}.srl", srl(\%users));
+spew("${output_dir}/twitter-status-${ts}.srl", srl(\@keep));
+spew("${output_dir}/twitter-user-${ts}.srl", srl(\%users));

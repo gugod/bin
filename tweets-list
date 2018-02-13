@@ -12,8 +12,6 @@ use Fun::File qw(srl slurp);
 my %args = @ARGV;
 my $input_dir   = $args{'-i'} or die "No input dir -i";
 
-my $srl_decoder = Sereal::Decoder->new;
-
 my @sources = glob($input_dir . "/twitter-status-*.srl");
 
 for my $f (@sources) {

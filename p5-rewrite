@@ -19,7 +19,57 @@ my %REPLACE = (
     'HASH'  => 'is_plain_hashref',
 );
 
-sub rewrite_ref_eq_without_parens {
+sub rewrite_ref_eq_without_parens_case_2 {
+    my ($doc) = @_;
+    my %info;
+    my $tokens = $doc->find(
+        sub {
+            # Finds:
+            #    ref ... eq '...'
+
+            my $el = $_[1];
+            return 0 unless $el->isa('PPI::Token::Operator') && "$el" eq "eq";
+            my $el_next = $el->snext_sibling;
+            return 0 if $el->sprevious_sibling->isa('PPI::Structure::List');
+
+            return 0 unless $el_next->isa('PPI::Token::Quote');
+            my $WHAT = $el_next->string;
+            return 0 unless $REPLACE{$WHAT};
+
+            my $el_ref = $el->sprevious_sibling;
+            while ($el_ref && ! ($el_ref->isa('PPI::Token::Word') && "$el_ref" eq "ref") ) {
+                $el_ref = $el_ref->sprevious_sibling;
+            }
+            return 0 unless $el_ref;
+
+            my $addr = refaddr($el);
+            $info{$addr} = [
+                $el_ref,
+                $WHAT,
+            ];
+            return 1;
+        }
+    ) or return;
+
+    for my $el_eq (@$tokens) {
+        my $addr = refaddr($el_eq);
+        my ($el_ref, $what) = @{$info{$addr}};
+
+        my @betweeners;
+        my $el = $el_ref->next_sibling;
+        while (refaddr($el) != $addr) {
+            push @betweeners, $el;
+            $el = $el->next_sibling;
+        }
+        my $arglist = join("", @betweeners) =~ s/\s+//r  =~ s/\s+\z//r;
+        my $el_list = PPI::Document->new(\('(' . $arglist . ') '));
+
+        $el_eq->parent->__insert_before_child($el_eq, $el_list);
+        $_->delete for @betweeners;
+    }
+}
+
+sub rewrite_ref_eq_without_parens_case_1 {
     my ($doc) = @_;
     my %info;
     my $tokens = $doc->find(
@@ -29,6 +79,8 @@ sub rewrite_ref_eq_without_parens {
 
             my $el = $_[1];
             return 0 unless $el->isa('PPI::Token::Operator') && "$el" eq "eq";
+            return 0 if $el->sprevious_sibling->isa('PPI::Structure::List');
+
             my $el_next = $el->snext_sibling;
             return 0 unless $el_next->isa('PPI::Token::Quote');
             my $WHAT = $el_next->string;
@@ -163,8 +215,13 @@ my @args = @ARGV;
 foreach_perl_source_file \@args => sub {
     my ($file) = @_;
     say "... $file";
+
     my $doc = PPI::Document->new($file) or return;
-    rewrite_ref_eq_without_parens($doc);
+    rewrite_ref_eq_without_parens_case_1($doc);
+    $doc->save($file);
+
+    $doc = PPI::Document->new($file) or return;
+    rewrite_ref_eq_without_parens_case_2($doc);
     $doc->save($file);
 
     $doc = PPI::Document->new($file) or return;

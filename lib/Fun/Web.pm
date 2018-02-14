@@ -52,7 +52,8 @@ sub extract_title_and_text {
     }
     if (!$charset) {
         if (my $meta_el = $dom->find("head meta[http-equiv=Content-Type]")->first) {
-            ($charset) = $meta_el->{content} =~ m{charset=([^\s;]+)};                    
+            ($charset) = $meta_el->{content} =~ m{charset=([^\s;]+)};
+            $charset = lc($charset);
         }
     }
     $charset ||= "utf-8";

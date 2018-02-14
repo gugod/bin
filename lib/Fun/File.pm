@@ -12,7 +12,7 @@ use Sereal::Encoder;
 
 sub srl {
     my $o = shift;
-    return ref($o) ? Sereal::Encoder->new()->encode($o) : Sereal::Decoder->new()->decode($o);
+    return ref($o) ? Sereal::Encoder->new({ compress => Sereal::Encoder::SRL_ZSTD() })->encode($o) : Sereal::Decoder->new()->decode($o);
 }
 
 sub spew {

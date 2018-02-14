@@ -65,7 +65,8 @@ sub rewrite_ref_eq_without_parens {
             push @betweeners, $el;
             $el = $el->next_sibling;
         }
-        my $el_list = PPI::Document->new(\('(' . join("", @betweeners) . ') '));
+        my $arglist = join("", @betweeners) =~ s/\s+//r  =~ s/\s+\z//r;
+        my $el_list = PPI::Document->new(\('(' . $arglist . ') '));
 
         $el_eq->parent->__insert_before_child($el_eq, $el_list);
         $_->delete for @betweeners;

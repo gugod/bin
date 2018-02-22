@@ -17,6 +17,7 @@ use Scalar::Util qw(refaddr);
 my %REPLACE = (
     'ARRAY' => 'is_plain_arrayref',
     'HASH'  => 'is_plain_hashref',
+    'CODE'  => 'is_plain_coderef',
 );
 
 sub rewrite_ref_eq_without_parens_case_2 {

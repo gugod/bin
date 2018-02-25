@@ -69,10 +69,7 @@ sub extract_title_and_text {
     }
 
     my $extractor = HTML::ExtractContent->new;
-    my $text = $extractor->extract($html)->as_text
-        =~ s!^ \S{1,4} $!!xmgr
-        =~ s!\n!\n\n!gr
-        =~ s!\n\n+!\n\n!gr;
+    my $text = $extractor->extract($html)->as_text;
 
     return {
         title => $title,

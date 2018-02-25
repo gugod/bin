@@ -79,6 +79,7 @@ sub extract_title_and_text {
     return {
         title => $title,
         text  => "$text",
+        html  => "$html",
     }
 }
 

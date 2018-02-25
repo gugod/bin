@@ -47,13 +47,18 @@ sub extract_title_and_text {
 
     my $charset;
     my $content_type = $res->headers->content_type;
+
+    if ( $content_type && $content_type !~ /html/) {
+        return undef;
+    }
+
     if ( $content_type && $content_type =~ m!charset=(.+)[;\s]?!) {
         $charset = $1;
     }
     if (!$charset) {
         if (my $meta_el = $dom->find("head meta[http-equiv=Content-Type]")->first) {
             ($charset) = $meta_el->{content} =~ m{charset=([^\s;]+)};
-            $charset = lc($charset);
+            $charset = lc($charset) if defined($charset);
         }
     }
     $charset ||= "utf-8";

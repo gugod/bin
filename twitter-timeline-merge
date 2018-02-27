@@ -1,0 +1,42 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun qw(hash_left_merge);
+use Fun::File qw(slurp srl spew);
+
+my %args = @ARGV;
+my $input_dir   = $args{'-i'} or die "No input dir -i";
+my $output_dir  = $args{'-o'} or die "No output dir -o";
+
+my @all_inputs = sort { $b cmp $a } glob($input_dir . "/twitter-timeline-daily-users-*.srl");
+my $users = {};
+for my $f (@all_inputs) {
+    say $f;
+    slurp_and_merge($users, $f);
+}
+
+my $output = "${output_dir}/twitter-user-merged.srl";
+if (-f $output) {
+    slurp_and_merge($users, $output);
+}
+
+spew("${output_dir}/twitter-user-merged.srl", srl($users));
+
+unlink($_) for grep { -f $_ } @all_inputs;
+
+exit;
+
+sub slurp_and_merge {
+    my ($users, $file) = @_;
+    my $u = srl(slurp($file));
+    if ($u) {
+        hash_left_merge($users, $u);
+    } else {
+        say STDERR "Does not look like Sereal: $output";
+        unlink($file);
+    }
+}

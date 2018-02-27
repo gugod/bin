@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun::File qw(srl slurp spew);
+
+my %args = @ARGV;
+my $input_dir  = $args{'-i'} or die "No input dir -i";
+my $output_dir = $args{'-o'} or die "No output dir -o";
+
+my ($status, $user, $seen) = ([],{},{});
+
+my @materials = sort { $a cmp $b } glob($input_dir . "/twitter-raw-*.srl");
+exit(0) if @materials < 2;
+
+for my $f (@materials) {
+    say $f;
+    my $res = srl(slurp($f));
+
+    for my $tweet (grep { ! exists $seen->{$_->{id}} } @{$res->{statuses}}) {
+        my $o = delete $tweet->{user};
+        $user->{ $o->{id}  } //= $o;
+        $tweet->{'user.id'} = $o->{id};
+        $seen->{ $tweet->{id} } = 1;
+        push @$status, $tweet;
+    }
+}
+
+my $ts = time();
+my $output_status = "${output_dir}/twitter-status-${ts}.srl";
+my $output_user   = "${output_dir}/twitter-user-${ts}.srl";
+
+spew($output_status, srl($status));
+spew($output_user, srl($user));
+
+for my $f (@materials) {
+    unlink($f);
+}

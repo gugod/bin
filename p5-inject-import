@@ -5,16 +5,16 @@ use warnings;
 use Data::Dumper qw'Dumper';
 use PPI;
 use PPI::Document;
-use PPI::Token::Word;
-use PPI::Token::Operator;
-use PPI::Token::Whitespace;
-use PPI::Token::Quote::Single;
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Fun::P5 qw(inject_include);
 
 sub main {
     my ($file, $module, @imports) = @_;
 
     my $doc = PPI::Document->new($file);
-    inject_module_with_import(
+    inject_include(
         $doc,
         $module,
         @imports,
@@ -24,84 +24,3 @@ sub main {
 }
 main(@ARGV);
 
-sub _inject_module_imports {
-    my ($el_include, @imports) = @_;
-
-    my @args = $el_include->arguments;
-    if (@imports > 0) {
-        if (@args == 0) {
-            my $new_imports = PPI::Document->new(\(' qw(' . join(" ", @imports) . ')'));
-
-            my $semi = $el_include->find_first('Token::Structure');
-            $semi->insert_before( $new_imports );
-
-        } elsif (@args == 1) {
-            if ($args[0]->isa('PPI::Token::QuoteLike::Words')) {
-                my @words = $args[0]->literal;
-                my %imported = map { $_ => 1 } @words;
-                for my $x (@imports) {
-                    push(@words, $x) unless $imported{$x};
-                }
-
-                my ($left, $right) = (split(//, [$args[0]->_delimiters]->[0]), '');
-
-                $args[0]->set_content('qw' . $left . join(" ", @words) . $right);
-            } elsif ($args[0]->isa('PPI::Structure::List')) {
-                for my $new_word (@imports) {
-                    for my $t (
-                        PPI::Token::Operator->new(','),
-                        PPI::Token::Whitespace->new(' '),
-                        PPI::Token::Quote::Single->new("'${new_word}'"),
-                    ) {
-                        $args[0]->add_element($t)
-                    }
-                }
-            } else {
-                say "I failed at trying to deal with:\n    $el_include\n";
-                ...
-            }
-        } elsif (@args > 1) {
-            ...
-        }
-    }
-}
-
-# idempotent
-sub inject_module_with_import {
-    my ($doc, $module, @imports) = @_;
-
-    my $include = 'use ' . $module . (@imports ? (' qw(' . join(' ', @imports) . ')') : '') . ";\n\n";
-    my ($el_include) = PPI::Document->new(\$include);
-
-    my $injected;
-    my %used_modules;
-    my $preamble_started;
-    my $preamble_ended;
-    my @children = $doc->schildren();
-    for my $o (@children) {
-        if ($o->isa('PPI::Statement::Include')) {
-            my $m = $o->module;
-            if ($m eq $module) {
-                _inject_module_imports($o, @imports);
-                $injected = 1;
-            }
-        }
-        if ($preamble_started) {
-            if (!$o->isa('PPI::Statement::Include')) {
-                $preamble_ended = $o;
-                last;
-            }
-        } else {
-            if ($o->isa('PPI::Statement::Include')) {
-                $preamble_started = $o;
-            }
-        }
-    }
-
-    if (!$injected && $preamble_started && $preamble_ended) {
-        $doc->__insert_before_child(
-            $preamble_ended,
-            $el_include
-        );
-    }
-}

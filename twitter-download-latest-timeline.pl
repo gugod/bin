@@ -1,11 +1,14 @@
 #!/usr/bin/env perl
 use v5.18;
+use strict;
+use warnings;
 
 use Net::Twitter;
 use YAML;
-use Sereal::Encoder;
-use DateTime;
-use DateTime::Format::Strptime;
+
+use FindBin;
+use lib $FindBin::Bin . "/lib";
+use Fun::File qw(srl spew);
 
 my %args = @ARGV;
 my $config_file = $args{'-c'} or die;
@@ -19,8 +22,6 @@ my $statuses = $t->home_timeline({ count => 200 });
 my @keep;
 my %users;
 my %seen;
-
-my $datetime_parser = DateTime::Format::Strptime->new(pattern => '%a %b %d %T %z %Y');
 
 my @source;
 push @source, @$statuses;
@@ -42,12 +43,6 @@ while (my $tweet = shift @source) {
     push @keep, $tweet;
 }
 
-my $srl = Sereal::Encoder->new();
 my $ts = time;
-open my $fh, ">", "${output_dir}/twitter-timeline-${ts}.srl";
-print $fh "". $srl->encode(\@keep);
-close($fh);
-
-open $fh, ">", "${output_dir}/twitter-timeline-users-${ts}.srl";
-print $fh "". $srl->encode(\%users);
-close($fh);
+spew("${output_dir}/twitter-status-${ts}.srl", srl(\@keep));
+spew("${output_dir}/twitter-user-${ts}.srl", srl(\%users));

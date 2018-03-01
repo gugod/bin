@@ -16,7 +16,6 @@ my ($status, $user, $seen) = ([],{},{});
 if ( (my @materials = glob($input_dir . "/twitter-user-*.srl")) > 2 ) {
     my $user = {};
     for my $f (@materials) {
-        say $f;
         my $u;
         eval {
             $u = srl(slurp($f));
@@ -41,7 +40,6 @@ if ( (my @materials = sort { $b cmp $a } glob($input_dir . "/twitter-status-*.sr
     my $status = [];
     my %seen;
     for my $f (@materials) {
-        say $f;
         my $s = srl(slurp($f));
 
         for my $o (@$s) {

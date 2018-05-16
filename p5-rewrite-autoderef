@@ -1,0 +1,61 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Fun 'foreach_perl_source_file';
+use Fun::P5 qw(inject_include);
+
+use PPI;
+use PPI::Document;
+use PPI::Element;
+use PPI::Structure::List;
+
+use Scalar::Util qw(refaddr);
+
+sub rewrite_autodref_case_1 {
+    my ($doc) = @_;
+    my %info;
+    my $tokens = $doc->find(
+        sub {
+            # Finds: "keys" in front of a scalar sigil
+
+            my $el = $_[1];
+            return 0 unless $el->isa('PPI::Token::Word') && "$el" eq "keys";
+            my $el_next = $el->snext_sibling;
+            return 0 unless $el_next->isa('PPI::Structure::Symbol') && "$el_next" =~ m/^\$/;
+
+            return 1;
+        }
+    ) or return;
+
+    for my $el (@$tokens) {
+        my $addr = refaddr($el_eq);
+        my ($el_ref, $what) = @{$info{$addr}};
+
+        my @betweeners;
+        my $el = $el_ref->next_sibling;
+        while (refaddr($el) != $addr) {
+            push @betweeners, $el;
+            $el = $el->next_sibling;
+        }
+        my $arglist = join("", @betweeners) =~ s/\s+//r  =~ s/\s+\z//r;
+        my $el_list = PPI::Document->new(\('(' . $arglist . ') '));
+
+        $el_eq->parent->__insert_before_child($el_eq, $el_list);
+        $_->delete for @betweeners;
+    }
+}
+
+my @args = @ARGV;
+@args = (".") if !@args;
+foreach_perl_source_file \@args => sub {
+    my ($file) = @_;
+    say "... $file";
+
+    my $doc = PPI::Document->new($file) or return;
+    rewrite_autodref_case_1($doc);
+
+    $doc->save($file);
+};

@@ -31,7 +31,7 @@ sub rewrite_autodref_case_1 {
     ) or return;
 
     for my $el (@$tokens) {
-        my $addr = refaddr($el_eq);
+        my $addr = refaddr($el);
         my ($el_ref, $what) = @{$info{$addr}};
 
         my @betweeners;
@@ -43,7 +43,7 @@ sub rewrite_autodref_case_1 {
         my $arglist = join("", @betweeners) =~ s/\s+//r  =~ s/\s+\z//r;
         my $el_list = PPI::Document->new(\('(' . $arglist . ') '));
 
-        $el_eq->parent->__insert_before_child($el_eq, $el_list);
+        $el->parent->__insert_before_child($el, $el_list);
         $_->delete for @betweeners;
     }
 }

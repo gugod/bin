@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use JSON::PP;
+
+use Getopt::Long qw(GetOptions);
+use GeoIP2::Database::Reader;
+
+my %args;
+GetOptions(
+    \%args,
+    "d=s", # Database path. Cannot porceed without one.
+);
+
+($args{d} && -f $args{d}) or die "Cannot proceed without a GeoIP database. Specify it like `-d /dir/GeoIP2-City.mmdb`\n";
+
+my $query = shift @ARGV;
+
+(defined($query) && $query ne '') or die "Give me an IP to query\n";
+
+my $reader = GeoIP2::Database::Reader->new(
+    file => $args{d},
+);
+my $o = $reader->city( ip => $query );
+
+say JSON::PP->new->utf8->pretty->canonical->encode( $o->raw );
+
+# say $city->city->name;
+# say $city->country
+# my $country = $city->country();
+# print $country->iso_code(), "\n";

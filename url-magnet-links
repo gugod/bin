@@ -4,7 +4,7 @@
 #
 
 use v5.14;
-use utf8;
+
 use File::Basename;
 use WWW::Mechanize;
 

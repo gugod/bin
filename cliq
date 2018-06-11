@@ -32,7 +32,12 @@ if ($url eq "-") {
     die "Failed to get the URL" unless $response->is_success;
     die "The response is not HTML" unless $response->header("Content-Type") =~ m{^text/html\s*(;|$)}i;
 
-    $content = $response->decoded_content;
+    if ($response->content =~ m{<meta \s+ http-equiv="Content-Type" \s+ content="text/html; \s* charset=big5" \s* /?>}xi) {
+        $content = $response->decoded_content( charset => "big5", alt_charset => "big5" );
+    } else {
+        $content = $response->decoded_content;
+    }
+
     $base_uri = $url;
 }
 

@@ -2,7 +2,7 @@
 use v5.18;
 use strict;
 use warnings;
-use Data::Dumper qw'Dumper';
+
 use PPI;
 use PPI::Document;
 

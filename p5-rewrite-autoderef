@@ -5,7 +5,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use Fun 'foreach_perl_source_file';
-use Fun::P5 qw(inject_include);
+
 
 use PPI;
 use PPI::Document;

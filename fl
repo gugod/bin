@@ -1,0 +1,49 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+use File::Next;
+use File::Basename 'basename';
+
+sub start {
+    my ($self) = @_;
+
+    my $o = {};
+    if ($self->{opt}{perl}) {
+        $o->{file_filter} = sub {
+            looks_like_perl($_)
+        };
+    }
+
+    my $iter = File::Next::files( $o, $self->{args}[0] // '.' );
+    while ( defined ( my $file = $iter->() ) ) {
+        print $file, "\n";
+    }
+}
+
+sub MAIN {
+    my (%opt);
+
+    GetOptions(
+        \%opt,
+        "perl",
+    );
+
+    (bless { opt => \%opt, args => [@ARGV] }, __PACKAGE__)->start();
+}
+MAIN(@ARGV);
+
+sub looks_like_perl {
+    my ($file) = @_;
+    return 1 if $file =~ / \.(?: t|p[ml]|pod|comp|psgi ) $/xi;
+    return 0 if basename($file) =~ / \. /xi;
+
+    if (open my $fh, '<', $file) {
+        read($fh, my $front, 256);
+        return 1 if $front && $front =~ m{^#!.*perl};
+    }
+
+    return 0;
+}

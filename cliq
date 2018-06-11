@@ -30,7 +30,7 @@ if ($url eq "-") {
     my $response = $ua->get($url);
 
     die "Failed to get the URL" unless $response->is_success;
-    die "The response is not HTML" unless $response->header("Content-Type") =~ m{^text/html\s*(;|$)};
+    die "The response is not HTML" unless $response->header("Content-Type") =~ m{^text/html\s*(;|$)}i;
 
     $content = $response->decoded_content;
     $base_uri = $url;

@@ -8,8 +8,16 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 use Fun 'foreach_perl_source_file';
 
+use Getopt::Long 'GetOptions';
 use PPI;
 use PPI::Document;
+
+
+my %opt;
+GetOptions(
+    \%opt,
+    "--name=s",
+);
 
 my @args = @ARGV;
 @args = (".") if !@args;
@@ -33,6 +41,8 @@ foreach_perl_source_file \@args => sub {
         # $token is the word "sub"
         my $el = $token->parent;
         my $sub_name = $el->isa("PPI::Statement::Sub") ? $el->name : "(anonymous)";
-        say join ":", $file, $token->line_number, $sub_name;
+        if (!$opt{name} || $opt{name} eq $sub_name) {
+            say join ":", $file, $token->line_number, $sub_name;
+        }
     }
 };

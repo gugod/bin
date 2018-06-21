@@ -7,15 +7,19 @@ use Getopt::Long;
 use File::Next;
 use File::Basename 'basename';
 
+my @FILETYPES = qw(perl js json);
+
 sub start {
     my ($self) = @_;
 
     my $o = {};
-    if ($self->{opt}{perl}) {
-        $o->{file_filter} = sub {
-            looks_like_perl($_)
-        };
+    for my $ft (@FILETYPES) {
+        if ($self->{opt}{$ft}) {
+            my $sub = main->can("looks_like_" . $ft);
+            $o->{file_filter} = sub { $sub->($_) };
+        }
     }
+
 
     my $iter = File::Next::files( $o, $self->{args}[0] // '.' );
     while ( defined ( my $file = $iter->() ) ) {
@@ -28,7 +32,7 @@ sub MAIN {
 
     GetOptions(
         \%opt,
-        "perl",
+        @FILETYPES,
     );
 
     (bless { opt => \%opt, args => [@ARGV] }, __PACKAGE__)->start();
@@ -45,5 +49,17 @@ sub looks_like_perl {
         return 1 if $front && $front =~ m{^#!.*perl};
     }
 
+    return 0;
+}
+
+sub looks_like_js {
+    my ($file) = @_;
+    return 1 if $file =~ / \.(?: js ) $/xi;
+    return 0;
+}
+
+sub looks_like_json {
+    my ($file) = @_;
+    return 1 if $file =~ / \.(?: json ) $/xi;
     return 0;
 }

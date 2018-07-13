@@ -21,7 +21,7 @@ for my $f (@sources) {
         next if $seen{$tweet->{id}};
         $seen{$tweet->{id}} = 1;
 
-        my $txt = $tweet->{text};
+        my $txt = $tweet->{full_text} // $tweet->{text};
         $txt =~ s/\n/\n    /g;
 
         if ($tweet->{entities} && $tweet->{entities}{urls} && @{$tweet->{entities}{urls}}) {

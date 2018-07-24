@@ -13,7 +13,17 @@ sub print_and_tts {
     my ($str, $file) = @_;
     say "$str";
     say "----";
-    system("say", ($file ? ('-o', $file): ()), $str);
+
+    my $voice;
+    if ($str =~ /^\p{ASCII}+$/) {
+        $voice = random("Daniel", "Jill");
+    } elsif ($str =~ /(\p{Hiragana}|\p{Katakana})/) {
+        $voice = "Kyoko";
+    } elsif ($str =~ /\p{Han}/) {
+        $voice = "Ya-Ling";
+    }
+    
+    system("say", ($voice ? ('-v', $voice) : ()), ($file ? ('-o', $file): ()), $str);
 }
 
 my %opts;

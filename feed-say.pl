@@ -11,19 +11,19 @@ use Getopt::Long;
 
 sub print_and_tts {
     my ($str, $file) = @_;
-    say "$str";
-    say "----";
-
     my $voice;
     if ($str =~ /^\p{ASCII}+$/) {
         $voice = random("Daniel", "Jill");
     } elsif ($str =~ /(\p{Hiragana}|\p{Katakana})/) {
         $voice = "Kyoko";
     } elsif ($str =~ /\p{Han}/) {
-        $voice = "Ya-Ling";
+        $voice = "Mei-Jia";
     }
-    
-    system("say", ($voice ? ('-v', $voice) : ()), ($file ? ('-o', $file): ()), $str);
+
+    say (($voice ? "[$voice] ": "") . $str . "\n----");
+
+    my @cmd = ("say", ($voice ? ('-v', $voice) : ()), ($file ? ('-o', $file): ()), $str);
+    (system(@cmd) == 0) or die "ABORT\n";
 }
 
 my %opts;

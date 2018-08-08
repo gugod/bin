@@ -1,0 +1,27 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use bigint;
+
+my @b64digits= split //, q{ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/};
+sub hex2base64 {
+    my $n = hex($_[0]);
+
+    my $out = "";
+    my ($m, $r);
+    while ($n > 0) {
+        $m = int($n / 64);
+        $r = $n % 64;
+        $n = $m;
+
+        my $c = $b64digits[$r];
+        $out .= $c;
+    }
+
+    return reverse($out);
+}
+
+while (<>) {
+    s{([0-9a-f]+)}{hex2base64($1)}eg;
+    print;
+}

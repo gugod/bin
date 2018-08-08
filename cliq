@@ -61,6 +61,8 @@ $dom->find($selector)->each(
 	    $doc->{href} = URI->new_abs($doc->{attrs}{href}, $base_uri)->as_string;
 	}
 
+        $doc->{all_text} = $el->all_text(0);
+
 	if (defined($opts{e})) {
 	    local $_ = $doc;
 	    my $r = eval "$opts{e}";

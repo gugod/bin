@@ -1,6 +1,7 @@
 use v5.18;
 use strict;
 
+use HTML::Strip;
 use Mojo::UserAgent;
 # use Firefox::Marionette qw(:all);
 
@@ -23,8 +24,13 @@ sub markdown_link_text_normalize {
     return $txt;
 }
 
+my %seen;
+
 while(<>) {
     chomp;
+    next if $seen{$_};
+    $seen{$_} = 1;
+
     my $tx = $mojoua->get($_);
     next unless $tx->res->is_success;
 
@@ -32,7 +38,17 @@ while(<>) {
     next unless $o->{title};
 
     my $url = url_remove_tracking_params( $tx->req->url->to_abs );
-    my $msg = "- [" . markdown_link_text_normalize($o->{title}) . "]($url)\n";
+    next if $seen{$url};
+    $seen{$url} = 1;
+
+    my $msg = "- [" . markdown_link_text_normalize($o->{title}) . "]($url)";
+    if ($o->{text}) {
+        my $txt = HTML::Strip->new->parse($o->{text});
+        $txt =~ s/[\t\n ]+/ /g;
+        $txt =~ s/[\t\n ]+\z//g;
+        $txt =~ s/\A[\t\n ]+//g;
+        $msg .= " . $txt";
+    }
     utf8::encode($msg);
-    print $msg;
+    say $msg;
 }

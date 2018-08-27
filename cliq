@@ -30,9 +30,14 @@ if ($url eq "-") {
     my $response = $ua->get($url);
 
     die "Failed to get the URL" unless $response->is_success;
-    die "The response is not HTML" unless $response->header("Content-Type") =~ m{^text/html\s*(;|$)};
+    die "The response is not HTML" unless $response->header("Content-Type") =~ m{^text/html\s*(;|$)}i;
 
-    $content = $response->decoded_content;
+    if ($response->content =~ m{<meta \s+ http-equiv="Content-Type" \s+ content="text/html; \s* charset=big5" \s* /?>}xi) {
+        $content = $response->decoded_content( charset => "big5", alt_charset => "big5" );
+    } else {
+        $content = $response->decoded_content;
+    }
+
     $base_uri = $url;
 }
 
@@ -55,6 +60,8 @@ $dom->find($selector)->each(
 	if (defined($doc->{attrs}{href}) && $base_uri) {
 	    $doc->{href} = URI->new_abs($doc->{attrs}{href}, $base_uri)->as_string;
 	}
+
+        $doc->{all_text} = $el->all_text(0);
 
 	if (defined($opts{e})) {
 	    local $_ = $doc;

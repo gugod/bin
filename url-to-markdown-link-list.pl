@@ -6,7 +6,7 @@ use Mojo::UserAgent;
 
 use FindBin;
 use lib $FindBin::Bin . "/lib";
-use Fun::Web qw(extract_title_and_text url_remove_tracking_params url_unshorten);
+use Fun::Web qw(extract_title_and_text url_remove_tracking_params);
 
 my $mojoua = Mojo::UserAgent->new;
 $mojoua->max_redirects(5);

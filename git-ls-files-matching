@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+my $fuzzp = shift;
+
+my @chars = split "", $fuzzp;
+my @re;
+push @re, shift @chars;
+while (@chars) {
+    my $c = shift @chars;
+    push @re, "[^" . $c . "]*", $c;
+}
+my $re = join "", @re;
+
+open my $gitls, '-|', 'git ls-files';
+while (<$gitls>) {
+    print if /$re/io;
+}
+
+__END__
+
+Doing filename "fuzzy" searching from `git ls-files`.
+
+~/src/App-perlbrew
+> git-ls-files-matching cmd.t
+t/command-alias.t
+t/command-available.t
+t/command-compgen.t
+t/command-display-rc.t
+t/command-env.t
+t/command-exec.t
+t/command-help.t
+t/command-info.t
+t/command-install-cpanm.t
+t/command-install-patchperl.t
+t/command-lib.t
+t/command-list.t
+t/failure-command-install-cpanm.t
+t/failure-command-install-patchperl.t

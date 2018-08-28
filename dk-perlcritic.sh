@@ -8,8 +8,14 @@ function _perlcritic() {
 }
 
 if [[ -n "$*" ]]; then
-    _perlcritic $*
-else
-    _perlcritic --profile .perlcriticrc --list-enabled
-    _perlcritic --profile .perlcriticrc $(find . -name '*.psgi') $(find . -name '*.p[ml]') $(find . -name '*.t') 
+    exec _perlcritic $*
 fi
+
+opts=
+if [[ -f .perlcriticrc ]]; then
+	opts="--profile .perlcriticrc"
+fi
+
+_perlcritic $opts --list-enabled
+exec _perlcritic $opts $(find . -name '*.psgi') $(find . -name '*.p[ml]') $(find . -name '*.t')
+

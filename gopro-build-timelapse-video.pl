@@ -39,3 +39,12 @@ for my $g (keys %pic_groups) {
         symlink($f, $f2);
     }
 }
+
+__END__
+
+#!/bin/sh
+for p in /tmp/gopro-timelapse/*
+do
+    name=$(basename $p)
+    ffmpeg -i /tmp/gopro-timelapse/${name}/pic-%05d.jpg -r 30 -s 1920x1080 -c:v libvpx-vp9 -crf 30 -b:v 0 ${name}.1080p.webm
+done

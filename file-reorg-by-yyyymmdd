@@ -9,14 +9,25 @@ use File::Path qw(make_path);
 use File::Spec::Functions qw(catfile catdir);
 use File::Next;
 use Getopt::Long;
-use Digest::SHA;
 
-sub sha1_digest {
-    my ($file) = @_;
-    open my $fh, "<", $file;
-    my $sha1 = Digest::SHA->new(1);
-    $sha1->addfile($fh);
-    return $sha1->digest;
+sub is_identical {
+    my ($file1, $file2) = @_;
+    my $file1_size = (stat($file1))[7];
+    return 0 unless $file1_size == (stat($file2))[7];
+
+    open my $fh1, "<", $file1;
+    open my $fh2, "<", $file2;
+    my ($block1, $block2) = ("", "");
+    my $offset = 0;
+    my $block_size = 64 * 1024 * 1024; # 64MB at a time.
+    while(($offset < $file1_size) && ($block1 eq $block2)) {
+        read $fh1, $block1, $block_size, $offset;
+        read $fh2, $block2, $block_size, $offset;
+        $offset += $block_size;
+    }
+    return 0 if $offset < $file1_size;
+
+    return 1;
 }
 
 sub main {
@@ -43,10 +54,7 @@ sub main {
         my $new_path = catfile($new_dir, $filename);
 
         if (-e $new_path) {
-            my $sha1_a = sha1_digest($new_path);
-            my $sha1_b = sha1_digest($file);
-
-            if ($sha1_a eq $sha1_b) {
+            if (is_identical($file, $new_path)) {
                 say("rm $file # duplicate\t$file\t$new_path");
                 unlink($file);
             } else {

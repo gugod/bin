@@ -47,7 +47,7 @@ sub main {
 
         my $new_dir;
         if (defined($opts->{d}) && $opts->{d} ne "") {
-            $new_dir = catfile($yyyy, $yyyymmdd, $opts->{d});
+            $new_dir = catdir($yyyy, $yyyymmdd, $opts->{d});
         } else {
             $new_dir = catdir($yyyy, $yyyymmdd);
         }

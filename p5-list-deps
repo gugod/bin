@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use Data::Dumper;
+use Module::ExtractUse;
+use Module::Path ();
+
+sub module_path {
+    my ($mod, $libs) = @_;
+    local @INC = @$libs;
+    return Module::Path::module_path($mod);
+}
+
+my @perl5libs = ("lib", "t/lib");
+
+my @query = @ARGV;
+
+my %used;
+
+my $meu = Module::ExtractUse->new;
+
+while (@query) {
+    $meu->extract_use( pop(@query) );
+    for ($meu->array) {
+        unless (defined($used{$_})) {
+            my $p = module_path($_, \@perl5libs);
+            if (defined($p)) {
+                push @query, $p;
+                $used{$_} = $p;
+            } else {
+                $used{$_} = '';
+            }
+        }
+    }
+}
+
+for my $mod (sort { length($a) cmp length($b) } grep { $used{$_} } keys %used) {
+    say $used{$mod};
+    # . "\t" . $mod;
+}

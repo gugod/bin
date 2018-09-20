@@ -1,0 +1,417 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+binmode STDOUT, ":utf8";
+
+package IOReader {
+    my $READ_SIZE = 16*2**20; # 16MB
+
+    sub new {
+        my ($class, $fh) = @_;
+        binmode $fh, ":utf8";
+        return bless {
+            fh => $fh,
+            buf => "",
+            buf_cursor => 0,
+            saved_cursor => [],
+        }, $class;
+    }
+
+    sub lookc {
+        my ($self) = @_;
+        if ($self->{buf_cursor} >= length($self->{buf})) {
+            my $buf2 = '';
+            my $nread = read($self->{fh}, $buf2, $READ_SIZE);
+            $self->{buf} = $buf2;
+            $self->{buf_cursor} = 0;
+            if ($nread == 0) {
+                return '';
+            }
+        }
+        return substr($self->{buf}, $self->{buf_cursor}, 1);
+    }
+
+    sub inc_cursor {
+        my ($self) = @_;
+        $self->{buf_cursor}++;
+    }
+
+    sub restore_cursor {
+        my ($self) = @_;
+        $self->{buf_cursor} = $self->discard_cursor;
+    }
+
+    sub save_cursor {
+        my ($self) = @_;
+        push @{$self->{saved_cursor}}, $self->{buf_cursor};
+    }
+
+    sub discard_cursor {
+        my ($self) = @_;
+        die "Cursor stack is already empty" unless @{$self->{saved_cursor}};
+        return pop @{$self->{saved_cursor}};
+    }
+
+    sub getc {
+        my ($self) = @_;
+        my $c = $self->lookc();
+        $self->inc_cursor;
+        return $c;
+    }
+}
+
+package JSONReader {
+    my $hex_digits = [qw(0 1 2 3 4 5 6 7 8 9 A B C D E F a b c d e f)];
+    my $digits_onenine = [qw(1 2 3 4 5 6 7 8 9)];
+    my $digits_zeronine = [qw(0 1 2 3 4 5 6 7 8 9)];
+
+    sub eq_any {
+        my ($item, $ref_array) = @_;
+        my $i;
+        for ($i = 0; $i < @$ref_array; $i++) {
+            last if $item eq $ref_array->[$i];
+        }
+        return $i < @$ref_array;
+    }
+
+    sub new {
+        my ($class, $fh) = @_;
+        return bless {
+            io => IOReader->new($fh),
+            json_cursor => 0,
+            event_handler => undef,
+        }, $class;
+    }
+
+    sub emit {
+        my ($self, $event_name, $tok) = @_;
+        my $cb = $self->{event_handler} or return;
+        $cb->($event_name, $tok);
+    }
+
+    sub scan_ws {
+        my ($self) = @_;
+        my $tok = '';
+        my $io = $self->{io};
+        my $c = $io->lookc;
+        while (eq_any($c, ["\x{0009}", "\x{000a}", "\x{000d}", "\x{0020}"])) {
+            $tok .= $c;
+            $io->inc_cursor;
+            $c = $io->lookc;
+        }
+        $self->emit('ws', $tok);
+        return $self;
+    }
+
+    sub scan_elements {
+        my ($self) = @_;
+        my $io = $self->{io};
+        $self->scan_element;
+        my $c = $io->lookc();
+        while ($c eq ',') {
+            $io->inc_cursor;
+            $self->emit(elements_delimiter => $c);
+            $self->scan_element;
+            $c = $io->lookc();
+        }
+    }
+
+    sub scan_element {
+        my ($self) = @_;
+        $self->scan_ws;
+        $self->scan_value;
+        $self->scan_ws;
+    }
+
+    sub scan_value {
+        my ($self) = @_;
+        my $io = $self->{io};
+
+        my $c = $io->lookc;
+        if ($c eq 't') {
+            $io->inc_cursor;
+            my $expected = 'true';
+            my $tok = $c;
+            for (1,2,3) {
+                $c = $io->getc;
+                $c eq substr($expected, $_, 1) or die "Expecting: true";
+                $tok .= $c;
+            }
+            $self->emit(value_true => $tok);
+        } elsif ($c eq 'f') {
+            $io->inc_cursor;
+            my $expected = 'false';
+            my $tok = $c;
+            for (1,2,3,4) {
+                $c = $io->getc;
+                $c eq substr($expected, $_, 1) or die "Expecting: false";
+                $tok .= $c;
+            }
+            $self->emit(value_false => $tok);
+        } elsif ($c eq 'n') {
+            $io->inc_cursor;
+            my $expected = 'null';
+            my $tok = $c;
+            for (1,2,3) {
+                $c = $io->getc;
+                $c eq substr($expected, $_, 1) or die "Expecting: null";
+                $tok .= $c;
+            }
+            $self->emit(value_null => $tok);
+        } elsif ($c eq '[') {
+            $self->scan_array;
+        } elsif ($c eq '{') {
+            $self->scan_object;
+        } elsif ($c eq '"') {
+            $self->scan_string;
+        } else {
+            $self->scan_number;
+        }
+    }
+
+    sub scan_number {
+        my ($self) = @_;
+        my $io = $self->{io};
+        my $tok = '';
+        my $c = $io->lookc;
+        if ($c eq '-') {
+            $io->inc_cursor;
+            $tok .= $c;
+        }
+
+        $c = $io->lookc;
+        if (eq_any($c, $digits_onenine)) {
+            $io->inc_cursor;
+            $tok .= $c;
+            $c = $io->lookc;
+            if (eq_any($c, $digits_zeronine)) {
+                $tok .= $self->scan_digits;
+            }
+        } elsif ($c eq '0') {
+            $io->inc_cursor;
+            $tok .= $c;
+        } else {
+            die "Expect a digit: $c";
+        }
+
+        $c = $io->lookc;
+        if ($c eq '.') {
+            $io->inc_cursor;
+            $tok .= $c;
+            $tok .= $self->scan_digits;
+            $c = $io->lookc;
+        }
+
+        if ($c eq 'e' || $c eq 'E') {
+            $io->inc_cursor;
+            $tok .= $c;
+            $c = $io->getc;
+            if ($c eq '+' || $c eq '-') {
+                $tok .= $c;
+            }
+            $tok .= $self->scan_digits;
+        }
+
+        $self->emit(number => $tok);
+    }
+
+    sub scan_digits {
+        my ($self) = @_;
+        my $tok = '';
+        my $io = $self->{io};
+        my $c = $io->getc;
+        die "Expecting digits: $c" unless eq_any($c, $digits_zeronine);
+        $tok .= $c;
+        $c = $io->lookc;
+        while(eq_any($c, $digits_zeronine)) {
+            $io->inc_cursor;
+            $tok .= $c;
+            $c = $io->lookc;
+        }
+        # $self->emit(digits => $tok);
+        return $tok;
+    }
+
+    sub scan_string {
+        my ($self) = @_;
+        my $tok = '';
+        my $io = $self->{io};
+        my $c = $io->getc;
+        die q<Expecting: '"'> unless $c eq '"';
+        # $self->emit(begin_string => '"');
+        $tok .= $c;
+
+        $tok .= $self->scan_characters;
+
+        $c = $io->getc;
+        die q<Expecting: '"'> unless $c eq '"';
+        # $self->emit(end_string => '"');
+        $tok .= $c;
+        $self->emit(string => $tok);
+        return $tok;
+    }
+
+    sub scan_characters {
+        my ($self) = @_;
+        my $c = $self->{io}->lookc;
+        my $tok = '';
+        while ($c ne '"') {
+            $tok .= $self->scan_character;
+            $c = $self->{io}->lookc;
+        }
+        return $tok;
+    }
+    sub scan_character {
+        my ($self) = @_;
+        my $tok;
+        my $io = $self->{io};
+        my $c = $io->lookc;
+        if (ord($c) >= 0x0020 && ord($c) <= 0x10ffff && $c ne '"' && $c ne '\\') {
+            $io->inc_cursor;
+            $tok .= $c;
+        } elsif ($c eq '\\') {
+            $tok .= $self->scan_escape;
+        }
+        return $tok;
+    }
+
+    sub scan_escape {
+        my ($self) = @_;
+        my $io = $self->{io};
+        my $c = $io->getc;
+        die q<Expecting: '\\'> unless $c eq "\\";
+        my $tok = $c;
+        $c = $io->getc;
+        if ($c eq 'u') {
+            $tok .= $c;
+            for (1..4) {
+                $c = $io->getc;
+                die "Expecting a hex digit" unless eq_any($c, $hex_digits);
+                $tok .= $c;
+            }
+            # $self->emit(escape => $tok);
+        } elsif (eq_any($c, ['"', '\\', '/', 'b', 'n', 'r', 't'])) {
+            $tok .= $c;
+            # $self->emit(escape => $tok);
+        } else {
+            die "Unexpected character: $c";
+        }
+        return $tok;
+    }
+
+    sub scan_array {
+        my ($self) = @_;
+        my $io = $self->{io};
+        my $c = $io->getc;
+        die q<Expecting '['> unless $c eq '[';
+        $self->emit('begin_array', $c);
+
+        $io->save_cursor;
+        $self->emit('save_cursor');
+
+        $self->scan_ws;
+        $c = $io->lookc;
+
+        if ($c eq ']') {
+            $io->discard_cursor;
+            $self->emit('discard_cursor');
+
+            $io->inc_cursor;
+            $self->emit('end_array', $c);
+        } else {
+            $io->restore_cursor;
+            $self->emit('restore_cursor');
+
+            $self->scan_elements;
+            $c = $io->getc;
+            die q<Expecting ']'> unless $c eq ']';
+            $self->emit('end_array', $c);
+        }
+    }
+
+    sub scan_members {
+        my ($self) = @_;
+        my $io = $self->{io};
+        $self->scan_member;
+
+        my $c = $io->lookc;
+        while ($c eq ',') {
+            $io->inc_cursor;
+            $self->emit(members_delimiter => $c);
+            $self->scan_member;
+            $c = $io->lookc;
+        }
+    }
+
+    sub scan_member {
+        my ($self) = @_;
+        my $io = $self->{io};
+        $self->scan_ws;
+        $self->scan_string;
+        $self->scan_ws;
+        my $c = $io->getc();
+        die q<Expecting: ':'> unless $c eq ':';
+        $self->emit(member_delimiter => $c);
+        $self->scan_element;
+    }
+
+    sub scan_object {
+        my ($self) = @_;
+        my $io = $self->{io};
+        my $c = $io->getc;
+        die q<Expecting '{'> unless $c eq '{';
+        $self->emit('begin_object', $c);
+
+        $io->save_cursor;
+        $self->emit('save_cursor');
+
+        $self->scan_ws;
+        $c = $io->lookc;
+
+        if ($c eq '}') {
+            $io->discard_cursor;
+            $self->emit('discard_cursor');
+
+            $io->inc_cursor;
+            $self->emit('end_object', $c);
+        } else {
+            $io->restore_cursor;
+            $self->emit('restore_cursor');
+
+            $self->scan_members;
+            $c = $io->getc;
+            die q<Expecting '}'> unless $c eq '}';
+            $self->emit('end_object', $c);
+        }
+    }
+
+    sub print_prettify {
+        my ($self) = @_;
+
+        my $indent = '';
+        $self->{event_handler} = sub {
+            my ($event_name, $tok) = @_;
+            return if $event_name eq 'ws' || !defined($tok);
+
+            if ($event_name =~ /\Aend_/) {
+                $indent =~ s/  \z//;
+            }
+
+            my $tok_print = $tok;
+            $tok_print =~ s/\n/\\n/g;
+            $tok_print =~ s/\t/\\t/g;
+
+            print $indent . $tok_print . "\n";
+
+            if ($event_name =~ /\Abegin_/) {
+                $indent .= '  ';
+            }
+        };
+
+        $self->scan_element();
+    }
+}
+
+my $reader = JSONReader->new(\*STDIN);
+$reader->print_prettify;

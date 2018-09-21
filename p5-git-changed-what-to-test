@@ -1,0 +1,46 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use File::Spec;
+use Getopt::Long qw(GetOptions);
+use JSON::PP qw(decode_json);
+
+sub grok_changed {
+    my @changed;
+    open(my $fh, 'git status --porcelain . |');
+    while (<$fh>) {
+        chomp;
+        if (s/\A[ AM][ AM] //) {
+            push @changed, $_;
+        }
+    }
+    close($fh);
+    return @changed;
+}
+
+sub slurp_json {
+    my ($fn) = @_;
+    open(my $fh, "<:utf8", $fn) or die $!;
+    local $/;
+    my $o = decode_json(scalar <$fh>);
+    close($fh);
+    return $o;
+}
+
+my %opts;
+GetOptions(
+    \%opts,
+    "r=s",
+);
+
+my @changed = map { File::Spec->rel2abs($_) } grok_changed();
+my $rdeps = slurp_json($opts{r});
+
+my %bechanged;
+for (@changed) {
+    my @o = @{$rdeps->{$_} //[$_]};
+    @bechanged{@o} = ();
+}
+
+say for grep { /\.t/ } keys %bechanged;

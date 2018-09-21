@@ -5,6 +5,7 @@ use Data::Dumper;
 use Module::ExtractUse;
 use Module::Path ();
 use Getopt::Long qw(GetOptions);
+use JSON::PP qw(encode_json);
 
 sub module_path {
     my ($mod, $libs) = @_;
@@ -18,6 +19,7 @@ GetOptions(
     \%opts,
     "l=s@",
     "L=s@",
+    "reverse"
 );
 my @query = @ARGV;
 
@@ -31,29 +33,36 @@ if ($opts{L}) {
 }
 
 my %used;
+my %rdeps; # Map[ Dep => ArrayRef[queries] ]
 
 my $meu = Module::ExtractUse->new;
 
 while (@query) {
-    $meu->extract_use( pop(@query) );
+    my $f = pop(@query);
+    $meu->extract_use( $f );
     for ($meu->array) {
         unless (defined($used{$_})) {
             my $p = module_path($_, \@perl5libs);
             if (defined($p)) {
-                push @query, $p;
                 $used{$_} = $p;
             } else {
                 $used{$_} = '';
             }
         }
+        my $p = $used{$_} or next;
+        push @{$rdeps{$p}}, $f;
     }
 }
 
-my @mods = keys %used;
-for my $mod (sort { $a cmp $b } grep { ! $used{$_} } @mods) {
-    say $mod . "\t" . "#missing";
-}
+if ($opts{reverse}) {
+    print encode_json(\%rdeps);
+} else {
+    my @mods = keys %used;
+    for my $mod (sort { $a cmp $b } grep { ! $used{$_} } @mods) {
+        say $mod . "\t" . "#missing";
+    }
 
-for my $mod (sort { $used{$a} cmp $used{$b} } grep { $used{$_} } @mods) {
-    say $mod . "\t" . $used{$mod}
+    for my $mod (sort { $used{$a} cmp $used{$b} } grep { $used{$_} } @mods) {
+        say $mod . "\t" . $used{$mod}
+    }
 }

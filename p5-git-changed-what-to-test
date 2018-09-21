@@ -57,7 +57,7 @@ GetOptions(
     "L=s@",
 );
 
-my @changed = map { File::Spec->rel2abs($_) } grok_changed();
+my @changed = grok_changed();
 
 unless (@changed) {
     exit(0);
@@ -82,17 +82,28 @@ if ($opts{r}) {
     }
 
     my %mod_path;
-    my $tests = File::Next::files({ file_filter => sub { /\.t\z/ }}, "t");
     my %is_changed = map { $_ => 1 } @changed;
+
+    my $tests = File::Next::files({ file_filter => sub { /\.t\z/ } }, "t");
 
     mce_stream {
         input_data => sub { scalar $tests->() },
     }, sub {
         my $testfile = $_;
+
+        if ($is_changed{$testfile}) {
+            MCE->say($testfile);
+            return;
+        }
+
         my $meu = Module::ExtractUse->new;
         $meu->extract_use($testfile);
         for ($meu->array) {
-            my $p = $mod_path{$_} //= module_path($_, \@perl5libs);
+            my $p = $mod_path{$_} //= do {
+                my $x = module_path($_, \@perl5libs);
+                $x ? File::Spec->abs2rel($x) : ''
+            };
+
             if ($p && $is_changed{$p}) {
                 MCE->say( $testfile );
                 last;

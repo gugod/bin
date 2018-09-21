@@ -126,9 +126,11 @@ package JSONReader {
 
     sub scan_element {
         my ($self) = @_;
+        $self->emit('begin_element');
         $self->scan_ws;
         $self->scan_value;
         $self->scan_ws;
+        $self->emit('end_element');
     }
 
     sub scan_value {
@@ -372,21 +374,13 @@ package JSONReader {
         die q<Expecting '{'> unless $c eq '{';
         $self->emit('begin_object', $c);
 
-        $io->save_cursor;
-        $self->emit('save_cursor');
-
         $self->scan_ws;
         $c = $io->lookc;
 
         if ($c eq '}') {
-            $io->discard_cursor;
-            $self->emit('discard_cursor');
-
             $io->inc_cursor;
             $self->emit('end_object', $c);
         } else {
-            $io->restore_cursor;
-
             $self->scan_members;
             $c = $io->getc;
             die q<Expecting '}'> unless $c eq '}';
@@ -401,34 +395,61 @@ package JSONReader {
         my $post_ws = '';
         my $indent = 0;
         my $tok_print = '';
-
+        my $after_member_delimiter = 0;
+        my $previous_event = '';
         my $handlers = +{
-            end_array  => sub {
-                $indent--;
-                $pre_ws = '  ' x $indent;
-                $post_ws = "\n";
+            before => {
+                end_array   => sub {
+                    $indent--;
+                    if ($previous_event ne 'begin_array') {
+                        print "\n" . '    ' x $indent;
+                    }
+                },
+                end_object  => sub {
+                    $indent--;
+                    if ($previous_event ne 'begin_object') {
+                        print "\n" . '    ' x $indent;
+                    }
+                },
+                begin_array  => sub { },
+                begin_object => sub {  },
+                end_json => sub { print "\n" },
+                members_delimiter => sub { },
+                elements_delimiter => sub { },
+                begin_member => sub {
+                    if ($previous_event eq 'begin_object') {
+                        print "\n" . '    'x$indent;
+                    }
+                },
+                begin_element => sub {
+                    if ($previous_event eq 'begin_array') {
+                        print "\n";
+                    }
+                    if ($after_member_delimiter) {
+                        $after_member_delimiter = 0;
+                        print ' ';
+                    } else {
+                        print '    'x$indent;
+                    }
+                }
             },
-            end_object => sub {
-                $indent--;
-                $pre_ws = '  ' x $indent;
-                $post_ws = "\n";
-            },
-            begin_array  => sub {
-                $post_ws = "\n";
-                $pre_ws = '  ' x $indent;
-                $indent++;
-            },
-            begin_object => sub {
-                $post_ws = "\n";
-                $pre_ws = '  ' x $indent;
-                $indent++
-            },
-            end_json => sub { print "\n" },
-            elements_delimiter => sub {
-                $pre_ws = "";
-                $post_ws = "";
+            after => {
+                begin_object  => sub {
+                    $indent++;
+                },
+                begin_array  => sub {
+                    $indent++;
+                },
+                elements_delimiter => sub {
+                    print "\n";
+                },
+                member_delimiter => sub {
+                    $after_member_delimiter = 1;
+                },
+                members_delimiter => sub {
+                    print "\n" . '    ' x $indent;
+                }
             }
-
         };
 
         $self->{event_handler} = sub {
@@ -436,16 +457,18 @@ package JSONReader {
             return if $event_name eq 'ws';
             $tok_print = $tok;
 
-            my $cb = $handlers->{$event_name};
-            if ($cb) {
-                $cb->($tok);
-            } else {
-                # print "<$event_name>\n"
-            }
+            my $cb = $handlers->{before}{$event_name};
+            $cb->($tok) if $cb;
 
             if (defined $tok) {
                 print $tok_print;
             }
+
+            $cb = $handlers->{after}{$event_name};
+            $cb->($tok) if $cb;
+
+            $previous_event = $event_name;
+            # print STDERR ">> $event_name\n";
         };
 
         $self->scan_json();

@@ -117,6 +117,13 @@ package JSONReader {
         }
     }
 
+    sub scan_json {
+        my ($self) = @_;
+        $self->emit('begin_json');
+        $self->scan_element;
+        $self->emit('end_json');
+    }
+
     sub scan_element {
         my ($self) = @_;
         $self->scan_ws;
@@ -129,6 +136,7 @@ package JSONReader {
         my $io = $self->{io};
 
         my $c = $io->lookc;
+        $self->emit('begin_value');
         if ($c eq 't') {
             $io->inc_cursor;
             my $expected = 'true';
@@ -168,6 +176,7 @@ package JSONReader {
         } else {
             $self->scan_number;
         }
+        $self->emit('end_value');
     }
 
     sub scan_number {
@@ -239,16 +248,17 @@ package JSONReader {
         my $io = $self->{io};
         my $c = $io->getc;
         die q<Expecting: '"'> unless $c eq '"';
-        # $self->emit(begin_string => '"');
+        $self->emit('begin_string');
         $tok .= $c;
 
         $tok .= $self->scan_characters;
 
         $c = $io->getc;
         die q<Expecting: '"'> unless $c eq '"';
-        # $self->emit(end_string => '"');
         $tok .= $c;
         $self->emit(string => $tok);
+
+        $self->emit('end_string');
         return $tok;
     }
 
@@ -308,20 +318,17 @@ package JSONReader {
         $self->emit('begin_array', $c);
 
         $io->save_cursor;
-        $self->emit('save_cursor');
 
         $self->scan_ws;
         $c = $io->lookc;
 
         if ($c eq ']') {
             $io->discard_cursor;
-            $self->emit('discard_cursor');
 
             $io->inc_cursor;
             $self->emit('end_array', $c);
         } else {
             $io->restore_cursor;
-            $self->emit('restore_cursor');
 
             $self->scan_elements;
             $c = $io->getc;
@@ -347,6 +354,7 @@ package JSONReader {
     sub scan_member {
         my ($self) = @_;
         my $io = $self->{io};
+        $self->emit('begin_member');
         $self->scan_ws;
         $self->scan_string;
         $self->scan_ws;
@@ -354,6 +362,7 @@ package JSONReader {
         die q<Expecting: ':'> unless $c eq ':';
         $self->emit(member_delimiter => $c);
         $self->scan_element;
+        $self->emit('end_member');
     }
 
     sub scan_object {
@@ -377,7 +386,6 @@ package JSONReader {
             $self->emit('end_object', $c);
         } else {
             $io->restore_cursor;
-            $self->emit('restore_cursor');
 
             $self->scan_members;
             $c = $io->getc;
@@ -389,29 +397,74 @@ package JSONReader {
     sub print_prettify {
         my ($self) = @_;
 
-        my $indent = '';
-        $self->{event_handler} = sub {
-            my ($event_name, $tok) = @_;
-            return if $event_name eq 'ws' || !defined($tok);
+        my $pre_ws = '';
+        my $post_ws = '';
+        my $indent = 0;
+        my $tok_print = '';
 
-            if ($event_name =~ /\Aend_/) {
-                $indent =~ s/  \z//;
+        my $handlers = +{
+            end_array  => sub {
+                $indent--;
+                $pre_ws = '  ' x $indent;
+                $post_ws = "\n";
+            },
+            end_object => sub {
+                $indent--;
+                $pre_ws = '  ' x $indent;
+                $post_ws = "\n";
+            },
+            begin_array  => sub {
+                $post_ws = "\n";
+                $pre_ws = '  ' x $indent;
+                $indent++;
+            },
+            begin_object => sub {
+                $post_ws = "\n";
+                $pre_ws = '  ' x $indent;
+                $indent++
+            },
+            end_json => sub { print "\n" },
+            elements_delimiter => sub {
+                $pre_ws = "";
+                $post_ws = "";
             }
 
-            my $tok_print = $tok;
-            $tok_print =~ s/\n/\\n/g;
-            $tok_print =~ s/\t/\\t/g;
+        };
 
-            print $indent . $tok_print . "\n";
+        $self->{event_handler} = sub {
+            my ($event_name, $tok) = @_;
+            return if $event_name eq 'ws';
+            $tok_print = $tok;
 
-            if ($event_name =~ /\Abegin_/) {
-                $indent .= '  ';
+            my $cb = $handlers->{$event_name};
+            if ($cb) {
+                $cb->($tok);
+            } else {
+                # print "<$event_name>\n"
+            }
+
+            if (defined $tok) {
+                print $tok_print;
             }
         };
 
-        $self->scan_element();
+        $self->scan_json();
+    }
+
+    sub print_minify {
+        my ($self) = @_;
+        $self->{event_handler} = sub {
+            my ($event_name, $tok) = @_;
+            return if $event_name eq 'ws' || !defined($tok);
+            print $tok;
+        };
+        $self->scan_json;
     }
 }
 
 my $reader = JSONReader->new(\*STDIN);
-$reader->print_prettify;
+if (grep { $_ eq '--pretty' } @ARGV) {
+    $reader->print_prettify;
+} else {
+    $reader->print_minify;
+}

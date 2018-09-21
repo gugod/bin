@@ -4,6 +4,7 @@ use strict;
 use Data::Dumper;
 use Module::ExtractUse;
 use Module::Path ();
+use Getopt::Long qw(GetOptions);
 
 sub module_path {
     my ($mod, $libs) = @_;
@@ -11,9 +12,23 @@ sub module_path {
     return Module::Path::module_path($mod);
 }
 
-my @perl5libs = ("lib", "t/lib");
-
+my %opts;
+Getopt::Long::Configure('no_ignore_case');
+GetOptions(
+    \%opts,
+    "l=s@",
+    "L=s@",
+);
 my @query = @ARGV;
+
+my @perl5libs;
+if ($opts{L}) {
+    @perl5libs = @{$opts{L}};
+} elsif ($opts{l}) {
+    @perl5libs = (@{$opts{l}}, @INC);
+} else {
+    @perl5libs = @INC;
+}
 
 my %used;
 
@@ -34,7 +49,11 @@ while (@query) {
     }
 }
 
-for my $mod (sort { length($a) cmp length($b) } grep { $used{$_} } keys %used) {
-    say $used{$mod};
-    # . "\t" . $mod;
+my @mods = keys %used;
+for my $mod (sort { $a cmp $b } grep { ! $used{$_} } @mods) {
+    say $mod . "\t" . "#missing";
+}
+
+for my $mod (sort { $used{$a} cmp $used{$b} } grep { $used{$_} } @mods) {
+    say $mod . "\t" . $used{$mod}
 }

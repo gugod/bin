@@ -8,6 +8,7 @@ use JSON::PP qw(decode_json);
 use File::Next;
 use Module::ExtractUse;
 use Module::Path ();
+use MCE::Stream;
 
 sub module_path {
     my ($mod, $libs) = @_;
@@ -47,14 +48,6 @@ sub slurp_json {
     return $o;
 }
 
-sub any(&@) {
-    my $cb = shift;
-    for (@_) {
-        return 1 if $cb->();
-    }
-    return 0;
-}
-
 my %opts;
 Getopt::Long::Configure('no_ignore_case');
 GetOptions(
@@ -92,12 +85,18 @@ if ($opts{r}) {
     my $tests = File::Next::files({ file_filter => sub { /\.t\z/ }}, "t");
     my %is_changed = map { $_ => 1 } @changed;
 
-    while (defined(my $testfile = $tests->())) {
+    mce_stream {
+        input_data => sub { scalar $tests->() },
+    }, sub {
+        my $testfile = $_;
         my $meu = Module::ExtractUse->new;
         $meu->extract_use($testfile);
-        my @deps = grep { $_ } map { $mod_path{$_} //= module_path($_, \@perl5libs) } $meu->array;
-        if (any { $is_changed{$_} } @deps) {
-            say $testfile;
+        for ($meu->array) {
+            my $p = $mod_path{$_} //= module_path($_, \@perl5libs);
+            if ($p && $is_changed{$p}) {
+                MCE->say( $testfile );
+                last;
+            }
         }
-    }
+    };
 }

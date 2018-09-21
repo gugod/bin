@@ -32,12 +32,17 @@ foreach_perl_source_file \@args => sub {
     for my $el (@$o) {
         my $s = "" . $el;
         $idx{$s}{frequency} += 1;
-        $idx{$s}{WHERE} //= { file => $file, line_number => $el->line_number };
+        $idx{$s}{WHERE} //= { file => $file, line_number => $el->line_number, column_number => $el->column_number };
     }
 };
 
-for my $tok (keys %idx) {
-    next unless  $idx{$tok}{frequency} == 1;
-    my $w = $idx{$tok}{WHERE};
-    say join "\t", $w->{file}, $w->{line_number}, $tok;
+say for map {
+    my $w = $idx{$_}{WHERE};
+    $w->{file} . ':' . $w->{line_number} . ':' . $w->{column_number} . ': q' . $_;
 }
+sort {
+    $idx{$a}{WHERE}{file} cmp $idx{$b}{WHERE}{file};
+}
+grep {
+    $idx{$_}{frequency} == 1
+} keys %idx;

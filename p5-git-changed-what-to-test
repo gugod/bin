@@ -1,0 +1,113 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use File::Spec;
+use Getopt::Long qw(GetOptions);
+use JSON::PP qw(decode_json);
+use File::Next;
+use Module::ExtractUse;
+use Module::Path ();
+use MCE::Stream;
+
+sub module_path {
+    my ($mod, $libs) = @_;
+    local @INC = @$libs;
+    return Module::Path::module_path($mod);
+}
+
+sub grok_changed {
+    my @changed;
+    open(my $fh, 'git status --porcelain . |');
+    while (<$fh>) {
+        chomp;
+        if (s/\A[ AM][ AM] //) {
+            push @changed, $_;
+        }
+    }
+    close($fh);
+    if (@changed == 0) {
+        open(my $fh, 'git log -1 --format= --name-status . |');
+        while (<$fh>) {
+            chomp;
+            if (s/\A[AM]\s+//) {
+                push @changed, $_;
+            }
+        }
+        close($fh);
+    }
+    return @changed;
+}
+
+sub slurp_json {
+    my ($fn) = @_;
+    open(my $fh, "<:utf8", $fn) or die $!;
+    local $/;
+    my $o = decode_json(scalar <$fh>);
+    close($fh);
+    return $o;
+}
+
+my %opts;
+Getopt::Long::Configure('no_ignore_case');
+GetOptions(
+    \%opts,
+    "r=s",
+    "l=s@",
+    "L=s@",
+);
+
+my @changed = grok_changed();
+
+unless (@changed) {
+    exit(0);
+}
+
+if ($opts{r}) {
+    my $rdeps = slurp_json($opts{r});
+    my %bechanged;
+    for (@changed) {
+        my @o = @{$rdeps->{$_} //[$_]};
+        @bechanged{@o} = ();
+    }
+    say for grep { /\.t/ } keys %bechanged;
+} else {
+    my @perl5libs;
+    if ($opts{L}) {
+        @perl5libs = @{$opts{L}};
+    } elsif ($opts{l}) {
+        @perl5libs = (@{$opts{l}}, @INC);
+    } else {
+        @perl5libs = @INC;
+    }
+
+    my %mod_path;
+    my %is_changed = map { $_ => 1 } @changed;
+
+    my $tests = File::Next::files({ file_filter => sub { /\.t\z/ } }, "t");
+
+    mce_stream {
+        input_data => sub { scalar $tests->() },
+    }, sub {
+        my $testfile = $_;
+
+        if ($is_changed{$testfile}) {
+            MCE->say($testfile);
+            return;
+        }
+
+        my $meu = Module::ExtractUse->new;
+        $meu->extract_use($testfile);
+        for ($meu->array) {
+            my $p = $mod_path{$_} //= do {
+                my $x = module_path($_, \@perl5libs);
+                $x ? File::Spec->abs2rel($x) : ''
+            };
+
+            if ($p && $is_changed{$p}) {
+                MCE->say( $testfile );
+                last;
+            }
+        }
+    };
+}

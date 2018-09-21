@@ -1,0 +1,68 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use Data::Dumper;
+use Module::ExtractUse;
+use Module::Path ();
+use Getopt::Long qw(GetOptions);
+use JSON::PP qw(encode_json);
+
+sub module_path {
+    my ($mod, $libs) = @_;
+    local @INC = @$libs;
+    return Module::Path::module_path($mod);
+}
+
+my %opts;
+Getopt::Long::Configure('no_ignore_case');
+GetOptions(
+    \%opts,
+    "l=s@",
+    "L=s@",
+    "reverse"
+);
+my @query = @ARGV;
+
+my @perl5libs;
+if ($opts{L}) {
+    @perl5libs = @{$opts{L}};
+} elsif ($opts{l}) {
+    @perl5libs = (@{$opts{l}}, @INC);
+} else {
+    @perl5libs = @INC;
+}
+
+my %used;
+my %rdeps; # Map[ Dep => ArrayRef[queries] ]
+
+my $meu = Module::ExtractUse->new;
+
+while (@query) {
+    my $f = pop(@query);
+    $meu->extract_use( $f );
+    for ($meu->array) {
+        unless (defined($used{$_})) {
+            my $p = module_path($_, \@perl5libs);
+            if (defined($p)) {
+                $used{$_} = $p;
+            } else {
+                $used{$_} = '';
+            }
+        }
+        my $p = $used{$_} or next;
+        push @{$rdeps{$p}}, $f;
+    }
+}
+
+if ($opts{reverse}) {
+    print encode_json(\%rdeps);
+} else {
+    my @mods = keys %used;
+    for my $mod (sort { $a cmp $b } grep { ! $used{$_} } @mods) {
+        say $mod . "\t" . "#missing";
+    }
+
+    for my $mod (sort { $used{$a} cmp $used{$b} } grep { $used{$_} } @mods) {
+        say $mod . "\t" . $used{$mod}
+    }
+}

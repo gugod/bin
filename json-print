@@ -61,7 +61,7 @@ package IOReader {
     }
 }
 
-package JSONReader {
+package JSONScanner {
     my $hex_digits = [qw(0 1 2 3 4 5 6 7 8 9 A B C D E F a b c d e f)];
     my $digits_onenine = [qw(1 2 3 4 5 6 7 8 9)];
     my $digits_zeronine = [qw(0 1 2 3 4 5 6 7 8 9)];
@@ -387,8 +387,16 @@ package JSONReader {
             $self->emit('end_object', $c);
         }
     }
+}
 
-    sub print_prettify {
+package JSONPrinter {
+    sub new {
+        my ($class, $fh) = @_;
+        my $scanner = JSONScanner->new($fh);
+        return bless { scanner => $scanner }, $class;
+    }
+
+    sub prettify {
         my ($self) = @_;
 
         my $pre_ws = '';
@@ -452,7 +460,7 @@ package JSONReader {
             }
         };
 
-        $self->{event_handler} = sub {
+        $self->{scanner}->{event_handler} = sub {
             my ($event_name, $tok) = @_;
             return if $event_name eq 'ws';
             $tok_print = $tok;
@@ -471,23 +479,22 @@ package JSONReader {
             # print STDERR ">> $event_name\n";
         };
 
-        $self->scan_json();
+        $self->{scanner}->scan_json();
     }
-
-    sub print_minify {
+    sub minify {
         my ($self) = @_;
-        $self->{event_handler} = sub {
+        $self->{scanner}{event_handler} = sub {
             my ($event_name, $tok) = @_;
             return if $event_name eq 'ws' || !defined($tok);
             print $tok;
         };
-        $self->scan_json;
+        $self->{scanner}->scan_json;
     }
 }
 
-my $reader = JSONReader->new(\*STDIN);
+my $json_printer = JSONPrinter->new(\*STDIN);
 if (grep { $_ eq '--pretty' } @ARGV) {
-    $reader->print_prettify;
+    $json_printer->prettify;
 } else {
-    $reader->print_minify;
+    $json_printer->minify;
 }

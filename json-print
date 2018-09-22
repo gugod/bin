@@ -253,7 +253,18 @@ package JSONScanner {
         $self->emit('begin_string');
         $tok .= $c;
 
-        $tok .= $self->scan_characters;
+        ### scan_characters;
+        $c = $io->lookc;
+        while ($c ne '"') {
+            if ($c eq '\\') {
+                $tok .= $self->scan_escape;
+            } elsif (ord($c) >= 0x0020 && ord($c) <= 0x10ffff) {
+                $io->inc_cursor;
+                $tok .= $c;
+            }
+            $c = $self->{io}->lookc;
+        }
+        ### /scan_characters
 
         $c = $io->getc;
         die q<Expecting: '"'> unless $c eq '"';
@@ -264,22 +275,6 @@ package JSONScanner {
         return $tok;
     }
 
-    sub scan_characters {
-        my ($self) = @_;
-        my $io = $self->{io};
-        my $c = $io->lookc;
-        my $tok = '';
-        while ($c ne '"') {
-            if ($c eq '\\') {
-                $tok .= $self->scan_escape;
-            } elsif (ord($c) >= 0x0020 && ord($c) <= 0x10ffff) {
-                $io->inc_cursor;
-                $tok .= $c;
-            }
-            $c = $self->{io}->lookc;
-        }
-        return $tok;
-    }
     sub scan_escape {
         my ($self) = @_;
         my $io = $self->{io};

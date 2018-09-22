@@ -266,28 +266,20 @@ package JSONScanner {
 
     sub scan_characters {
         my ($self) = @_;
-        my $c = $self->{io}->lookc;
+        my $io = $self->{io};
+        my $c = $io->lookc;
         my $tok = '';
         while ($c ne '"') {
-            $tok .= $self->scan_character;
+            if ($c eq '\\') {
+                $tok .= $self->scan_escape;
+            } elsif (ord($c) >= 0x0020 && ord($c) <= 0x10ffff) {
+                $io->inc_cursor;
+                $tok .= $c;
+            }
             $c = $self->{io}->lookc;
         }
         return $tok;
     }
-    sub scan_character {
-        my ($self) = @_;
-        my $tok;
-        my $io = $self->{io};
-        my $c = $io->lookc;
-        if (ord($c) >= 0x0020 && ord($c) <= 0x10ffff && $c ne '"' && $c ne '\\') {
-            $io->inc_cursor;
-            $tok .= $c;
-        } elsif ($c eq '\\') {
-            $tok .= $self->scan_escape;
-        }
-        return $tok;
-    }
-
     sub scan_escape {
         my ($self) = @_;
         my $io = $self->{io};

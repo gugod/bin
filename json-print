@@ -2,14 +2,17 @@
 use strict;
 use warnings;
 
-binmode STDOUT, ":utf8";
+binmode STDOUT, ":encoding(utf8)";
+select(STDOUT);
+$|=1;
 
 package IOReader {
-    my $READ_SIZE = 64*2**20; # 64MB
+    # my $READ_SIZE = 64*2**20; # 64MB
+    my $READ_SIZE = 2**9;
 
     sub new {
         my ($class, $fh) = @_;
-        binmode $fh, ":utf8";
+        binmode $fh, ":encoding(utf8)";
         return bless {
             fh => $fh,
             buf => "",
@@ -24,6 +27,7 @@ package IOReader {
         return unless $self->{buf_cursor} > $__flush_mark;
         substr($self->{buf}, 0, $self->{buf_cursor}) = '';
         $self->{buf_cursor} = 0;
+        $self->readmore;
     }
 
     sub readmore {
@@ -42,7 +46,7 @@ package IOReader {
 
     sub lookc {
         my ($self) = @_;
-        if ($self->{buf_cursor} >= length($self->{buf})) {
+        if ($self->{buf_cursor} >= int length($self->{buf})/2) {
             $self->readmore();
         }
         return substr($self->{buf}, $self->{buf_cursor}, 1);

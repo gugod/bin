@@ -498,3 +498,19 @@ if (grep { $_ eq '--minify' } @ARGV) {
 } else {
     $json_printer->prettify;
 }
+
+__END__
+
+=head1 Usage
+
+json-print [--minify]
+
+Prettify:
+
+    cat data.json | json-print
+
+Minify (remove whitespaces):
+
+    cat data.json | json-print --minify
+
+=cut

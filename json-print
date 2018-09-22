@@ -5,7 +5,7 @@ use warnings;
 binmode STDOUT, ":utf8";
 
 package IOReader {
-    my $READ_SIZE = 16*2**20; # 16MB
+    my $READ_SIZE = 64*2**20; # 64MB
 
     sub new {
         my ($class, $fh) = @_;
@@ -18,9 +18,10 @@ package IOReader {
         }, $class;
     }
 
+    my $__flush_mark = int $READ_SIZE * 0.9;
     sub flush {
         my ($self) = @_;
-        return unless $self->{buf_cursor} > $READ_SIZE / 2;
+        return unless $self->{buf_cursor} > $__flush_mark;
         substr($self->{buf}, 0, $self->{buf_cursor}) = '';
         $self->{buf_cursor} = 0;
     }
@@ -94,7 +95,7 @@ package JSONScanner {
         my $tok = '';
         my $io = $self->{io};
         my $c = $io->lookc;
-        while (eq_any($c, ["\x{0009}", "\x{000a}", "\x{000d}", "\x{0020}"])) {
+        while (eq_any($c, ["\x{0020}", "\x{000a}", "\x{000d}", "\x{0009}"])) {
             $tok .= $c;
             $io->inc_cursor;
             $c = $io->lookc;

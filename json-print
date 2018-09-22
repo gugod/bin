@@ -94,12 +94,12 @@ package JSONScanner {
         my ($self) = @_;
         my $tok = '';
         my $io = $self->{io};
-        my $c = $io->lookc;
-        while (eq_any($c, ["\x{0020}", "\x{000a}", "\x{000d}", "\x{0009}"])) {
-            $tok .= $c;
-            $io->inc_cursor;
-            $c = $io->lookc;
+
+        if (substr($io->{buf}, $io->{buf_cursor}) =~ m/\A([\x{0020}\x{000a}\x{000d}\x{0009}]+)/) {
+            $tok = $1;
+            $io->{buf_cursor} += length($tok);
         }
+
         $self->emit('ws', $tok);
         return $self;
     }

@@ -3,7 +3,6 @@ use strict;
 use warnings;
 
 binmode STDOUT, ":encoding(utf8)";
-select(STDOUT);
 $|=1;
 
 package IOReader {
@@ -389,8 +388,6 @@ package JSONPrinter {
     sub prettify {
         my ($self) = @_;
 
-        my $pre_ws = '';
-        my $post_ws = '';
         my $indent = 0;
         my $tok_print = '';
         my $after_member_delimiter = 0;
@@ -409,11 +406,7 @@ package JSONPrinter {
                         print "\n" . '    ' x $indent;
                     }
                 },
-                begin_array  => sub { },
-                begin_object => sub {  },
                 end_json => sub { print "\n" },
-                members_delimiter => sub { },
-                elements_delimiter => sub { },
                 begin_member => sub {
                     if ($previous_event eq 'begin_object') {
                         print "\n" . '    'x$indent;
@@ -423,8 +416,7 @@ package JSONPrinter {
                     if ($previous_event eq 'begin_array') {
                         print "\n";
                     }
-                    if ($after_member_delimiter) {
-                        $after_member_delimiter = 0;
+                    if ($previous_event eq 'member_delimiter') {
                         print ' ';
                     } else {
                         print '    'x$indent;
@@ -440,9 +432,6 @@ package JSONPrinter {
                 },
                 elements_delimiter => sub {
                     print "\n";
-                },
-                member_delimiter => sub {
-                    $after_member_delimiter = 1;
                 },
                 members_delimiter => sub {
                     print "\n" . '    ' x $indent;
@@ -472,6 +461,7 @@ package JSONPrinter {
 
         $self->{scanner}->scan_json();
     }
+
     sub minify {
         my ($self) = @_;
         $self->{scanner}{event_handler} = sub {

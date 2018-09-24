@@ -45,7 +45,7 @@ package IOReader {
 
     sub lookc {
         my ($self) = @_;
-        if ($self->{buf_cursor} >= int length($self->{buf})/2) {
+        if (!$self->{eof} && length($self->{buf}) - $self->{buf_cursor}  < 100) {
             $self->readmore();
         }
         return substr($self->{buf}, $self->{buf_cursor}, 1);
@@ -61,6 +61,17 @@ package IOReader {
         my $c = $self->lookc();
         $self->inc_cursor;
         return $c;
+    }
+
+    sub get_regexp {
+        my ($self, $rx) = @_;
+        my $matched;
+        pos($self->{buf}) = $self->{buf_cursor};
+        if ($self->{buf} =~ /\G($rx)/) {
+            $matched = $1;
+            $self->{buf_cursor} += length($matched);
+        }
+        return $matched;
     }
 }
 
@@ -97,12 +108,7 @@ package JSONScanner {
         my ($self) = @_;
         my $tok = '';
         my $io = $self->{io};
-
-        if (substr($io->{buf}, $io->{buf_cursor}) =~ m/\A([\x{0020}\x{000a}\x{000d}\x{0009}]+)/) {
-            $tok = $1;
-            $io->{buf_cursor} += length($tok);
-        }
-
+        $tok = $io->get_regexp(qr/[\x{0020}\x{000a}\x{000d}\x{0009}]+/);
         $self->emit('ws', $tok);
         return $self;
     }
@@ -122,6 +128,7 @@ package JSONScanner {
 
     sub scan_json {
         my ($self) = @_;
+        $self->{io}->readmore();
         $self->emit('begin_json');
         $self->scan_element;
         $self->emit('end_json');

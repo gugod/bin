@@ -62,17 +62,6 @@ package IOReader {
         $self->inc_cursor;
         return $c;
     }
-
-    sub get_regexp {
-        my ($self, $rx) = @_;
-        my $matched;
-        pos($self->{buf}) = $self->{buf_cursor};
-        if ($self->{buf} =~ /\G($rx)/) {
-            $matched = $1;
-            $self->{buf_cursor} += length($matched);
-        }
-        return $matched;
-    }
 }
 
 package JSONScanner {
@@ -108,7 +97,13 @@ package JSONScanner {
         my ($self) = @_;
         my $tok = '';
         my $io = $self->{io};
-        $tok = $io->get_regexp(qr/[\x{0020}\x{000a}\x{000d}\x{0009}]+/);
+
+        pos($io->{buf}) = $io->{buf_cursor};
+        if ($io->{buf} =~ m/\G([\x{0020}\x{000a}\x{000d}\x{0009}]+)/) {
+            $tok = $1;
+            $io->{buf_cursor} += length($tok);
+        }
+
         $self->emit('ws', $tok);
         return $self;
     }
@@ -268,9 +263,16 @@ package JSONScanner {
         while ($c ne '"') {
             if ($c eq '\\') {
                 $tok .= $self->scan_escape;
-            } elsif (ord($c) >= 0x0020 && ord($c) <= 0x10ffff) {
-                $io->inc_cursor;
-                $tok .= $c;
+            }
+            else {
+                # \x{0022} is: "
+                # \x{005c} is: \
+
+                pos($io->{buf}) = $io->{buf_cursor};
+                if ($io->{buf} =~ /\G([\x{0020}\x{0021}\x{0023}-\x{005b}\x{005d}-\x{10ffff}]+)/) {
+                    $tok .= $1;
+                    $io->{buf_cursor} += length($1);
+                }
             }
             $c = $self->{io}->lookc;
         }

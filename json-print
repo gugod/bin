@@ -16,7 +16,6 @@ package IOReader {
             fh => $fh,
             buf => "",
             buf_cursor => 0,
-            saved_cursor => [],
         }, $class;
     }
 

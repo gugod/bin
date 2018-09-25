@@ -20,10 +20,10 @@ package IOReader {
         }, $class;
     }
 
-    my $__flush_mark = int $READ_SIZE * 0.9;
-    sub flush {
+    my $__purge_mark = int $READ_SIZE * 0.9;
+    sub purge {
         my ($self) = @_;
-        return unless $self->{buf_cursor} > $__flush_mark;
+        return unless $self->{buf_cursor} > $__purge_mark;
         substr($self->{buf}, 0, $self->{buf_cursor}) = '';
         $self->{buf_cursor} = 0;
         $self->readmore;
@@ -376,9 +376,9 @@ package JSONScanner {
         }
     }
 
-    sub flush {
+    sub purge {
         my ($self) = @_;
-        $self->{io}->flush;
+        $self->{io}->purge;
     }
 }
 
@@ -460,7 +460,7 @@ package JSONPrinter {
 
             $previous_event = $event_name;
 
-            $self->{scanner}->flush if ($event_name eq "end_object");
+            $self->{scanner}->purge if ($event_name eq "end_object");
         };
 
         $self->{scanner}->scan_json();
@@ -472,7 +472,7 @@ package JSONPrinter {
             my ($event_name, $tok) = @_;
             return if $event_name eq 'ws' || !defined($tok);
             print $tok;
-            $self->{scanner}->flush if ($event_name eq "end_object");
+            $self->{scanner}->purge if ($event_name eq "end_object");
         };
         $self->{scanner}->scan_json;
     }

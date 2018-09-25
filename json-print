@@ -259,30 +259,25 @@ package JSONScanner {
         $tok .= $c;
 
         ### scan_characters;
-        $c = $io->lookc;
-        while ($c ne '"') {
+        while (1) {
+            pos($io->{buf}) = $io->{buf_cursor};
+            if ($io->{buf} =~ /\G([\x{0020}\x{0021}\x{0023}-\x{005b}\x{005d}-\x{10ffff}]+)/) {
+                $tok .= $1;
+                $io->{buf_cursor} += length($1);
+            }
+
+            $c = $io->getc;
             if ($c eq '\\') {
                 $tok .= $self->scan_escape;
+            } elsif ($c eq '"') {
+                $tok .= $c;
+                last;
+            } else {
+                die q<Expecting: '"'> unless $c eq '"';
             }
-            else {
-                # \x{0022} is: "
-                # \x{005c} is: \
-
-                pos($io->{buf}) = $io->{buf_cursor};
-                if ($io->{buf} =~ /\G([\x{0020}\x{0021}\x{0023}-\x{005b}\x{005d}-\x{10ffff}]+)/) {
-                    $tok .= $1;
-                    $io->{buf_cursor} += length($1);
-                }
-            }
-            $c = $self->{io}->lookc;
         }
         ### /scan_characters
-
-        $c = $io->getc;
-        die q<Expecting: '"'> unless $c eq '"';
-        $tok .= $c;
         $self->emit(string => $tok);
-
         $self->emit('end_string');
         return $tok;
     }

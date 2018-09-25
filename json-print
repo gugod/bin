@@ -30,7 +30,7 @@ package IOReader {
 
     sub gist {
         my ($self) = @_;
-        return substr($self->{buf}, $self->{buf_cursor}-7, 15);
+        return substr($self->{buf}, $self->{buf_cursor}-15, 32);
     }
 
     sub readmore {
@@ -53,6 +53,14 @@ package IOReader {
             $self->readmore();
         }
         return substr($self->{buf}, $self->{buf_cursor}, 1);
+    }
+
+    sub lookc_eq {
+        my ($self, $c) = @_;
+        if (!$self->{eof} && length($self->{buf}) - $self->{buf_cursor}  < 100) {
+            $self->readmore();
+        }
+        return substr($self->{buf}, $self->{buf_cursor}, 1) eq $c;
     }
 
     sub inc_cursor {
@@ -252,56 +260,25 @@ package JSONScanner {
         my ($self) = @_;
         my $tok = '';
         my $io = $self->{io};
-        my $c = $io->getc;
-        die q<Expecting: '"'> unless $c eq '"';
-        $tok .= $c;
 
         ### scan_characters;
-        while (1) {
-            pos($io->{buf}) = $io->{buf_cursor};
-            if ($io->{buf} =~ /\G([\x{0020}\x{0021}\x{0023}-\x{005b}\x{005d}-\x{10ffff}]+)/) {
-                $tok .= $1;
-                $io->{buf_cursor} += length($1);
-            }
-
-            $c = $io->lookc;
-            if ($c eq '\\') {
-                $tok .= $self->scan_escape;
-            } elsif ($c eq '"') {
-                $io->inc_cursor;
-                $tok .= $c;
-                last;
-            } else {
-                die q<Expecting: '"'> unless $c eq '"';
-            }
+        pos($io->{buf}) = $io->{buf_cursor};
+        if ($io->{buf} =~ m#\G
+                            (\"
+                                (
+                                    [\x{0020}\x{0021}\x{0023}-\x{005b}\x{005d}-\x{10ffff}] |
+                                    (?: \\ (?: u[0123456789ABCDEFabcdef]{4} | [\\\"\/bnrt] ))
+                                )*
+                            \")
+                           #x) {
+            $tok .= $1;
+            $io->{buf_cursor} += length($1);
         }
         ### /scan_characters
+
+        die(q<Expecting: string. Got: [[> . $io->gist . q']]') unless $tok ne '';
+
         $self->emit(string => $tok);
-        return $tok;
-    }
-
-    sub scan_escape {
-        my ($self) = @_;
-        my $io = $self->{io};
-        my $c = $io->getc;
-        unless ($c eq "\\") {
-            die q<Expecting: '\\'. Near: > . $io->gist;
-        }
-
-        my $tok = $c;
-        $c = $io->getc;
-        if ($c eq 'u') {
-            $tok .= $c;
-            for (1..4) {
-                $c = $io->getc;
-                die "Expecting a hex digit" unless eq_any($c, $hex_digits);
-                $tok .= $c;
-            }
-        } elsif (eq_any($c, ['"', '\\', '/', 'b', 'n', 'r', 't'])) {
-            $tok .= $c;
-        } else {
-            die "Unexpected character: $c";
-        }
         return $tok;
     }
 
@@ -330,13 +307,10 @@ package JSONScanner {
         my ($self) = @_;
         my $io = $self->{io};
         $self->scan_member;
-
-        my $c = $io->lookc;
-        while ($c eq ',') {
+        while ($io->lookc_eq(',')) {
             $io->inc_cursor;
-            $self->emit(members_delimiter => $c);
+            $self->emit(members_delimiter => ',');
             $self->scan_member;
-            $c = $io->lookc;
         }
     }
 
@@ -368,7 +342,16 @@ package JSONScanner {
             $io->inc_cursor;
             $self->emit('end_object', $c);
         } else {
-            $self->scan_members;
+            ### scan_members
+            # $self->scan_members;
+            $self->scan_member;
+            while ($io->lookc_eq(',')) {
+                $io->inc_cursor;
+                $self->emit(members_delimiter => ',');
+                $self->scan_member;
+            }
+            ### /scan_members
+
             $c = $io->getc;
             die q<Expecting '}'> unless $c eq '}';
             $self->emit('end_object', $c);

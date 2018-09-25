@@ -29,6 +29,11 @@ package IOReader {
         $self->readmore;
     }
 
+    sub gist {
+        my ($self) = @_;
+        return substr($self->{buf}, $self->{buf_cursor}-7, 15);
+    }
+
     sub readmore {
         my ($self) = @_;
         return 0 if $self->{eof};
@@ -262,10 +267,11 @@ package JSONScanner {
                 $io->{buf_cursor} += length($1);
             }
 
-            $c = $io->getc;
+            $c = $io->lookc;
             if ($c eq '\\') {
                 $tok .= $self->scan_escape;
             } elsif ($c eq '"') {
+                $io->inc_cursor;
                 $tok .= $c;
                 last;
             } else {
@@ -282,7 +288,10 @@ package JSONScanner {
         my ($self) = @_;
         my $io = $self->{io};
         my $c = $io->getc;
-        die q<Expecting: '\\'> unless $c eq "\\";
+        unless ($c eq "\\") {
+            die q<Expecting: '\\'. Near: > . $io->gist;
+        }
+
         my $tok = $c;
         $c = $io->getc;
         if ($c eq 'u') {

@@ -97,15 +97,12 @@ package JSONScanner {
         my ($self) = @_;
         my $tok = '';
         my $io = $self->{io};
-
         pos($io->{buf}) = $io->{buf_cursor};
         if ($io->{buf} =~ m/\G([\x{0020}\x{000a}\x{000d}\x{0009}]+)/) {
             $tok = $1;
             $io->{buf_cursor} += length($tok);
+            $self->emit('ws', $tok);
         }
-
-        $self->emit('ws', $tok) if $tok;
-        return $self;
     }
 
     sub scan_elements {

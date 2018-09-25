@@ -2,16 +2,14 @@
 use strict;
 use warnings;
 
-binmode STDOUT, ":encoding(utf8)";
-$|=1;
+binmode STDOUT, ":encoding(UTF-8)";
 
 package IOReader {
-    # my $READ_SIZE = 64*2**20; # 64MB
-    my $READ_SIZE = 2**9;
+    my $READ_SIZE = 2**20;
 
     sub new {
         my ($class, $fh) = @_;
-        binmode $fh, ":encoding(utf8)";
+        binmode $fh, ":encoding(UTF-8)";
         return bless {
             fh => $fh,
             buf => "",

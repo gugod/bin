@@ -106,7 +106,6 @@ package JSONScanner {
         if ($io->{buf} =~ m/\G([\x{0020}\x{000a}\x{000d}\x{0009}]+)/) {
             $tok = $1;
             $io->{buf_cursor} += length($tok);
-            $self->emit('ws', $tok);
         }
     }
 
@@ -256,7 +255,6 @@ package JSONScanner {
         my $io = $self->{io};
         my $c = $io->getc;
         die q<Expecting: '"'> unless $c eq '"';
-        $self->emit('begin_string');
         $tok .= $c;
 
         ### scan_characters;
@@ -280,7 +278,6 @@ package JSONScanner {
         }
         ### /scan_characters
         $self->emit(string => $tok);
-        $self->emit('end_string');
         return $tok;
     }
 
@@ -301,10 +298,8 @@ package JSONScanner {
                 die "Expecting a hex digit" unless eq_any($c, $hex_digits);
                 $tok .= $c;
             }
-            # $self->emit(escape => $tok);
         } elsif (eq_any($c, ['"', '\\', '/', 'b', 'n', 'r', 't'])) {
             $tok .= $c;
-            # $self->emit(escape => $tok);
         } else {
             die "Unexpected character: $c";
         }
@@ -450,7 +445,7 @@ package JSONPrinter {
 
         $self->{scanner}->{event_handler} = sub {
             my ($event_name, $tok) = @_;
-            return if $event_name eq 'ws';
+
             $tok_print = $tok;
 
             my $cb = $handlers->{before}{$event_name};
@@ -475,7 +470,7 @@ package JSONPrinter {
         my ($self) = @_;
         $self->{scanner}{event_handler} = sub {
             my ($event_name, $tok) = @_;
-            return if $event_name eq 'ws' || !defined($tok);
+            return unless defined($tok);
             print $tok;
             $self->{scanner}->purge if ($event_name eq "end_object");
         };

@@ -197,11 +197,11 @@ package JSONScanner {
         }
 
         $c = $io->lookc;
-        if (eq_any($c, $digits_onenine)) {
+        if ($c =~ m/\A[123456789]\z/) {
             $io->inc_cursor;
             $tok .= $c;
             $c = $io->lookc;
-            if (eq_any($c, $digits_zeronine)) {
+            if ($c =~ m/\A[0123456789]\z/) {
                 $tok .= $self->scan_digits;
             }
         } elsif ($c eq '0') {
@@ -236,16 +236,15 @@ package JSONScanner {
         my ($self) = @_;
         my $tok = '';
         my $io = $self->{io};
-        my $c = $io->getc;
-        die "Expecting digits: $c" unless eq_any($c, $digits_zeronine);
-        $tok .= $c;
-        $c = $io->lookc;
-        while(eq_any($c, $digits_zeronine)) {
-            $io->inc_cursor;
-            $tok .= $c;
-            $c = $io->lookc;
+
+        pos($io->{buf}) = $io->{buf_cursor};
+        if ($io->{buf} =~ /\G([0123456789]+)/) {
+            $tok .= $1;
+            $io->{buf_cursor} += length($1);
+        } else {
+            die "Expecting digits";
         }
-        # $self->emit(digits => $tok);
+
         return $tok;
     }
 

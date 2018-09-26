@@ -388,19 +388,20 @@ package JSONPrinter {
                     $indent--;
                     print "\n" . '    ' x $indent;
                 },
-                end_json => sub { print "\n" },
+                end_json => sub {
+                    print "\n";
+                },
                 begin_member => sub {
-                    if ($previous_event eq 'begin_object') {
-                        print "\n" . '    'x$indent;
-                    }
+                    print "\n" . '    'x $indent if $previous_event eq 'begin_object';
                 },
                 begin_element => sub {
                     if ($previous_event eq 'begin_array') {
                         print "\n";
                     }
-                    if ($previous_event eq 'member_delimiter') {
+                    elsif ($previous_event eq 'member_delimiter') {
                         print ' ';
-                    } else {
+                    }
+                    else {
                         print '    'x$indent;
                     }
                 }
@@ -457,7 +458,7 @@ package JSONPrinter {
 }
 
 my $json_printer = JSONPrinter->new(\*STDIN);
-if (grep { $_ eq '--minify' } @ARGV) {
+if (grep { $_ =~ /\A(-m|--minify)\z/ } @ARGV) {
     $json_printer->minify;
 } else {
     $json_printer->prettify;

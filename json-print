@@ -382,23 +382,25 @@ package JSONPrinter {
             before => {
                 end_array   => sub {
                     $indent--;
+                    print "\n" if $previous_event eq 'begin_array';
                     print "\n" . '    ' x $indent;
                 },
                 end_object  => sub {
                     $indent--;
+                    print "\n" if $previous_event eq 'begin_object';
                     print "\n" . '    ' x $indent;
                 },
                 end_json => sub {
                     print "\n";
                 },
                 begin_member => sub {
-                    print "\n" . '    'x $indent if $previous_event eq 'begin_object';
+                    print "\n" . '    'x $indent if $previous_event ne 'member_delimiter';
                 },
                 begin_element => sub {
                     if ($previous_event eq 'begin_array') {
                         print "\n";
                     }
-                    elsif ($previous_event eq 'member_delimiter') {
+                    if ($previous_event eq 'member_delimiter') {
                         print ' ';
                     }
                     else {
@@ -416,9 +418,6 @@ package JSONPrinter {
                 elements_delimiter => sub {
                     print "\n";
                 },
-                members_delimiter => sub {
-                    print "\n" . '    ' x $indent;
-                }
             }
         };
 

@@ -2,14 +2,11 @@
 use strict;
 use warnings;
 
-binmode STDOUT, ":encoding(UTF-8)";
-
 package IOReader {
     my $READ_SIZE = 2**20;
 
     sub new {
         my ($class, $fh) = @_;
-        binmode $fh, ":encoding(UTF-8)";
         return bless {
             fh => $fh,
             buf => "",
@@ -21,7 +18,8 @@ package IOReader {
     sub purge {
         my ($self) = @_;
         return unless $self->{buf_cursor} > $__purge_mark;
-        substr($self->{buf}, 0, $self->{buf_cursor}) = '';
+        my $buf2 = substr($self->{buf}, $self->{buf_cursor});
+        $self->{buf} = $buf2;
         $self->{buf_cursor} = 0;
         $self->readmore;
     }
@@ -259,12 +257,16 @@ package JSONScanner {
         my $tok = '';
         my $io = $self->{io};
 
+        ## valid utf8 sequance -- https://stackoverflow.com/questions/13116685/regexp-to-check-if-code-contains-non-utf-8-characters
+        ## /^([\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|[\xEE-\xEF][\x80-\xBF]{2}|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*$/
+
         ### scan_characters;
+        ## \x22 " , \x5c \
         pos($io->{buf}) = $io->{buf_cursor};
         if ($io->{buf} =~ m#\G
                             (\"
                                 (
-                                    [\x{0020}\x{0021}\x{0023}-\x{005b}\x{005d}-\x{10ffff}] |
+                                    (?: [\x20\x21\x23-\x5B\x5D-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|[\xEE-\xEF][\x80-\xBF]{2}|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2} ) |
                                     (?: \\ (?: u[0123456789ABCDEFabcdef]{4} | [\\\"\/bnrt] ))
                                 )*
                             \")

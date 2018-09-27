@@ -8,7 +8,7 @@ sub cat {
     my ($fh) = @_;
     my $eof = 0;
     my $buf;
-    while (read($fh, $buf, $READ_SIZE)) {
+    while (sysread($fh, $buf, $READ_SIZE)) {
         print $buf;
         $buf = '';
     }

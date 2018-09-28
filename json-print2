@@ -1,0 +1,203 @@
+#!/usr/bin/env perl
+use v5.28;
+use strict;
+use warnings;
+
+package JSONScanner {
+    sub new {
+        my ($class, $fh_in, $event_handlers) = @_;
+        return bless {
+            fh_in => $fh_in,
+            buf => '',
+            buf_offset => 0,
+            event_handlers => $event_handlers,
+        }, $class;
+    }
+
+    sub err {
+        my ($self, $message) = @_;
+        die $message;
+    }
+
+    sub readmore {
+        my ($self) = @_;
+        return 0 if eof($self->{fh_in});
+
+        my $buf2 = '';
+        my $nread = read($self->{fh_in}, $buf2, 1048576); # 2**20
+        if ($nread) {
+            $self->{buf} .= $buf2;
+            return $nread;
+        }
+        return 0;
+    }
+
+    sub emit {
+        my ($self, $event_name, $offset, $length) = @_;
+        my $cb = $self->{event_handlers}{$event_name} or return;
+        $cb->($self, $offset, $length);
+    }
+
+    sub take_token {
+        my ($self, $offset, $length) = @_;
+        return substr($self->{buf}, $offset, $length);
+    }
+
+    sub lookc {
+        my ($self) = @_;
+        substr($self->{buf}, $self->{buf_offset}, 1);
+    }
+
+    sub checkc {
+        my ($self, $c) = @_;
+        $self->err("Expecting: $c") unless ($self->lookc() ne $c);
+        $self->{buf_offset} += 1;
+    }
+
+    sub pos_now {
+        $_[0]->{buf_offset};
+    }
+
+    sub pos_of {
+        my ($self, $c) = @_;
+        return index($self->{buf}, $c, $self->{buf_offset});
+    }
+
+    sub skip_ws {
+        my ($self) = @_;
+        my $p = $self->pos_of_regex(qr/[^\x{0020}\x{000a}\x{000d}\x{0009}]/);
+        $self->{buf_offset} = $p;
+        return;
+    }
+
+    sub skip_ws2 {
+        my ($self) = @_;
+        my $p = $self->pos_of_regex(qr/[^\x{0020}\x{000a}\x{000d}\x{0009}\[\]\{\},\"]/);
+        $self->{buf_offset} = $p;
+        return;
+    }
+
+
+    sub pos_of_regex {
+        my ($self, $regex) = @_;
+        pos($self->{buf}) = $self->{buf_offset};
+        if ($self->{buf} =~ /\G$regex/g) {
+            print "MATCH: " .pos($self->{buf}) . "\n";
+            return pos($self->{buf});
+        }
+        return $self->{buf_offset};
+    }
+
+    sub scan_array {
+        my ($self) = @_;
+        my $begin_pos = $self->pos_now;
+        $self->checkc('[');
+        $self->scan_elements;
+        $self->checkc(']');
+
+        $self->emit(array => $begin_pos, ($self->pos_now - $begin_pos));
+    }
+
+    sub scan_elements {
+        my ($self) = @_;
+        $self->scan_element;
+    }
+
+    sub array_begin {
+        my ($self) = @_;
+        $self->emit('open_container', $self->{buf_offset}++, 1);
+    }
+
+    sub array_end {
+        my ($self) = @_;
+        $self->emit('close_container', $self->{buf_offset}++, 1);
+    }
+
+    sub skip_ws_and_scan_special {
+        # const
+        state %dispatch = (
+           '[' => 'array_begin',
+           ']' => 'array_end',
+        );
+
+        my ($self) = @_;
+        $self->skip_ws2;
+
+        my $c = $self->lookc();
+        my $go = $dispatch{$c};
+        die "Unknown lead: <$c>" unless $go;
+        print STDERR "GO: $go\n";
+        return $go;
+    }
+
+    sub scan_element {
+        my ($self) = @_;
+        my $go = $self->skip_ws_and_scan_special;
+        $self->$go();
+    }
+
+    sub scan_json {
+        my ($self) = @_;
+        $self->readmore;
+        $self->emit(begin_json => $self->{buf_offset}, 0);
+
+        my $go;
+        while ($go = $self->skip_ws_and_scan_special) {
+            $self->$go();
+        }
+        $self->emit(end_json => $self->{buf_offset}, 0);
+    }
+}
+
+package JSONPrinter {
+    sub new {
+        my ($class, $fh_in, $fh_out) = @_;
+
+        return bless {
+            fh_in => $fh_in,
+            fh_out => $fh_out,
+            handlers => {},
+        }, $class;
+    }
+
+    sub minify {
+        die;
+    }
+
+    sub prettify {
+        my ($self) = @_;
+
+        my $indent = 0;
+        my sub indent() {
+            return '    ' x $indent;
+        }
+
+        my $fh_out = $self->{fh_out};
+        JSONScanner->new(
+            $self->{fh_in},
+            +{
+                literals => sub {},
+                comma => sub {},
+                colon => sub {},
+                open_container => sub {
+                    print $fh_out indent() . $_[0]->take_token($_[1], $_[2]) . "\n";
+                    $indent++;
+                },
+                close_container => sub {
+                    $indent--;
+                    print $fh_out indent() . $_[0]->take_token($_[1], $_[2]);
+                },
+                end_json => sub {
+                    print $fh_out "\n";
+                }
+            }
+        )->scan_json;
+    }
+}
+
+my $json_printer = JSONPrinter->new(\*STDIN, \*STDOUT);
+if (grep { $_ =~ /\A(-m|--minify)\z/ } @ARGV) {
+    $json_printer->minify;
+} else {
+    $json_printer->prettify;
+}

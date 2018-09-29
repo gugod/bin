@@ -50,21 +50,16 @@ package JSONScanner {
     }
 
     sub emit {
-        my ($self, $event_name, $offset, $length) = @_;
+        my ($self, $event_name, $tok) = @_;
         my $cb = $self->{event_handlers}{$event_name} or return 1;
-        $cb->($self, $offset, $length);
+        $cb->($self, $tok);
         return 1;
-    }
-
-    sub take_token {
-        my ($self, $offset, $length) = @_;
-        return substr($self->{buf}, $offset, $length);
     }
 
     sub scan_ws {
         my ($self) = @_;
         pos($self->{buf}) = $self->{buf_offset};
-        if ($self->{buf} =~ /\G[\x{0020}\x{000a}\x{000d}\x{0009}]/g) {
+        if ($self->{buf} =~ /\G[\x{0020}\x{000a}\x{000d}\x{0009}]+/g) {
             $self->{buf_offset} = pos($self->{buf});
         }
         return;
@@ -86,7 +81,7 @@ package JSONScanner {
         }
 
         if ($p > $self->{buf_offset}) {
-            $self->emit(non_ws => $self->{buf_offset}, $p - $self->{buf_offset});
+            $self->emit(non_ws => substr($self->{buf}, $self->{buf_offset}, $p - $self->{buf_offset}));
             $self->{buf_offset} = $p;            
         }
 
@@ -96,10 +91,8 @@ package JSONScanner {
     sub pos_of_end_of_string {
         my ($self, $pos) = @_;
         my $p = index($self->{buf}, '"', $pos);
-        # say "STR?\t" . substr($self->{buf}, $self->{buf_offset}, $p-$self->{buf_offset}+1);
         while( substr($self->{buf}, $p-1, 1) eq "\\" ) {
             $p = index($self->{buf}, '"', $p + 1);
-            # say "STR?\t" . substr($self->{buf}, $self->{buf_offset}, $p-$self->{buf_offset}+1);
         }
         return $p+1;
     }
@@ -134,8 +127,9 @@ package JSONPrinter {
 
         my $fh_out = $self->{fh_out};
         my sub print_token {
-            print $fh_out $_[0]->take_token($_[1], $_[2]);
-            $_[0]->purge();
+            my ($scanner, $tok) = @_;
+            print $fh_out $tok;
+            $scanner->purge();
         };
 
         JSONScanner->new(
@@ -156,7 +150,7 @@ package JSONPrinter {
         my $fh_out = $self->{fh_out};
         my $pre_tok = '';
         my sub print_token {
-            my $tok = $_[0]->take_token($_[1], $_[2]);
+            my ($scanner, $tok) = @_;
 
             if ($tok eq '}' || $tok eq ']') {
                 $indent--;

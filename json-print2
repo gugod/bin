@@ -22,20 +22,21 @@ package JSONScanner {
 
     sub nothing_left {
         my ($self) = @_;
-        $self->readmore if $self->{buf_offset} == length($self->{buf});
-        return 1 if eof($self->{fh_in}) && $self->{buf_offset} >= length($self->{buf});
+        $self->readmore; # if $self->{buf_offset} == length($self->{buf});
+        return 1 if $self->{eof} && $self->{buf_offset} >= length($self->{buf});
     }
 
     sub readmore {
         my ($self) = @_;
-        return 0 if eof($self->{fh_in});
+        return 0 if $self->{eof};
 
         my $buf2 = '';
-        my $nread = read($self->{fh_in}, $buf2, 1048576); # 2**20
+        my $nread = read($self->{fh_in}, $buf2, 2**9);
         if ($nread) {
             $self->{buf} .= $buf2;
             return $nread;
         }
+        $self->{eof} = 1;
         return 0;
     }
 
@@ -109,8 +110,11 @@ package JSONScanner {
             $p = $self->pos_of_regex(qr/([:,\[\]\{\}] | true|false|null | -?[0-9]+(?:\.[0-9]+)?(?:[Ee][+-]?[0-9]+)? )/x);
         }
 
-        $self->emit(non_ws => $self->{buf_offset}, $p - $self->{buf_offset});
-        $self->{buf_offset} = $p;
+        if ($p > $self->{buf_offset}) {
+            $self->emit(non_ws => $self->{buf_offset}, $p - $self->{buf_offset});
+            $self->{buf_offset} = $p;            
+        }
+
         return;
     }
 
@@ -174,17 +178,42 @@ package JSONPrinter {
     sub prettify {
         my ($self) = @_;
 
+        my $indent = 0;
         my $fh_out = $self->{fh_out};
+        my $pre_tok = '';
         my sub print_token {
-            print $fh_out $_[0]->take_token($_[1], $_[2]). "\n";
-            $_[0]->purge();
+            my $tok = $_[0]->take_token($_[1], $_[2]);
+
+            # say ">>> $tok";
+
+            if ($tok =~ m/\A [\}\]] \z/x) {
+                $indent--;
+            }
+
+            my $pre_space = ( ($tok =~ m/\A[,:]\z/) ? '' : $pre_tok eq ':' ? ' ' : "\n");
+            $pre_space .= ('    ' x $indent) if $pre_space eq "\n";
+
+            my $pre_space_print = $pre_space;
+            $pre_space_print =~ s/ /x/g;
+            $pre_space_print =~ s/\t/y/g;
+            $pre_space_print =~ s/\n/z/g;
+            # print STDERR "pre_space: $pre_tok\t$tok\t<$pre_space_print>\n";
+
+            print $fh_out $pre_space . $tok;
+
+            if ($tok =~ m/\A [\[\{] \z/x) {
+                $indent++;
+            }
+
+            $pre_tok = $tok;
+            # $_[0]->purge();
         };
 
         JSONScanner->new(
             $self->{fh_in},
             +{
                 ws => sub {
-                    print "\n";
+                    # print $fh_out "<WS>";
                 },
                 non_ws => \&print_token,
                 end_json => sub {

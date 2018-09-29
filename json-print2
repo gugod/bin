@@ -6,9 +6,10 @@ use warnings;
 package JSONScanner {
     sub new {
         my ($class, $fh_in, $event_handlers) = @_;
+        my $buf = '';
         return bless {
             fh_in => $fh_in,
-            buf => '',
+            buf => $buf,
             buf_offset => 0,
             event_handlers => $event_handlers,
         }, $class;
@@ -17,6 +18,12 @@ package JSONScanner {
     sub err {
         my ($self, $message) = @_;
         die $message;
+    }
+
+    sub nothing_left {
+        my ($self) = @_;
+        $self->readmore if $self->{buf_offset} == length($self->{buf});
+        return 1 if eof($self->{fh_in}) && $self->{buf_offset} >= length($self->{buf});
     }
 
     sub readmore {
@@ -32,10 +39,20 @@ package JSONScanner {
         return 0;
     }
 
+    sub purge {
+        my ($self) = @_;
+        return unless $self->{buf_offset} > 1000000;
+        my $buf2 = substr($self->{buf}, $self->{buf_offset});
+        $self->{buf} = $buf2;
+        $self->{buf_offset} = 0;
+        $self->readmore;
+    }
+
     sub emit {
         my ($self, $event_name, $offset, $length) = @_;
-        my $cb = $self->{event_handlers}{$event_name} or return;
+        my $cb = $self->{event_handlers}{$event_name} or return 1;
         $cb->($self, $offset, $length);
+        return 1;
     }
 
     sub take_token {
@@ -63,77 +80,49 @@ package JSONScanner {
         return index($self->{buf}, $c, $self->{buf_offset});
     }
 
-    sub skip_ws {
-        my ($self) = @_;
-        my $p = $self->pos_of_regex(qr/[^\x{0020}\x{000a}\x{000d}\x{0009}]/);
-        $self->{buf_offset} = $p;
-        return;
-    }
-
-    sub skip_ws2 {
-        my ($self) = @_;
-        my $p = $self->pos_of_regex(qr/[^\x{0020}\x{000a}\x{000d}\x{0009}\[\]\{\},\"]/);
-        $self->{buf_offset} = $p;
-        return;
-    }
-
-
     sub pos_of_regex {
         my ($self, $regex) = @_;
         pos($self->{buf}) = $self->{buf_offset};
         if ($self->{buf} =~ /\G$regex/g) {
-            print "MATCH: " .pos($self->{buf}) . "\n";
-            return pos($self->{buf});
+            return (1, pos($self->{buf}));
         }
-        return $self->{buf_offset};
+        return (0, $self->{buf_offset});
     }
 
-    sub scan_array {
+    sub scan_ws {
         my ($self) = @_;
-        my $begin_pos = $self->pos_now;
-        $self->checkc('[');
-        $self->scan_elements;
-        $self->checkc(']');
-
-        $self->emit(array => $begin_pos, ($self->pos_now - $begin_pos));
+        my ($matched, $p) = $self->pos_of_regex(qr/[\x{0020}\x{000a}\x{000d}\x{0009}]/);
+        if ($matched) {
+            $self->emit(ws => $self->{buf_offset}, $p - $self->{buf_offset});
+            $self->{buf_offset} = $p;
+        }
+        return;
     }
 
-    sub scan_elements {
+    sub scan_non_ws {
         my ($self) = @_;
-        $self->scan_element;
+
+        my $p;
+        if ( substr($self->{buf}, $self->{buf_offset}, 1) eq '"' ) {
+            $p = $self->pos_of_end_of_string($self->{buf_offset}+1);
+        } else {
+            $p = $self->pos_of_regex(qr/([:,\[\]\{\}] | true|false|null | -?[0-9]+(?:\.[0-9]+)?(?:[Ee][+-]?[0-9]+)? )/x);
+        }
+
+        $self->emit(non_ws => $self->{buf_offset}, $p - $self->{buf_offset});
+        $self->{buf_offset} = $p;
+        return;
     }
 
-    sub array_begin {
-        my ($self) = @_;
-        $self->emit('open_container', $self->{buf_offset}++, 1);
-    }
-
-    sub array_end {
-        my ($self) = @_;
-        $self->emit('close_container', $self->{buf_offset}++, 1);
-    }
-
-    sub skip_ws_and_scan_special {
-        # const
-        state %dispatch = (
-           '[' => 'array_begin',
-           ']' => 'array_end',
-        );
-
-        my ($self) = @_;
-        $self->skip_ws2;
-
-        my $c = $self->lookc();
-        my $go = $dispatch{$c};
-        die "Unknown lead: <$c>" unless $go;
-        print STDERR "GO: $go\n";
-        return $go;
-    }
-
-    sub scan_element {
-        my ($self) = @_;
-        my $go = $self->skip_ws_and_scan_special;
-        $self->$go();
+    sub pos_of_end_of_string {
+        my ($self, $pos) = @_;
+        my $p = index($self->{buf}, '"', $pos);
+        # say "STR?\t" . substr($self->{buf}, $self->{buf_offset}, $p-$self->{buf_offset}+1);
+        while( substr($self->{buf}, $p-1, 1) eq "\\" ) {
+            $p = index($self->{buf}, '"', $p + 1);
+            # say "STR?\t" . substr($self->{buf}, $self->{buf_offset}, $p-$self->{buf_offset}+1);
+        }
+        return $p+1;
     }
 
     sub scan_json {
@@ -141,10 +130,11 @@ package JSONScanner {
         $self->readmore;
         $self->emit(begin_json => $self->{buf_offset}, 0);
 
-        my $go;
-        while ($go = $self->skip_ws_and_scan_special) {
-            $self->$go();
+        while ( ! $self->nothing_left ) {
+            $self->scan_ws;
+            $self->scan_non_ws;
         }
+
         $self->emit(end_json => $self->{buf_offset}, 0);
     }
 }
@@ -161,35 +151,45 @@ package JSONPrinter {
     }
 
     sub minify {
-        die;
+        my ($self) = @_;
+
+        my $fh_out = $self->{fh_out};
+        my sub print_token {
+            # print $fh_out "GOT: \t" . $_[0]->take_token($_[1], $_[2]) . "\n";
+            print $fh_out $_[0]->take_token($_[1], $_[2]);
+            $_[0]->purge();
+        };
+
+        JSONScanner->new(
+            $self->{fh_in},
+            +{
+                non_ws => \&print_token,
+                end_json => sub {
+                    print "\n";
+                },
+            }
+        )->scan_json;
     }
 
     sub prettify {
         my ($self) = @_;
 
-        my $indent = 0;
-        my sub indent() {
-            return '    ' x $indent;
-        }
-
         my $fh_out = $self->{fh_out};
+        my sub print_token {
+            print $fh_out $_[0]->take_token($_[1], $_[2]). "\n";
+            $_[0]->purge();
+        };
+
         JSONScanner->new(
             $self->{fh_in},
             +{
-                literals => sub {},
-                comma => sub {},
-                colon => sub {},
-                open_container => sub {
-                    print $fh_out indent() . $_[0]->take_token($_[1], $_[2]) . "\n";
-                    $indent++;
+                ws => sub {
+                    print "\n";
                 },
-                close_container => sub {
-                    $indent--;
-                    print $fh_out indent() . $_[0]->take_token($_[1], $_[2]);
-                },
+                non_ws => \&print_token,
                 end_json => sub {
-                    print $fh_out "\n";
-                }
+                    print "\n";
+                },
             }
         )->scan_json;
     }

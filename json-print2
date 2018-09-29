@@ -31,7 +31,7 @@ package JSONScanner {
         return 0 if $self->{eof};
 
         my $buf2 = '';
-        my $nread = read($self->{fh_in}, $buf2, 2**9);
+        my $nread = read($self->{fh_in}, $buf2, 2**29);
         if ($nread) {
             $self->{buf} .= $buf2;
             return $nread;
@@ -61,41 +61,11 @@ package JSONScanner {
         return substr($self->{buf}, $offset, $length);
     }
 
-    sub lookc {
-        my ($self) = @_;
-        substr($self->{buf}, $self->{buf_offset}, 1);
-    }
-
-    sub checkc {
-        my ($self, $c) = @_;
-        $self->err("Expecting: $c") unless ($self->lookc() ne $c);
-        $self->{buf_offset} += 1;
-    }
-
-    sub pos_now {
-        $_[0]->{buf_offset};
-    }
-
-    sub pos_of {
-        my ($self, $c) = @_;
-        return index($self->{buf}, $c, $self->{buf_offset});
-    }
-
-    sub pos_of_regex {
-        my ($self, $regex) = @_;
-        pos($self->{buf}) = $self->{buf_offset};
-        if ($self->{buf} =~ /\G$regex/g) {
-            return (1, pos($self->{buf}));
-        }
-        return (0, $self->{buf_offset});
-    }
-
     sub scan_ws {
         my ($self) = @_;
-        my ($matched, $p) = $self->pos_of_regex(qr/[\x{0020}\x{000a}\x{000d}\x{0009}]/);
-        if ($matched) {
-            $self->emit(ws => $self->{buf_offset}, $p - $self->{buf_offset});
-            $self->{buf_offset} = $p;
+        pos($self->{buf}) = $self->{buf_offset};
+        if ($self->{buf} =~ /\G[\x{0020}\x{000a}\x{000d}\x{0009}]/g) {
+            $self->{buf_offset} = pos($self->{buf});
         }
         return;
     }
@@ -107,7 +77,12 @@ package JSONScanner {
         if ( substr($self->{buf}, $self->{buf_offset}, 1) eq '"' ) {
             $p = $self->pos_of_end_of_string($self->{buf_offset}+1);
         } else {
-            $p = $self->pos_of_regex(qr/([:,\[\]\{\}] | true|false|null | -?[0-9]+(?:\.[0-9]+)?(?:[Ee][+-]?[0-9]+)? )/x);
+            pos($self->{buf}) = $self->{buf_offset};
+            if ($self->{buf} =~ /\G(?: [:,\[\]\{\}] | true|false|null | -?[0-9]+(?:\.[0-9]+)?(?:[Ee][+-]?[0-9]+)? )/gx) {
+                $p = pos($self->{buf});
+            } else {
+                $p = $self->{buf_offset};
+            }
         }
 
         if ($p > $self->{buf_offset}) {
@@ -159,7 +134,6 @@ package JSONPrinter {
 
         my $fh_out = $self->{fh_out};
         my sub print_token {
-            # print $fh_out "GOT: \t" . $_[0]->take_token($_[1], $_[2]) . "\n";
             print $fh_out $_[0]->take_token($_[1], $_[2]);
             $_[0]->purge();
         };
@@ -184,21 +158,11 @@ package JSONPrinter {
         my sub print_token {
             my $tok = $_[0]->take_token($_[1], $_[2]);
 
-            # say ">>> $tok";
-
             if ($tok =~ m/\A [\}\]] \z/x) {
                 $indent--;
             }
 
-            my $pre_space = ( ($tok =~ m/\A[,:]\z/) ? '' : $pre_tok eq ':' ? ' ' : "\n");
-            $pre_space .= ('    ' x $indent) if $pre_space eq "\n";
-
-            my $pre_space_print = $pre_space;
-            $pre_space_print =~ s/ /x/g;
-            $pre_space_print =~ s/\t/y/g;
-            $pre_space_print =~ s/\n/z/g;
-            # print STDERR "pre_space: $pre_tok\t$tok\t<$pre_space_print>\n";
-
+            my $pre_space = ( ($tok =~ m/\A[,:]\z/) ? '' : $pre_tok eq ':' ? ' ' : "\n".('    ' x $indent));
             print $fh_out $pre_space . $tok;
 
             if ($tok =~ m/\A [\[\{] \z/x) {

@@ -158,14 +158,14 @@ package JSONPrinter {
         my sub print_token {
             my $tok = $_[0]->take_token($_[1], $_[2]);
 
-            if ($tok =~ m/\A [\}\]] \z/x) {
+            if ($tok eq '}' || $tok eq ']') {
                 $indent--;
             }
 
             my $pre_space = ( ($tok =~ m/\A[,:]\z/) ? '' : $pre_tok eq ':' ? ' ' : "\n".('    ' x $indent));
             print $fh_out $pre_space . $tok;
 
-            if ($tok =~ m/\A [\[\{] \z/x) {
+            if ($tok eq '{' || $tok eq '[') {
                 $indent++;
             }
 

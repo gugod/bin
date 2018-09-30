@@ -10,8 +10,9 @@ package JSONScanner {
         return bless {
             fh_in => $fh_in,
             buf => $buf,
-            buf_offset => 0,
+            buf_cursor => 0,
             event_handlers => $event_handlers,
+            eof => 0,
         }, $class;
     }
 
@@ -22,31 +23,30 @@ package JSONScanner {
 
     sub nothing_left {
         my ($self) = @_;
-        $self->readmore; # if $self->{buf_offset} == length($self->{buf});
-        return 1 if $self->{eof} && $self->{buf_offset} >= length($self->{buf});
+        return $self->{eof} && $self->{buf_cursor} >= length($self->{buf});
     }
 
-    sub readmore {
+    sub read_firstpart {
         my ($self) = @_;
-        return 0 if $self->{eof};
-
-        my $buf2 = '';
-        my $nread = read($self->{fh_in}, $buf2, 2**29);
-        if ($nread) {
-            $self->{buf} .= $buf2;
-            return $nread;
+        # 16MB
+        if (my $nread = read($self->{fh_in}, $self->{buf}, 16777216)) {
+            $self->{eof} = 1 if $nread < 16777216;
         }
-        $self->{eof} = 1;
-        return 0;
     }
 
-    sub purge {
+    sub purge_and_readmore {
         my ($self) = @_;
-        return unless $self->{buf_offset} > 1000000;
-        my $buf2 = substr($self->{buf}, $self->{buf_offset});
+        return if $self->{eof};
+
+        my $buf2 = substr($self->{buf}, $self->{buf_cursor});
         $self->{buf} = $buf2;
-        $self->{buf_offset} = 0;
-        $self->readmore;
+        $self->{buf_cursor} = 0;
+
+        if (my $nread = read($self->{fh_in}, $buf2, 1048576)) {
+            $self->{buf} .= $buf2;
+        } else {
+            $self->{eof} = 1;
+        }
     }
 
     sub emit {
@@ -58,9 +58,9 @@ package JSONScanner {
 
     sub scan_ws {
         my ($self) = @_;
-        pos($self->{buf}) = $self->{buf_offset};
+        pos($self->{buf}) = $self->{buf_cursor};
         if ($self->{buf} =~ /\G[\x{0020}\x{000a}\x{000d}\x{0009}]+/g) {
-            $self->{buf_offset} = pos($self->{buf});
+            $self->{buf_cursor} = pos($self->{buf});
         }
         return;
     }
@@ -69,20 +69,20 @@ package JSONScanner {
         my ($self) = @_;
 
         my $p;
-        if ( substr($self->{buf}, $self->{buf_offset}, 1) eq '"' ) {
-            $p = $self->pos_of_end_of_string($self->{buf_offset}+1);
+        if ( substr($self->{buf}, $self->{buf_cursor}, 1) eq '"' ) {
+            $p = $self->pos_of_end_of_string($self->{buf_cursor}+1);
         } else {
-            pos($self->{buf}) = $self->{buf_offset};
+            pos($self->{buf}) = $self->{buf_cursor};
             if ($self->{buf} =~ /\G(?: [:,\[\]\{\}] | true|false|null | -?[0-9]+(?:\.[0-9]+)?(?:[Ee][+-]?[0-9]+)? )/gx) {
                 $p = pos($self->{buf});
             } else {
-                $p = $self->{buf_offset};
+                $p = $self->{buf_cursor};
             }
         }
 
-        if ($p > $self->{buf_offset}) {
-            $self->emit(non_ws => substr($self->{buf}, $self->{buf_offset}, $p - $self->{buf_offset}));
-            $self->{buf_offset} = $p;            
+        if ($p > $self->{buf_cursor}) {
+            $self->emit(non_ws => substr($self->{buf}, $self->{buf_cursor}, $p - $self->{buf_cursor}));
+            $self->{buf_cursor} = $p;            
         }
 
         return;
@@ -99,15 +99,21 @@ package JSONScanner {
 
     sub scan_json {
         my ($self) = @_;
-        $self->readmore;
-        $self->emit(begin_json => $self->{buf_offset}, 0);
+        $self->read_firstpart;
+        # $self->emit(begin_json => $self->{buf_cursor}, 0);
 
         while ( ! $self->nothing_left ) {
-            $self->scan_ws;
-            $self->scan_non_ws;
+            for (1..1000) {
+                $self->scan_ws;
+                $self->scan_non_ws;
+                last if $self->nothing_left;
+            }
+            if ( ! $self->{eof} && length($self->{buf}) - $self->{buf_cursor} < 1024 ) {
+                $self->purge_and_readmore;
+            }
         }
 
-        $self->emit(end_json => $self->{buf_offset}, 0);
+        $self->emit(end_json => $self->{buf_cursor}, 0);
     }
 }
 
@@ -129,16 +135,12 @@ package JSONPrinter {
         my sub print_token {
             my ($scanner, $tok) = @_;
             print $fh_out $tok;
-            $scanner->purge();
         };
 
         JSONScanner->new(
             $self->{fh_in},
             +{
-                non_ws => \&print_token,
-                end_json => sub {
-                    print "\n";
-                },
+                non_ws => \&print_token
             }
         )->scan_json;
     }
@@ -164,18 +166,14 @@ package JSONPrinter {
             }
 
             $pre_tok = $tok;
-            # $_[0]->purge();
         };
 
         JSONScanner->new(
             $self->{fh_in},
             +{
-                ws => sub {
-                    # print $fh_out "<WS>";
-                },
                 non_ws => \&print_token,
                 end_json => sub {
-                    print "\n";
+                    print $fh_out "\n";
                 },
             }
         )->scan_json;

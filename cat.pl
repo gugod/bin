@@ -9,7 +9,7 @@ sub cat {
     my $eof = 0;
     my $buf;
     while (sysread($fh, $buf, $READ_SIZE)) {
-        print $buf;
+        syswrite(STDOUT, $buf);
         $buf = '';
     }
 }

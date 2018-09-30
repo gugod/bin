@@ -39,14 +39,13 @@ package JSONScanner {
         return if $self->{eof};
 
         my $buf2 = substr($self->{buf}, $self->{buf_cursor});
-        $self->{buf} = $buf2;
-        $self->{buf_cursor} = 0;
 
-        if (my $nread = read($self->{fh_in}, $buf2, 1048576)) {
-            $self->{buf} .= $buf2;
-        } else {
+        my $buf3 = '';
+        unless (my $nread = read($self->{fh_in}, $buf3, 524288)) {
             $self->{eof} = 1;
         }
+        $self->{buf} = $buf2 . $buf3;
+        $self->{buf_cursor} = 0;
     }
 
     sub emit {
@@ -62,7 +61,7 @@ package JSONScanner {
         if ($self->{buf} =~ /\G[\x{0020}\x{000a}\x{000d}\x{0009}]+/g) {
             $self->{buf_cursor} = pos($self->{buf});
         }
-        return;
+        return 1;
     }
 
     sub scan_non_ws {
@@ -75,17 +74,13 @@ package JSONScanner {
             pos($self->{buf}) = $self->{buf_cursor};
             if ($self->{buf} =~ /\G(?: [:,\[\]\{\}] | true|false|null | -?[0-9]+(?:\.[0-9]+)?(?:[Ee][+-]?[0-9]+)? )/gx) {
                 $p = pos($self->{buf});
-            } else {
-                $p = $self->{buf_cursor};
             }
         }
+        return unless $p;
 
-        if ($p > $self->{buf_cursor}) {
-            $self->emit(non_ws => substr($self->{buf}, $self->{buf_cursor}, $p - $self->{buf_cursor}));
-            $self->{buf_cursor} = $p;            
-        }
-
-        return;
+        $self->emit(non_ws => substr($self->{buf}, $self->{buf_cursor}, $p - $self->{buf_cursor}));
+        $self->{buf_cursor} = $p;
+        return 1;
     }
 
     sub pos_of_end_of_string {
@@ -102,12 +97,13 @@ package JSONScanner {
         $self->read_firstpart;
         # $self->emit(begin_json => $self->{buf_cursor}, 0);
 
-        while ( ! $self->nothing_left ) {
-            for (1..1000) {
+        while ( 1 ) {
+            my $i = 0;
+            while ($i++ < 1000) {
                 $self->scan_ws;
-                $self->scan_non_ws;
-                last if $self->nothing_left;
+                last unless $self->scan_non_ws;
             }
+            last if $self->nothing_left;
             if ( ! $self->{eof} && length($self->{buf}) - $self->{buf_cursor} < 1024 ) {
                 $self->purge_and_readmore;
             }

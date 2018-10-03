@@ -1,17 +1,27 @@
 #!/usr/bin/env perl
-
-use v5.14;
+use v5.18;
+use strict;
+use warnings;
 use WWW::Mechanize;
 
-my @urls = @ARGV;
+sub harvest_links {
+    my ($url) = @_;
+    my $ua = WWW::Mechanize->new( autocheck => 0 );
+    $ua->get($url) or return;
+    return map { $_->url_abs } grep { $_->tag eq 'a' } $ua->links;
+}
 
-die "Put some urls in ARGV\n"
-    unless @urls;
-
-my $ua = WWW::Mechanize->new( autocheck => 0 );
-for (@urls) {
-    $ua->get($_) or next;
-    for ($ua->links) {
-        say $_->url_abs if $_->tag eq 'a';
+if (-p STDIN) {
+    while (<>) {
+        chomp;
+        my @more_urls = harvest_links($_);
+        say for @more_urls;
+    }
+} else {
+    my @urls = @ARGV;
+    die "Put some urls in ARGV\n" unless @urls;
+    for (@urls) {
+        my @more_urls = harvest_links($_);
+        say for @more_urls;
     }
 }

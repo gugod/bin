@@ -19,23 +19,22 @@ my @dir = map { File::Spec->rel2abs($_) } @ARGV;
 push @dir, File::Spec->rel2abs(File::Spec->curdir) unless @dir;
 
 my $meu = Module::ExtractUse->new;
-my @used = ();
+
+my @deps;
 find(
     sub {
         return if $File::Find::dir =~ /\.(git|sv[nk])/ || ! -f $File::Find::name;
+        # say STDERR '<<< ' . $File::Find::name;
         $meu->extract_use($File::Find::name);
-        push @used, $meu->array;
+        push @deps, grep { !$Module::CoreList::version{"$]"}->{$_}  } grep { !/^v?[\.0-9]+$/ } uniq sort $meu->array;
     },
     @dir
 );
 
-my @deps = grep { !$Module::CoreList::version{"$]"}->{$_}  } grep { !/^v?[\.0-9]+$/ } uniq sort @used;
-
 if ($generate_cpanfile) {
-    for (@deps) {
+    for (uniq(@deps)) {
         say "requires \"$_\" => 0;";
     }
 } else {
     say for @deps;
 }
-

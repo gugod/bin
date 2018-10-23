@@ -3,7 +3,8 @@ use v5.18;
 use strict;
 use warnings;
 
-use Encode qw(decode_utf8);
+use JSON qw(encode_json);
+use Encode qw(encode_utf8 decode_utf8);
 use Regexp::Common qw/URI/;
 use HTML::Strip;
 use URI;
@@ -27,7 +28,7 @@ sub guess_proper_voice {
     my ($str) = @_;
     my %freq;
     for (my $i = 0; $i < length($str); $i++) {
-        my $char = substr($str, $i, 0);
+        my $char = substr($str, $i, 1);
         my $script = charscript(ord($char));
         $freq{$script}++;
     }
@@ -36,22 +37,25 @@ sub guess_proper_voice {
     for(keys %freq) {
         $mode = $_ if $freq{$_} > $freq{$mode};
     }
-
+    say encode_json(\%freq);
     return pick(@{ $voices{$mode} // $voices{Latin} });
 }
 
 sub print_and_tts {
     my ($str, $file) = @_;
     my $voice = guess_proper_voice($str);
-    say (($voice ? "[$voice] ": "") . $str . "\n----");
-    my @cmd = ("say", ($voice ? ('-v', $voice) : ()), ($file ? ('-o', $file): ()), $str);
-    (system(@cmd) == 0) # or die "ABORT\n";
+    say("[$voice] $str\n----\n");
+
+    open(my $fh, "| say -v \Q$voice\E");
+    print $fh encode_utf8($str);
+    close($fh);
 }
 
 my %opts;
 GetOptions(
     \%opts,
     "o",
+    "n",
 );
 
 my $striper = HTML::Strip->new;
@@ -76,6 +80,9 @@ for (@feed_uri) {
         my $description = $striper->parse($entry->summary->body || $entry->content->body || '');
         $striper->eof;
 
+        $description = decode_utf8($description) unless Encode::is_utf8($description);
+
+
         my $msg;
         if (index($description, $title) >= 0) {
             $msg = $description;
@@ -94,6 +101,10 @@ for (@feed_uri) {
         if ($opts{o} && -d $opts{o}) {
             $file = $opts{o} . "/feed_$i.m4a"; $i++;
         }
-        print_and_tts($msg, $file);
+        if ($opts{n}) {
+            say "> $msg";
+        } else {
+            print_and_tts($msg, $file);
+        }
     }
 }

@@ -8,26 +8,42 @@ use HTML::Strip;
 use URI;
 use XML::Feed;
 use Getopt::Long;
+use Unicode::UCD qw(charscript);
 
 sub pick {
     $_[ rand(@_) ]
 }
 
-sub print_and_tts {
-    my ($str, $file) = @_;
-    my $voice;
-    if ($str =~ /^\p{ASCII}+$/) {
-        $voice = pick("Daniel", "Samantha");
-    } elsif ($str =~ /(\p{Hiragana}|\p{Katakana})/) {
-        $voice = "Kyoko";
-    } elsif ($str =~ /\p{Han}/) {
-        $voice = "Mei-Jia";
+my %voices = (
+    Han => "Mei-Jia",
+    Hiragana => "Kyoko",
+    Katagana => "Kyoko",
+    Latin => "Daniel"
+);
+
+sub guess_proper_voice {
+    my ($str) = @_;
+    my %freq;
+    for (my $i = 0; $i < length($str); $i++) {
+        my $char = substr($str, $i, 0);
+        my $script = charscript(ord($char));
+        $freq{$script}++;
+    }
+    $freq{""} = 0;
+    my $mode = "";
+    for(keys %freq) {
+        $mode = $_ if $freq{$_} > $freq{$mode};
     }
 
-    say (($voice ? "[$voice] ": "") . $str . "\n----");
+    return $voices{$mode} || "Daniel";
+}
 
+sub print_and_tts {
+    my ($str, $file) = @_;
+    my $voice = guess_proper_voice($str);
+    say (($voice ? "[$voice] ": "") . $str . "\n----");
     my @cmd = ("say", ($voice ? ('-v', $voice) : ()), ($file ? ('-o', $file): ()), $str);
-    (system(@cmd) == 0) or die "ABORT\n";
+    (system(@cmd) == 0); # or die "ABORT\n";
 }
 
 my %opts;
@@ -48,7 +64,7 @@ for (@feed_uri) {
     if ($opts{o} && -d $opts{o}) {
         $file = $opts{o} . "/feed_$i.m4a"; $i++;
     }
-    
+
     print_and_tts($feed->title, $file);
     sleep 1;
     for my $entry ($feed->entries) {

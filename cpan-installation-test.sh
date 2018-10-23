@@ -41,7 +41,7 @@ function test_one_dist {
         perlbrew use $lib_name
 
         echo "--- cpanm $dist";
-        run_with_timeout 60 cpanm $dist
+        run_with_timeout 600 cpanm --verbose $dist
         rc=$?
         echo "--- done"
 

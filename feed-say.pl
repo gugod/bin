@@ -29,10 +29,11 @@ sub guess_proper_voice {
     my %freq;
     for (my $i = 0; $i < length($str); $i++) {
         my $char = substr($str, $i, 1);
+        next unless $char =~ /\p{Letter}/;
         my $script = charscript(ord($char));
         $freq{$script}++;
     }
-    $freq{""} = 0;
+    $freq{Common} = $freq{""} = 0;
     my $mode = "";
     for(keys %freq) {
         $mode = $_ if $freq{$_} > $freq{$mode};

@@ -3,22 +3,24 @@ use v5.18;
 use strict;
 use warnings;
 
+use Encode qw(decode_utf8);
 use Regexp::Common qw/URI/;
 use HTML::Strip;
 use URI;
 use XML::Feed;
 use Getopt::Long;
 use Unicode::UCD qw(charscript);
+use List::Util qw(shuffle);
 
 sub pick {
     $_[ rand(@_) ]
 }
 
 my %voices = (
-    Han => "Mei-Jia",
-    Hiragana => "Kyoko",
-    Katagana => "Kyoko",
-    Latin => "Daniel"
+    Han => ["Mei-Jia"],
+    Hiragana => ["Kyoko", "Otoya"],
+    Katagana => ["Otoya", "Kyoko"],
+    Latin => ["Daniel", "Kate", "Oliver", "Serena", "Moria", "Karen", "Lee"],
 );
 
 sub guess_proper_voice {
@@ -35,7 +37,7 @@ sub guess_proper_voice {
         $mode = $_ if $freq{$_} > $freq{$mode};
     }
 
-    return $voices{$mode} || "Daniel";
+    return pick(@{ $voices{$mode} // $voices{Latin} });
 }
 
 sub print_and_tts {
@@ -43,7 +45,7 @@ sub print_and_tts {
     my $voice = guess_proper_voice($str);
     say (($voice ? "[$voice] ": "") . $str . "\n----");
     my @cmd = ("say", ($voice ? ('-v', $voice) : ()), ($file ? ('-o', $file): ()), $str);
-    (system(@cmd) == 0); # or die "ABORT\n";
+    (system(@cmd) == 0) # or die "ABORT\n";
 }
 
 my %opts;
@@ -67,8 +69,10 @@ for (@feed_uri) {
 
     print_and_tts($feed->title, $file);
     sleep 1;
-    for my $entry ($feed->entries) {
+    my @entries = $feed->entries;
+    for my $entry (shuffle @entries) {
         my $title = $entry->title;
+        $title = decode_utf8($title) unless Encode::is_utf8($title);
         my $description = $striper->parse($entry->summary->body || $entry->content->body || '');
         $striper->eof;
 
@@ -80,9 +84,9 @@ for (@feed_uri) {
         }
 
         $msg =~ s/$RE{URI}/ /g;
-        $msg =~ s/[\p{Punct}\p{Space}]{2,}/ /g;
-        $msg =~ s/\s{2,}/\N{IDEOGRAPHIC FULL STOP}/g;
-        $msg =~ s/(\p{Han}) (\p{Han})/$1\N{IDEOGRAPHIC FULL STOP}$2/g;
+        # $msg =~ s/[\p{Punct}\p{Space}]{2,}/ /g;
+        # $msg =~ s/\s{2,}/\N{IDEOGRAPHIC FULL STOP}/g;
+        # $msg =~ s/(\p{Han}) (\p{Han})/$1\N{IDEOGRAPHIC FULL STOP}$2/g;
         $msg =~ s/\p{Space}+\z//;
         $msg =~ s/\A\p{Space}+//;
         next if $msg =~ /\A\p{Space}*\z/;

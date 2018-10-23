@@ -7,10 +7,25 @@ if [[ ! -d $LOGDIR ]]; then mkdir -p $LOGDIR; fi
 
 eval "$(perlbrew init-in-bash)"
 perlbrew use ${PERL_INSTALLATION}
+
+function run_with_timeout () {
+    local time=10
+    if [[ $1 =~ ^[0-9]+$ ]]; then time=$1; shift; fi
+    # Run in a subshell to avoid job control messages
+    ( "$@" &
+      child=$!
+      # Avoid default notification in non-interactive shell for SIGTERM
+      trap -- "" SIGTERM
+      ( sleep $time
+        kill $child 2> /dev/null ) &
+      wait $child
+    )
+}
+
 function test_one_dist {
 
     local dist=$1
-    local distdir=$(echo $dist | perl -p -e 's/[^0-9A-Za-z\.]+/-/gi')
+    local distdir=$(echo $dist | perl -p -e 's/[^0-9A-Za-z\.]+/-/gi; s/\A-+//; s/-+\z//;')
     local lib_name="${PERL_INSTALLATION}@cpan_installation_test_${RANDOM}"
 
     perlbrew list-modules | grep -v '^Perl$' | cpanm --uninstall -f
@@ -26,10 +41,10 @@ function test_one_dist {
         perlbrew use $lib_name
 
         echo "--- cpanm $dist";
-        cpanm --verbose $dist
+        run_with_timeout 60 cpanm $dist
+        rc=$?
         echo "--- done"
 
-        rc=$?
         if [[ $rc -eq 0 ]]; then
             touch $LOGDIR/${distdir}-cpanm.ok
         else

@@ -18,7 +18,7 @@ sub pick {
 }
 
 my %voices = (
-    Han => ["Mei-Jia"],
+    Han => ["Mei-Jia", "Sin-Ji", "Ting-Ting"],
     Hiragana => ["Kyoko", "Otoya"],
     Katagana => ["Otoya", "Kyoko"],
     Latin => ["Daniel", "Kate", "Oliver", "Serena", "Moria", "Karen", "Lee"],
@@ -47,9 +47,13 @@ sub print_and_tts {
     my $voice = guess_proper_voice($str);
     say("[$voice] $str\n----\n");
 
-    open(my $fh, "| say -v \Q$voice\E");
-    print $fh encode_utf8($str);
-    close($fh);
+    my @paragraphs = split /\r?\n(\r?\n)+/, $str;
+    for (@paragraphs) {
+        open(my $fh, "| say -v \Q$voice\E");
+        print $fh encode_utf8($_);
+        close($fh);
+        sleep 1;
+    }
 }
 
 my %opts;

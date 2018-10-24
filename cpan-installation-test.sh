@@ -1,47 +1,61 @@
 #!/bin/bash
 
 PERL_INSTALLATION=v28
-LOGDIR=~/var/log/cpan-installation-test
-
-PERL_CPANM_OPT=${PERL_CPANM_OPT:-}
-PERL_CPANM_OPT=${PERL_CPANM_OPT/--notest//}
-echo PERL_CPANM_OPT=$PERL_CPANM_OPT
+LOGDIR=~/var/cpan-installation-test
 
 if [[ ! -d $LOGDIR ]]; then mkdir -p $LOGDIR; fi
 
 eval "$(perlbrew init-in-bash)"
 perlbrew use ${PERL_INSTALLATION}
-perlbrew list-modules | grep -v '^Perl$' | cpanm --uninstall -f
 
-echo "Perlbrew"
-echo "========"
-perlbrew info
-echo "========"
+function run_with_timeout () {
+    local time=10
+    if [[ $1 =~ ^[0-9]+$ ]]; then time=$1; shift; fi
+    # Run in a subshell to avoid job control messages
+    ( "$@" &
+      child=$!
+      # Avoid default notification in non-interactive shell for SIGTERM
+      trap -- "" SIGTERM
+      ( sleep $time
+        kill $child 2> /dev/null ) &
+      wait $child
+    )
+}
 
 function test_one_dist {
+
     local dist=$1
-    local distdir=$(echo $dist | perl -p -e 's/[^0-9A-Za-z\.]+/-/gi')
+    local distdir=$(echo $dist | perl -p -e 's/[^0-9A-Za-z\.]+/-/gi; s/\A-+//; s/-+\z//;')
     local lib_name="${PERL_INSTALLATION}@cpan_installation_test_${RANDOM}"
 
-    echo ">>> Use ${lib_name} for $dist";
-    perlbrew lib create $lib_name
-    perlbrew use $lib_name
+    perlbrew list-modules | grep -v '^Perl$' | cpanm --uninstall -f
 
-    echo "--- cpanm $dist";
-    cpanm --verbose $dist > $LOGDIR/${distdir}-cpanm.log 2>&1
-    echo "--- done"
+    (
+        echo "Perlbrew"
+        echo "========"
+        perlbrew info
+        echo "========"
 
-    rc=$?
-    if [[ $rc -eq 0 ]]; then
-        touch $LOGDIR/${distdir}-cpanm.ok
-    else
-        touch $LOGDIR/${distdir}-cpanm.fail
-    fi
+        echo ">>> Use ${lib_name} for $dist";
+        perlbrew lib create $lib_name
+        perlbrew use $lib_name
 
-    perlbrew list-modules > $LOGDIR/${distdir}-installed.log
-    perlbrew use ${PERL_INSTALLATION}
-    perlbrew lib delete $lib_name
-    echo "<<< DELETED ${lib_name}";
+        echo "--- cpanm $dist";
+        run_with_timeout 600 cpanm --verbose $dist
+        rc=$?
+        echo "--- done"
+
+        if [[ $rc -eq 0 ]]; then
+            touch $LOGDIR/${distdir}-cpanm.ok
+        else
+            touch $LOGDIR/${distdir}-cpanm.fail
+        fi
+
+        perlbrew list-modules > $LOGDIR/${distdir}-installed.log
+        perlbrew use ${PERL_INSTALLATION}
+        perlbrew lib delete $lib_name
+        echo "<<< DELETED ${lib_name}";
+    ) > $LOGDIR/${distdir}.log 2>&1
 }
 
 # MODULES=$(echo Elastijk App::csv2tsv yagg URI::Fast Test::Locus grepmail)

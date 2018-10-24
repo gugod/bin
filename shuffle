@@ -1,3 +1,4 @@
-#!/usr/bin/perl
-use List::Util qw(shuffle);
-print for shuffle(<>);
+#!/usr/bin/env perl6
+
+my @a = $*IN.lines;
+.say for @a.pick(@a)

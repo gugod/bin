@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use v5.14;
 
+use Encode qw(encode_utf8);
 use Mojo::DOM;
 use Mojo::UserAgent;
 use Mojo::JSON qw(encode_json);
@@ -21,8 +22,7 @@ $ua->get($url)->res->dom($query)->each(
             eval "$out";
         }
         else {
-            local $, = ", ";
-            say $_->all_text, $_->type, encode_json($_->attr);
+            say encode_utf8(join ", ", $_->all_text, $_->type, encode_json($_->attr));
         }
     }
 );

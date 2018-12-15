@@ -4,19 +4,32 @@ use Encode qw(decode_utf8 encode_utf8);
 use Getopt::Long qw(GetOptions);
 use Mojo::UserAgent;
 use XML::Loy;
+use File::Slurp qw(read_file);
+
+sub fetch {
+    my ($url) = @_;
+    my $body;
+    if ($url =~ /^file:\/\/(.+)$/) {
+        my $filename = $1;
+        $body = decode_utf8 read_file($filename);
+    } else {
+        my $ua = Mojo::UserAgent->new;
+        my $tx = $ua->get($url);
+        unless ($tx->res->is_success) {
+            say STDERR "Failed to fetch: $url";
+            return;
+        }
+        $body = decode_utf8 $tx->res->body;
+    }
+
+    return $body;
+}
 
 sub fetch_and_print {
     my ($url) = @_;
-    my $ua = Mojo::UserAgent->new;
-    my $tx = $ua->get($url);
 
-    unless ($tx->res->is_success) {
-        say STDERR "Failed to fetch: $url";
-        return;
-    }
 
-    my @row;
-    my $body = decode_utf8 $tx->res->body;
+    my $body = fetch($url);
     my $xml = XML::Loy->new($body);
 
     # rss

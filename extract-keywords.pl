@@ -96,7 +96,7 @@ for my $token (map {$_->[1]} sort { $a->[0] <=> $b->[0] } map {[length($_), $_]}
 }
 
 for(map { $_->[0] } sort { $significance{$b->[0]} <=> $significance{$a->[0]} || $b->[1] <=> $a->[1] } map {[$_, $frequency->($_)]} grep { $significance{$_} > 0 } keys %significance) {
-    # next unless $significance{$_} == 1;
+    next unless $significance{$_} > 0.9;
     printf("%4d\t%0.4f\t%s\n", $frequency->($_), $significance{$_}, encode(utf8 => $_));
     # say sprintf("%d\t%s", $frequency->($_), $_);
 }

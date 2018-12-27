@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use v5.14;
 use File::Basename qw(basename);
+use HTML::ExtractMain qw( extract_main_html );
 use HTML::ExtractContent;
 use HTML::WikiConverter;
 use HTML::WikiConverter::Markdown;
@@ -28,8 +29,13 @@ USAGE
 
 sub extract_as_text {
     state $ex = HTML::ExtractContent->new;
-
-    return $ex->extract($_[0])->as_text;
+    my $html = $_[0];
+    my $dom = Mojo::DOM->new($html);
+    if (my $el = $dom->at('article')) {
+        return $ex->extract("$el")->as_text;
+    } else {
+        return $ex->extract($html)->as_text;
+    }
 }
 
 sub extract_locally {

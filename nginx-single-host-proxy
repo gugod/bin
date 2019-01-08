@@ -53,10 +53,10 @@ my $nginx_conf = "/tmp/nginx-conf-$$.conf";
 my $pid_file = "/tmp/nginx-pid-$$.pid";
 
 my $conf = NGINX_CONF_TEMPLATE;
-$conf =~ s/{{NGINX_PID_FILE}}/$pid_file/g;
-$conf =~ s/{{LOCAL_PORT}}/$local_port/g;
-$conf =~ s/{{REMOTE_HOSTPORT}}/$remote_hostport/;
-$conf =~ s/{{REMOTE_AUTH}}/$remote_auth/;
+$conf =~ s/\{\{NGINX_PID_FILE\}\}/$pid_file/g;
+$conf =~ s/\{\{LOCAL_PORT\}\}/$local_port/g;
+$conf =~ s/\{\{REMOTE_HOSTPORT\}\}/$remote_hostport/;
+$conf =~ s/\{\{REMOTE_AUTH\}\}/$remote_auth/;
 
 open my $fh, '>', $nginx_conf;
 print $fh $conf;

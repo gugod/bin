@@ -28,29 +28,26 @@ sub main {
         next unless @files > 0;
 
         my %dup;
-        my @keep;
         my @to_be_deleted;
 
         for my $f (sort { length($a) <=> length($b) } @files) {
             my $d = file_digest($f);
             if (exists $dup{$d}) {
                 push @to_be_deleted, $f;
+                say "rm $f; # dup: $dup{$d}";
             } else {
                 $dup{$d} = $f;
-                push @keep, $f;
             }
         }
 
-        for my $f (@keep) {
-            say "(keep) $f";
+        if (@to_be_deleted) {
+            if ($opts->{yes}) {
+                unlink(@to_be_deleted);
+            } else {
+                say "Not removing anything without `--yes`";
+            }
+            say "";
         }
-        for my $f (@to_be_deleted) {
-            say "  rm $f";
-        }
-        if ($opts->{y}) {
-            unlink(@to_be_deleted);
-        }
-        say "";
     }
 
     return 0;
@@ -60,6 +57,6 @@ my %opts;
 GetOptions(
     \%opts,
     'i=s@',
-    'y|yes',
+    'yes|y',
 );
 main(\%opts, [@ARGV]);

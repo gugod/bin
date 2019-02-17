@@ -18,7 +18,7 @@ sub pick {
 }
 
 my %voices = (
-    Han => ["Mei-Jia", "Sin-Ji", "Ting-Ting"],
+    Han => ["Mei-Jia"],
     Hiragana => ["Kyoko", "Otoya"],
     Katagana => ["Otoya", "Kyoko"],
     Latin => ["Daniel", "Kate", "Oliver", "Serena", "Moria", "Karen", "Lee"],
@@ -38,18 +38,18 @@ sub guess_proper_voice {
     for(keys %freq) {
         $mode = $_ if $freq{$_} > $freq{$mode};
     }
-    say encode_json(\%freq);
     return pick(@{ $voices{$mode} // $voices{Latin} });
 }
 
 sub print_and_tts {
     my ($str, $file) = @_;
+
     my $voice = guess_proper_voice($str);
     say("[$voice] $str\n----\n");
 
     my @paragraphs = split /\r?\n(\r?\n)+/, $str;
     for (@paragraphs) {
-        open(my $fh, "| say -v \Q$voice\E");
+        open(my $fh, "| say --quality 127 -r 200 -v \Q$voice\E");
         print $fh encode_utf8($_);
         close($fh);
         sleep 1;
@@ -109,6 +109,7 @@ for (@feed_uri) {
         if ($opts{n}) {
             say "> $msg";
         } else {
+            say "Link: " . $entry->link;
             print_and_tts($msg, $file);
         }
     }

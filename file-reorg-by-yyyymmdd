@@ -9,6 +9,15 @@ use File::Path qw(make_path);
 use File::Spec::Functions qw(catfile catdir);
 use File::Next;
 use Getopt::Long;
+use Digest::SHA1;
+
+sub sha1_digest {
+    my ($file) = @_;
+    open my $fh, "<", $file;
+    my $sha1 = Digest::SHA1->new;
+    $sha1->addfile($fh);
+    return $sha1->hexdigest;
+}
 
 sub is_identical {
     my ($file1, $file2) = @_;
@@ -59,13 +68,29 @@ sub main {
                 unlink($file);
             } else {
                 my $msg = "File already exists: $new_path (from $file)";
+
                 if ($opts->{'ignore-existing'}) {
                     warn $msg;
+
+                } elsif ($opts->{'keep-both'}) {
+                    my $sha1 = sha1_digest($file);
+                    my ($filename, $dir, $ext) = fileparse($new_path, qr/\.[^.]*/);
+                    $new_path = catfile($dir, "${filename}-${sha1}${ext}");
+                    if (-e $new_path) {
+                        if (is_identical($file, $new_path)) {
+                            say("rm $file # duplicate\t$file\t$new_path");
+                            unlink($file);
+                        } else {
+                            warn "File already exists: $new_path (from $file)";
+                        }
+                    }
                 } else {
                     die $msg;
                 }
             }
-        } else {
+        }
+
+        unless (-e $new_path) {
             if (exists $plan{$new_path}) {
                 my $msg = "File name Conflict:\n\t -> " . join("\n\t -> ", @{$plan{$new_path}}) . "\n\t <- $file\n";
                 if ($opts->{'ignore-existing'}) {
@@ -98,7 +123,8 @@ GetOptions(
     'i=s@',
     'd=s',
     'n',
-    'ignore-existing'
+    'ignore-existing',
+    'keep-both'
 );
 main(\%opts, [@ARGV]);
 

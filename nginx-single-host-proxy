@@ -1,0 +1,79 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+# Both are released with perl5
+use Getopt::Std;
+use MIME::Base64 qw(encode_base64);
+
+use constant NGINX_CONF_TEMPLATE => <<EOF;
+worker_processes 1;
+pid {{NGINX_PID_FILE}};
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    server {
+       listen {{LOCAL_PORT}};
+       server_name localhost;
+       location / {
+           proxy_pass {{REMOTE_HOSTPORT}};
+           {{REMOTE_AUTH}}
+       }
+    }
+}
+EOF
+
+# -p 9200
+
+my %opts;
+getopts('p:', \%opts);
+
+my $local_port = $opts{p};
+my $remote_uri = shift(@ARGV);
+
+# URI is not released with perl5
+my($scheme, $authority, $path, $query, $fragment) = $remote_uri =~ m|(?:([^:/?#]+):)?(?://([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?|;
+
+my ($user, $pass, $host, $port) = $authority =~ m|\A (?: ([^:]+) (?: :(.+))@)?([^:]+)(?: :([0-9]+)) \z|x;
+
+my $remote_hostport = join '', $scheme, "://", $host, ($port ? ":${port}": ""), $path, ($query ? "?${query}" : ""), ($fragment ? "#${fragment}": "");
+my $remote_auth = '';
+
+if ($user) {
+    my $sec = encode_base64( $user . ":" . ($pass // '') );
+    chop($sec);
+    $remote_auth = qq|proxy_set_header Authorization "Basic $sec";\n|;
+}
+
+
+my $nginx_conf = "/tmp/nginx-conf-$$.conf";
+my $pid_file = "/tmp/nginx-pid-$$.pid";
+
+my $conf = NGINX_CONF_TEMPLATE;
+$conf =~ s/\{\{NGINX_PID_FILE\}\}/$pid_file/g;
+$conf =~ s/\{\{LOCAL_PORT\}\}/$local_port/g;
+$conf =~ s/\{\{REMOTE_HOSTPORT\}\}/$remote_hostport/;
+$conf =~ s/\{\{REMOTE_AUTH\}\}/$remote_auth/;
+
+open my $fh, '>', $nginx_conf;
+print $fh $conf;
+close($fh);
+
+if (my $child = fork()) {
+    sleep(1);
+    local $SIG{INT} = sub {
+        system("nginx", -c => $nginx_conf, -s => "quit");
+        sleep(1);
+        unlink($nginx_conf);
+        exit(0);
+    };
+    while (1) {
+        sleep 1;
+    }
+    exit(0);
+} else {
+    exec("nginx", -c => $nginx_conf);
+}

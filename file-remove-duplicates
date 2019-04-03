@@ -1,0 +1,62 @@
+#!/usr/bin/env perl
+use v5.12;
+use strict;
+use warnings;
+use Digest::SHA;
+use File::Next;
+use Getopt::Long qw(GetOptions);
+
+sub file_digest {
+    my ($file) = @_;
+    my $digester = Digest::SHA->new("512");
+    $digester->addfile($file, 'b');
+    return $digester->b64digest;
+}
+
+sub main {
+    my ($opts, $args) = @_;
+    my @input = grep { -d $_ } @{ $opts->{i} };
+    my %idx;
+    my $iter = File::Next::files(@input);
+    while (defined( my $file = $iter->() )) {
+        my $size = (stat($file))[7];
+        push @{ $idx{$size} }, $file;
+    }
+
+    for my $s (keys %idx) {
+        my @files = @{ $idx{$s} };
+        next unless @files > 0;
+
+        my %dup;
+        my @to_be_deleted;
+
+        for my $f (sort { length($a) <=> length($b) } @files) {
+            my $d = file_digest($f);
+            if (exists $dup{$d}) {
+                push @to_be_deleted, $f;
+                say "rm $f; # dup: $dup{$d}";
+            } else {
+                $dup{$d} = $f;
+            }
+        }
+
+        if (@to_be_deleted) {
+            if ($opts->{yes}) {
+                unlink(@to_be_deleted);
+            } else {
+                say "Not removing anything without `--yes`";
+            }
+            say "";
+        }
+    }
+
+    return 0;
+}
+
+my %opts;
+GetOptions(
+    \%opts,
+    'i=s@',
+    'yes|y',
+);
+main(\%opts, [@ARGV]);

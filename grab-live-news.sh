@@ -1,16 +1,15 @@
 #!/bin/bash
 
-cd $(dirname $0)
-
 duration=${1:-00:03:00}
 
 sources=(
-    setn  'https://www.youtube.com/watch?v=4ZVUmEUFwaY'
-    tvbs  'https://www.youtube.com/watch?v=Hu1FkdAOws0'
     ctitv 'https://www.youtube.com/watch?v=wUPPkSANpyo'
-    ttv   'https://www.youtube.com/watch?v=yk2CUjbyyQY'
-    ebc   'https://www.youtube.com/watch?v=dxpWqjvEKaM'
     ctv   'https://www.youtube.com/watch?v=DVOHYy_m_qU'
+    ebc   'https://www.youtube.com/watch?v=dxpWqjvEKaM'
+    ftv   'https://www.youtube.com/watch?v=XxJKnDLYZz4'
+    setn  'https://www.youtube.com/watch?v=4ZVUmEUFwaY'
+    ttv   'https://www.youtube.com/watch?v=yk2CUjbyyQY'
+    tvbs  'https://www.youtube.com/watch?v=Hu1FkdAOws0'
 )
 
 now=$(date +%Y%m%d%H%M%S)

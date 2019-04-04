@@ -61,6 +61,8 @@ for my $base_url (@urls) {
                 my $href =  $_->attr('href');
                 my $url = URI->new_abs($href, $base_url)->as_string;
                 my $ct = $ua->get($url)->res->headers->content_type;
+                $ct =~ s/;\s+charset=.+$//;
+
                 if ( IS_A_FEED_MIME_TYPE->{$ct} ) {
                     push @feeds, $url;
                 }

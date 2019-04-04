@@ -1,0 +1,42 @@
+#!/usr/bin/env perl
+use v5.14;
+use strict;
+use warnings;
+
+use Mojo::UserAgent;
+use Mojo::Promise;
+use URI;
+use Getopt::Long qw(GetOptions);
+
+sub grep_ok {
+    for my $tx (map { $_->[0] } @_) {
+        eval {
+            if ($tx->result->is_success) {
+                say $tx->req->url;
+            } else {
+                say STDERR "FAILED: " . $tx->request->url;
+            }
+            1;
+        } or do {
+            warn $@;
+        };
+    }
+}
+
+my $ua = Mojo::UserAgent->new( max_redirect => 5 );
+my @promises;
+while (my $url = <>) {
+    chomp($url);
+
+    push @promises, $ua->get_p($url);
+
+    if (@promises > 3) {
+        Mojo::Promise->all(@promises)->then(\&grep_ok)->wait;
+        @promises = ();
+    }
+}
+
+if (@promises) {
+    Mojo::Promise->all(@promises)->then(\&grep_ok)->wait;
+    @promises = ();
+}

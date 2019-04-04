@@ -1,29 +1,70 @@
 #!/usr/bin/env perl
-use v5.14;
+use v5.18;
 use strict;
 use warnings;
 
 use Mojo::UserAgent;
+use Mojo::UserAgent::Transactor;
 use Mojo::Promise;
 use URI;
 use Getopt::Long qw(GetOptions);
 
+use constant IS_A_FEED_MIME_TYPE => { map { $_ => 1 } (
+    'application/x.atom+xml',
+    'application/atom+xml',
+    'application/xml',
+    'text/xml',
+    'application/rss+xml',
+    'application/rdf+xml',
+)};
+
 sub grep_ok {
+    my @ret;
     for my $tx (map { $_->[0] } @_) {
         eval {
+            my $url = $tx->req->url;
             if ($tx->result->is_success) {
-                say $tx->req->url;
+                push @ret, $tx;
             } else {
-                say STDERR "FAILED: " . $tx->request->url;
+                say STDERR "FAILED: " . $tx->res->code . " $url";
             }
             1;
         } or do {
             warn $@;
         };
     }
+    return @ret;
 }
 
-my $ua = Mojo::UserAgent->new( max_redirect => 5 );
+sub grep_feed {
+    my @ret;
+    for my $tx (@_) {
+        my $ct = $tx->res->headers->content_type =~ s/;\s*charset=.+$//r;
+        if ( IS_A_FEED_MIME_TYPE->{$ct} ) {
+            push @ret, $tx;
+        } else {
+            say STDERR "NOT FEED: $ct " . $tx->req->url;
+        }
+    }
+    return @ret;
+}
+
+sub print_urls {
+    for my $tx (@_) {
+        say $tx->req->url;
+    }
+}
+
+## main
+
+my %opts;
+GetOptions(
+    \%opts,
+    "feed",
+);
+
+my $ua = Mojo::UserAgent->new()->max_redirects(5);
+
 my @promises;
 while (my $url = <>) {
     chomp($url);
@@ -31,12 +72,16 @@ while (my $url = <>) {
     push @promises, $ua->get_p($url);
 
     if (@promises > 3) {
-        Mojo::Promise->all(@promises)->then(\&grep_ok)->wait;
+        my $p = Mojo::Promise->all(@promises)->then(\&grep_ok);
+        if ($opts{feed}) {
+            $p = $p->then(sub { grep_feed( @_ ) });
+        }
+        $p->then(\&print_urls)->wait;
         @promises = ();
     }
 }
 
 if (@promises) {
-    Mojo::Promise->all(@promises)->then(\&grep_ok)->wait;
+    Mojo::Promise->all(@promises)->then(\&grep_ok)->then(\&print_urls)->wait;
     @promises = ();
 }

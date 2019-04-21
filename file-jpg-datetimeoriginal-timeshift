@@ -1,0 +1,59 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+
+use File::Next;
+use Getopt::Long;
+use Digest::SHA1;
+use File::Touch;
+use Image::ExifTool qw(:Public);
+use Time::Moment;
+
+sub main {
+    my ($opts, $args) = @_;
+    my ($seconds, @files) = @$args;
+
+    @files = grep { /\.jpg\z/i } @files;
+
+    my %plan;
+    for my $file (@files) {
+        my $exifTool = Image::ExifTool->new;
+        my $info = $exifTool->ExtractInfo($file);
+        my $dto = $exifTool->GetValue('DateTimeOriginal');
+
+        if (! $dto) {
+            say "SKIP: no DateTimeOriginal\t$file";
+            next;
+        }
+        next unless $dto =~ /\A [12][0-9]{3}:[0-9]{2}:[0-9]{2} \s [0-9]{2}:[0-9]{2}:[0-9]{2} \z/x;
+
+        my @exif_dto = split /[ :]/, $dto;
+        my $tm_dto = Time::Moment->new(
+            year       => $exif_dto[0],
+            month      => $exif_dto[1],
+            day        => $exif_dto[2],
+            hour       => $exif_dto[3],
+            minute     => $exif_dto[4],
+            second     => $exif_dto[5],
+            # nanosecond => 0,
+            # offset     => 480, # UTC+0800
+        );
+        my $tm_dto_with_offset = $tm_dto->plus_seconds($seconds);
+        my $dto2 = $tm_dto_with_offset->strftime('%Y:%m:%d %H:%M:%S');
+        if ($opts->{y}) {
+            $exifTool->SetNewValue(DateTimeOriginal => $dto2);
+            $exifTool->WriteInfo($file);
+        } else {
+            say join("\t", $file, $dto, $tm_dto, $tm_dto_with_offset, $dto2);
+        }
+    }
+}
+
+my %opts;
+GetOptions(
+    \%opts,
+     'y',
+ );
+main(\%opts, [@ARGV]);
+

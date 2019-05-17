@@ -1,6 +1,5 @@
 package Fun::Text;
 use v5.18;
-use strict;
 use warnings;
 
 use Exporter 'import';

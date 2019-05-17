@@ -1,5 +1,4 @@
 use v5.18;
-use strict;
 use warnings;
 
 =head1 Build RE of Chinese names

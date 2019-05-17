@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
 use v5.18;
-use strict;
 use warnings;
 
 use JSON qw(encode_json);

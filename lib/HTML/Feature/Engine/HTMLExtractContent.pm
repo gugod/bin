@@ -1,5 +1,5 @@
 package HTML::Feature::Engine::HTMLExtractContent;
-use strict;
+use v5.18;
 use warnings;
 use HTML::Feature::Result;
 use base qw(HTML::Feature::Base);

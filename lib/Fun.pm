@@ -1,5 +1,5 @@
 package Fun;
-use strict;
+use v5.18;
 use warnings;
 
 use Exporter 'import';

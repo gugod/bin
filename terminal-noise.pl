@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use strict;
+use v5.18;
 use warnings;
 use integer;
 use Term::Size ();

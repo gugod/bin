@@ -1,0 +1,23 @@
+#!/usr/bin/env perl6
+
+my $n = @*ARGS[0];
+
+say $n;
+
+my @factors;
+
+for ((2..sqrt($n)).grep({ $_.is-prime })) -> $k {
+    while ($n % $k == 0) {
+        push @factors, $k;
+        $n /= $k;
+        say $k ~ "\t" ~ $n;
+        next;
+    }
+
+    if ($n.is-prime) {
+        push @factors, $n;
+        last;
+    }
+}
+
+say @factors;

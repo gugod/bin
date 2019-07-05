@@ -26,7 +26,7 @@ my @urls = @ARGV;
 die "Put urls in ARGV\n"
     unless @urls;
 
-my $ua = Mojo::UserAgent->new( max_redirect => 5 );
+my $ua = Mojo::UserAgent->new->max_redirect(5);
 for my $base_url (@urls) {
     my $tx = $ua->get($base_url);
     my $dom = $tx->res->dom;

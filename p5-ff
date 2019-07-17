@@ -1,0 +1,14 @@
+#!/usr/bin/env perl
+
+use v5.18;
+use strict;
+use warnings;
+
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Fun 'foreach_perl_source_file';
+
+my @args = @ARGV;
+@args = (".") if !@args;
+
+foreach_perl_source_file \@args => sub { say $_[0] };

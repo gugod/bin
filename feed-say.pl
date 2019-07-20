@@ -30,7 +30,7 @@ for (keys %voices) {
 
 sub system_has_voice {
     my $voice = $_[0];
-    system('say', '-r', '200', '-v', $voice, "$voice says: Hi") == 0;
+    system('say', '-o', '/dev/null', '-r', '200', '-v', $voice, 'Hi') == 0;
 }
 
 sub guess_proper_voice {

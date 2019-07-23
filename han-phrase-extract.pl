@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
 use v5.18;
-use strict;
 use warnings;
 use List::MoreUtils qw(uniq);
 use Encode qw(encode_utf8 decode_utf8);

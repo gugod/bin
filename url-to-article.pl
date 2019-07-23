@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 
 use v5.18;
-use strict;
 use Firefox::Marionette;
 use Mojo::DOM;
 use Encode qw(encode_utf8 decode_utf8);

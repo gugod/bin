@@ -1,5 +1,4 @@
 use v5.18;
-use strict;
 
 use HTML::Strip;
 use Mojo::UserAgent;

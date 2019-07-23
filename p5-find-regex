@@ -1,0 +1,71 @@
+#!/usr/bin/env perl
+use v5.18;
+
+use PPI;
+use PPI::Document;
+use File::Next;
+
+sub is_perl {
+    my ($file) = @_;
+    return 1 if $file =~ / \.(?: t|p[ml]|pod|comp ) $/xi;
+    return 0 if $file =~ / \. /xi;
+    if (open my $fh, '<', $file) {
+        my $line = <$fh>;
+        return 1 if $line =~ m{^#!.*perl};
+    }
+    return 0;
+}
+
+use Getopt::Long;
+
+my %opts;
+GetOptions(
+    \%opts,
+    "h", # No op
+    "o", # Print only the Regexp, not the entire line.
+);
+
+for (@ARGV) {
+    my $files = File::Next::files($_);
+    while ( defined ( my $file = $files->() ) ) {
+        next unless is_perl($file);
+
+        my $doc = PPI::Document->new($file);
+        $doc->index_locations;
+
+        my $regexps = $doc->find("PPI::Token::Regexp") or next;
+
+        if ($opts{o}) {
+            for my $it (@$regexps) {
+                my $ln = $it->line_number;
+                print "${file}:${ln}:\t$it\n";
+            }
+
+        } else {
+            my %matched;
+            for my $it (@$regexps) {
+                my $ln = $it->line_number;
+                $matched{$ln} = 1;
+            }
+
+            my $line_number = 0;
+            open my $fh, "<", $file;
+            while (my $line = <$fh>) {
+                $line_number++;
+                if ($matched{$line_number}) {
+                    print "${file}:${line_number}:${line}";
+                }
+            }
+            close($fh);
+        }
+
+    }
+}
+
+__END__
+
+=head1 Usage
+
+This program parse perl code and find regular expressions.
+
+=cut

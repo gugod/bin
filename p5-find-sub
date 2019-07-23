@@ -12,16 +12,17 @@ use Getopt::Long 'GetOptions';
 use PPI;
 use PPI::Document;
 
+my ($wanted_sub_name, @paths) = @ARGV;
 
-my %opt;
-GetOptions(
-    \%opt,
-    "--name=s",
-);
+unless ($wanted_sub_name) {
+    die <<USAGE;
+p5-find-sub name [path1] [path2]...
+USAGE
+}
 
-my @args = @ARGV;
-@args = (".") if !@args;
-foreach_perl_source_file \@args => sub {
+@paths = ('.') unless @paths;
+
+foreach_perl_source_file \@paths => sub {
     my ($file) = @_;
     my $doc = PPI::Document->new($file) or return;
 
@@ -41,7 +42,7 @@ foreach_perl_source_file \@args => sub {
         # $token is the word "sub"
         my $el = $token->parent;
         my $sub_name = $el->isa("PPI::Statement::Sub") ? $el->name : "(anonymous)";
-        if (!$opt{name} || $opt{name} eq $sub_name) {
+        if ($wanted_sub_name eq $sub_name) {
             say join ":", $file, $token->line_number, $sub_name;
         }
     }

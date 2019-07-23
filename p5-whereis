@@ -8,7 +8,7 @@ file in some cases.
     > perldoc -l IO::All
     /home/gugod/.perlbrew/libs/v22@default/lib/perl5/IO/All.pod
 
-    > p5-whereis IO::All         
+    > p5-whereis IO::All
     /home/gugod/.perlbrew/libs/v22@default/lib/perl5/IO/All.pm
     /home/gugod/.perlbrew/libs/v22@default/lib/perl5/IO/All.pod
 

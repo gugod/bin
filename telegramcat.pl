@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use strict;
+use v5.18;
 use warnings;
 use WWW::Telegram::BotAPI;
 use Getopt::Long qw(GetOptions);

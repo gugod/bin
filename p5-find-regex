@@ -21,7 +21,8 @@ use Getopt::Long;
 my %opts;
 GetOptions(
     \%opts,
-    "h"
+    "h", # No op
+    "o", # Print only the Regexp, not the entire line.
 );
 
 for (@ARGV) {
@@ -34,21 +35,30 @@ for (@ARGV) {
 
         my $regexps = $doc->find("PPI::Token::Regexp") or next;
 
-        my %matched;
-        for my $it (@$regexps) {
-            my $ln = $it->line_number;
-            $matched{$ln} = 1;
+        if ($opts{o}) {
+            for my $it (@$regexps) {
+                my $ln = $it->line_number;
+                print "${file}:${ln}:\t$it\n";
+            }
+
+        } else {
+            my %matched;
+            for my $it (@$regexps) {
+                my $ln = $it->line_number;
+                $matched{$ln} = 1;
+            }
+
+            my $line_number = 0;
+            open my $fh, "<", $file;
+            while (my $line = <$fh>) {
+                $line_number++;
+                if ($matched{$line_number}) {
+                    print "${file}:${line_number}:${line}";
+                }
+            }
+            close($fh);
         }
 
-        my $line_number = 0;
-        open my $fh, "<", $file;
-        while (my $line = <$fh>) {
-            $line_number++;
-            if ($matched{$line_number}) {
-                print "${file}:${line_number}:${line}";
-            }
-        }
-        close($fh);
     }
 }
 

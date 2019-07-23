@@ -1,0 +1,14 @@
+#!/usr/bin/env perl
+use v5.26;
+
+my $lines_total = 0;
+my $chars_total = 0;
+
+while(<>) {
+    my $ln = length($_);
+    $lines_total += 1;
+    $chars_total += $ln;
+
+    print($lines_total . "\t" . $chars_total . "\r");
+}
+print($lines_total . "\t" . $chars_total . "\n");

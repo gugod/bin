@@ -3,9 +3,9 @@
 sub prime-factorizatiion(Int $n is copy) {
     my @factors;
 
-    for (2..*).grep: { .is-prime } -> $p {
+    for (2..*).grep(*.is-prime) -> $p {
         my $k = 1;
-        while ($n % $p == 0) {
+        while $n % $p == 0 {
             $n = $n div $p;
             $k++;
         }
@@ -15,10 +15,14 @@ sub prime-factorizatiion(Int $n is copy) {
             push @factors, $p => $k;
         }
 
-        if ($n.is-prime) {
-            push @factors, $n => 1;
+        if $n == 1 {
             last;
         }
+
+        if $n.is-prime {
+            push @factors, $n => 1;
+            last;
+        };
     }
 
     return @factors;

@@ -1,23 +1,30 @@
 #!/usr/bin/env perl6
 
-my $n = @*ARGS[0];
+sub prime-factorizatiion(Int $n is copy) {
+    my @factors;
 
-say $n;
+    for (2..*).grep: { .is-prime } -> $p {
+        my $k = 1;
+        while ($n % $p == 0) {
+            $n = $n div $p;
+            $k++;
+        }
+        $k -= 1;
 
-my @factors;
+        if $k > 0 {
+            push @factors, $p => $k;
+        }
 
-for ((2..sqrt($n)).grep({ $_.is-prime })) -> $k {
-    while ($n % $k == 0) {
-        push @factors, $k;
-        $n /= $k;
-        say $k ~ "\t" ~ $n;
-        next;
+        if ($n.is-prime) {
+            push @factors, $n => 1;
+            last;
+        }
     }
 
-    if ($n.is-prime) {
-        push @factors, $n;
-        last;
-    }
+    return @factors;
 }
 
-say @factors;
+my $n = Int( @*ARGS[0] );
+my @factors = prime-factorizatiion($n);
+
+say @factors.map({ .key ~ "**" ~ .value  }).join(" * ");

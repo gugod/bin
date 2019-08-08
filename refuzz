@@ -29,17 +29,29 @@ PROGRAM
         waitpid($pid, 0);
     }
 
-    my $rx = JSON->new->decode(scalar read_file("/tmp/rx.json"));
-    return 0+ @{ $rx->{match_data} };
+    my $matched;
+    my $steps = -1;
+    open my $fh, '<', "/tmp/rx.json";
+    while(<$fh>) {
+        chomp;
+        if (/"msg" : ".+(matched|failed).+(?:in|after) ([0-9]+) steps"/) {
+            $matched = $1 eq "matched";
+            $steps = $2;
+            last;
+        }
+    }
+    close($fh);
+
+    return ($matched, $steps);
 }
 
 my $re = $ARGV[0];
-my $string_gen = String::Random->new;
+my @strs = ("", "1");
 
-my @strs = map { $string_gen->randregex($re) } 1..10;
-push @strs, ("", "1", "1"x10, "1"x100);
+push @strs, map { "1" x $_ } 2..20;
 
+say "len\tsteps\tmatched?";
 for my $str (@strs) {
-    my $steps = try_one($re, $str);
-    say length($str) . "\t" . $steps;
+    my ($matched,$steps) = try_one($re, $str);
+    say length($str) . "\t" . $steps . "\t" . ($matched ? "True" : "False");
 }

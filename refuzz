@@ -1,0 +1,45 @@
+#!/usr/bin/env perl
+use v5.18;
+use warnings;
+use JSON;
+use String::Random;
+use File::Slurp qw(write_file read_file);
+# use POSIX ":sys_wait_h";
+
+sub try_one {
+    my ($re, $str) = @_;
+    my $prog = <<"PROGRAM";
+#!/usr/bin/env perl
+use v5.18;
+use Regexp::Debugger save_to => "/tmp/rx.json";
+
+my \$str = "\Q$str\E";
+\$str =~ /$re/;
+PROGRAM
+
+    write_file "/tmp/prog.pl", $prog;
+
+    my $pid = fork();
+    if ($pid == 0) {
+        close STDERR;
+        close STDOUT;
+        close STDERR;
+        exec $^X, "/tmp/prog.pl";
+    } else {
+        waitpid($pid, 0);
+    }
+
+    my $rx = JSON->new->decode(scalar read_file("/tmp/rx.json"));
+    return 0+ @{ $rx->{match_data} };
+}
+
+my $re = $ARGV[0];
+my $string_gen = String::Random->new;
+
+my @strs = map { $string_gen->randregex($re) } 1..10;
+push @strs, ("", "1", "1"x10, "1"x100);
+
+for my $str (@strs) {
+    my $steps = try_one($re, $str);
+    say length($str) . "\t" . $steps;
+}

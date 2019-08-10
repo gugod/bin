@@ -46,7 +46,10 @@ for my $f (@sources) {
 
         my $user_str = $tweet->{"user.id"};
         if (my $user = $users{ $tweet->{"user.id"} }) {
-            $user_str = '@' . $user->{"screen_name"} . ' ' . $user->{'name'};
+            $user_str = '@' . $user->{"screen_name"};
+            if ($user->{"screen_name"} ne $user->{'name'}) {
+                $user_str .= ' ' . $user->{'name'};
+            }
         }
         say encode_utf8($user_str . ":\n    " . $txt . "\n");
     }

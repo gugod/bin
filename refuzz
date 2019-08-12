@@ -10,31 +10,35 @@ use Encode qw(encode_utf8);
 
 sub try_one {
     my ($re, $str) = @_;
+
+    my $fn_prog = "/tmp/prog.pl";
+    my $fn_rx   = "/tmp/rx.json";
+
     my $prog = <<"PROGRAM";
 #!/usr/bin/env perl
 use v5.18;
 use utf8;
-use Regexp::Debugger save_to => "/tmp/rx.json";
+use Regexp::Debugger save_to => "$fn_rx";
 
 my \$str = "\Q$str\E";
 \$str =~ /$re/;
 PROGRAM
 
-    write_file "/tmp/prog.pl", encode_utf8($prog);
+    write_file $fn_prog, encode_utf8($prog);
 
     my $pid = fork();
     if ($pid == 0) {
         close STDERR;
         close STDOUT;
         close STDERR;
-        exec $^X, "/tmp/prog.pl";
+        exec $^X, $fn_prog;
     } else {
         waitpid($pid, 0);
     }
 
     my $matched;
     my $steps = -1;
-    open my $fh, '<', "/tmp/rx.json";
+    open my $fh, '<', $fn_rx;
     while(<$fh>) {
         chomp;
         if (/"msg" : ".+(matched|failed).+(?:in|after) ([0-9]+) steps"/) {
@@ -44,6 +48,9 @@ PROGRAM
         }
     }
     close($fh);
+
+    unlink $fn_rx;
+    unlink $fn_prog;
 
     return ($matched, $steps);
 }

@@ -63,7 +63,7 @@ sub try_many {
 
 sub str_enlenghten {
     my ($re, $str) = @_;
-    my @chars = uniq( (split //, $re), ( map { chr( rand(65534)+1 ) } 0..9 ) );
+    my @chars = uniq( (split //, $re), ( map { chr( rand(65534)+1 ) } 0..2 ) );
     return uniq(map { ($_ . $str, $str . $_) } @chars);
 }
 
@@ -77,8 +77,9 @@ my $re = $ARGV[0];
 
 my @strs =  ("");
 for (1..30) {
-    my $steps = try_many($re, @strs);
-    @strs = map { str_enlenghten($re, $_) } largest_set($steps);
+    say "----";
+    my $steps = try_many($re, map { str_enlenghten($re, $_) } @strs);
+    @strs = largest_set($steps);
 }
 
 say for @strs;

@@ -4,20 +4,23 @@ use warnings;
 use JSON;
 use String::Random;
 use File::Slurp qw(write_file read_file);
-# use POSIX ":sys_wait_h";
+use List::Util qw(max uniq);
+use Data::Dumper qw(Dumper);
+use Encode qw(encode_utf8);
 
 sub try_one {
     my ($re, $str) = @_;
     my $prog = <<"PROGRAM";
 #!/usr/bin/env perl
 use v5.18;
+use utf8;
 use Regexp::Debugger save_to => "/tmp/rx.json";
 
 my \$str = "\Q$str\E";
 \$str =~ /$re/;
 PROGRAM
 
-    write_file "/tmp/prog.pl", $prog;
+    write_file "/tmp/prog.pl", encode_utf8($prog);
 
     my $pid = fork();
     if ($pid == 0) {
@@ -45,13 +48,37 @@ PROGRAM
     return ($matched, $steps);
 }
 
-my $re = $ARGV[0];
-my @strs = ("", "1");
+sub try_many {
+    my ($re, @strs) = @_;
+    my %steps;
 
-push @strs, map { "1" x $_ } 2..20;
+    for my $s (@strs) {
+        my $steps = try_one($re, $s);
+        $steps{$s} = $steps;
+        say encode_utf8("$steps\t<=\t$s");
+    }
 
-say "len\tsteps\tmatched?";
-for my $str (@strs) {
-    my ($matched,$steps) = try_one($re, $str);
-    say length($str) . "\t" . $steps . "\t" . ($matched ? "True" : "False");
+    return \%steps;
 }
+
+sub str_enlenghten {
+    my ($re, $str) = @_;
+    my @chars = uniq( (split //, $re), ( map { chr( rand(65534)+1 ) } 0..9 ) );
+    return uniq(map { ($_ . $str, $str . $_) } @chars);
+}
+
+sub largest_set {
+    my $x2n = $_[0];
+    my $y = max(values %$x2n);
+    return grep { $x2n->{$_} == $y } keys %$x2n;
+}
+
+my $re = $ARGV[0];
+
+my @strs =  ("");
+for (1..30) {
+    my $steps = try_many($re, @strs);
+    @strs = map { str_enlenghten($re, $_) } largest_set($steps);
+}
+
+say for @strs;

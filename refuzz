@@ -4,15 +4,20 @@ use warnings;
 use JSON;
 use String::Random;
 use File::Slurp qw(write_file read_file);
-use List::Util qw(max uniq);
+use List::Util qw(first max uniq);
 use Data::Dumper qw(Dumper);
 use Encode qw(encode_utf8);
+use Digest::MD5 qw(md5_hex);
+
+use MCE::Loop;
+MCE::Loop::init { chunk_size => 1 };
 
 sub try_one {
     my ($re, $str) = @_;
 
-    my $fn_prog = "/tmp/prog.pl";
-    my $fn_rx   = "/tmp/rx.json";
+    my $stamp   = md5_hex(encode_utf8( $str) );
+    my $fn_prog = "/tmp/prog-$stamp.pl";
+    my $fn_rx   = "/tmp/rx-$stamp.json";
 
     my $prog = <<"PROGRAM";
 #!/usr/bin/env perl
@@ -20,7 +25,7 @@ use v5.18;
 use utf8;
 use Regexp::Debugger save_to => "$fn_rx";
 
-my \$str = "\Q$str\E";
+my \$str = "$str";
 \$str =~ /$re/;
 PROGRAM
 
@@ -36,57 +41,56 @@ PROGRAM
         waitpid($pid, 0);
     }
 
+    unlink $fn_prog;
+
     my $matched;
     my $steps = -1;
     open my $fh, '<', $fn_rx;
     while(<$fh>) {
         chomp;
-        if (/"msg" : ".+(matched|failed).+(?:in|after) ([0-9]+) steps"/) {
-            $matched = $1 eq "matched";
-            $steps = $2;
+        if (/"msg" : ".+(?:matched|failed).+(?:in|after) ([0-9]+) steps"/) {
+            $steps = $1;
             last;
         }
     }
     close($fh);
 
     unlink $fn_rx;
-    unlink $fn_prog;
 
-    return ($matched, $steps);
+    return $steps;
 }
 
 sub try_many {
     my ($re, @strs) = @_;
-    my %steps;
-
-    for my $s (@strs) {
-        my $steps = try_one($re, $s);
-        $steps{$s} = $steps;
-        say encode_utf8("$steps\t<=\t$s");
-    }
-
+    my %steps  = mce_loop {
+        my $s = $_;
+        my $steps =  try_one($re, $s);
+        MCE->gather($s, $steps);
+        MCE->say("$steps\t$s");
+    } @strs;
     return \%steps;
 }
 
 sub str_enlenghten {
     my ($re, $str) = @_;
-    my @chars = uniq( (split //, $re), ( map { chr( rand(65534)+1 ) } 0..2 ) );
+    my @chars = uniq( (split //, $re) ); # , ( map { chr( rand(96)+34 ) } 0..2 ) );
     return uniq(map { ($_ . $str, $str . $_) } @chars);
 }
 
 sub largest_set {
     my $x2n = $_[0];
     my $y = max(values %$x2n);
-    return grep { $x2n->{$_} == $y } keys %$x2n;
+    return first { $x2n->{$_} == $y } keys %$x2n;
 }
 
 my $re = $ARGV[0];
-
+my @stats;
 my @strs =  ("");
 for (1..30) {
     say "----";
     my $steps = try_many($re, map { str_enlenghten($re, $_) } @strs);
     @strs = largest_set($steps);
+    push @stats, $steps->{ $strs[0] };
 }
 
-say for @strs;
+say for @stats;

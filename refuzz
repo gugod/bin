@@ -68,12 +68,14 @@ sub try_many {
         MCE->gather($s, $steps);
         MCE->say("$steps\t$s");
     } @strs;
+    MCE->say("----");
     return \%steps;
 }
 
 sub str_enlenghten {
     my ($re, $str) = @_;
     my @chars = uniq( (split //, $re) ); # , ( map { chr( rand(96)+34 ) } 0..2 ) );
+    
     return uniq(map { ($_ . $str, $str . $_) } @chars);
 }
 
@@ -86,11 +88,25 @@ sub largest_set {
 my $re = $ARGV[0];
 my @stats;
 my @strs =  ("");
-for (1..30) {
-    say "----";
+
+say "# Testing...";
+for (0..9) {
     my $steps = try_many($re, map { str_enlenghten($re, $_) } @strs);
     @strs = largest_set($steps);
-    push @stats, $steps->{ $strs[0] };
+    push @stats, [ $steps->{ $strs[0] }, $strs[0] ];
 }
 
-say for @stats;
+say "# Steps vs Input";
+for (@stats) {
+    say join "\t", @$_;
+}
+
+say "# Conclusion";
+my $r1 = $stats[9][0] / $stats[1][0];
+my $r2 = $stats[9][1] / $stats[1][1];
+if ($r2 > $r1*1.1) {
+    say "Likely non-linear";
+} else {
+    say "Seems OK";
+}
+

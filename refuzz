@@ -102,11 +102,13 @@ for (@stats) {
 }
 
 say "# Conclusion";
-my $r1 = $stats[9][0] / $stats[1][0];
-my $r2 = $stats[9][1] / $stats[1][1];
-if ($r2 > $r1*1.1) {
+my $n  = $#stats;
+my $r1 = $stats[$n][0] / $stats[0][0];
+my $r2 = length($stats[$n][1]) / length($stats[0][1]);
+
+say "r1 = $r1, r2 = $r2";
+if ($r1 > $r2*2) {
     say "Likely non-linear";
 } else {
     say "Seems OK";
 }
-

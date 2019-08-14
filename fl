@@ -1,0 +1,17 @@
+#!/usr/bin/env perl6
+
+sub traverse($dir) {
+    my @stash = $dir;
+
+    while @stash.elems > 0 {
+        @stash = @stash.flatmap(-> $path {
+            my @paths = dir $path;
+            @paths.grep({ .f }).map({ .path.say });
+            @paths.grep({ .d })
+        });
+    }
+}
+
+my $start_dir = @*ARGS[0] // ".";
+$start_dir.say;
+traverse($start_dir);

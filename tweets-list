@@ -1,18 +1,26 @@
 #!/usr/bin/env perl
 use v5.18;
-use strict;
 use warnings;
 
 use Encode qw(encode_utf8);
+use File::Glob ':bsd_glob';
 
 use FindBin;
 use lib $FindBin::Bin . "/lib";
+use Fun qw(hash_left_merge);
 use Fun::File qw(srl slurp);
 
 my %args = @ARGV;
 my $input_dir   = $args{'-i'} or die "No input dir -i";
 
-my @sources = glob($input_dir . "/twitter-status-*.srl");
+my @users = bsd_glob($input_dir . "/twitter-user-*.srl");
+my @sources = sort { $b cmp $a } bsd_glob($input_dir . "/twitter-status-*.srl");
+
+my %users;
+for my $f (@users) {
+    my $u = srl(slurp($f));
+    hash_left_merge(\%users, $u);
+}
 
 my %seen;
 for my $f (@sources) {
@@ -22,18 +30,27 @@ for my $f (@sources) {
         $seen{$tweet->{id}} = 1;
 
         my $txt = $tweet->{full_text} // $tweet->{text};
-        $txt =~ s/\n/\n    /g;
 
         if ($tweet->{entities} && $tweet->{entities}{urls} && @{$tweet->{entities}{urls}}) {
-            $txt .= "\n    \n";
+            $txt .= "\n\n";
             my $i = 0;
             for my $url (map { $_->{expanded_url} } @{$tweet->{entities}{urls}}) {
                 $i++;
-                $txt .= "    [url-$i]: $url\n";
+                $txt .= "[url-$i]: $url\n";
             }
-            $txt .= "\n";
         }
 
-        say encode_utf8($tweet->{"user.id"} . ":\n\t" . $txt . "\n");
+        $txt .= "\n" . $tweet->{created_at} . "\n";
+
+        $txt =~ s/\n/\n    /g;
+
+        my $user_str = $tweet->{"user.id"};
+        if (my $user = $users{ $tweet->{"user.id"} }) {
+            $user_str = '@' . $user->{"screen_name"};
+            if ($user->{"screen_name"} ne $user->{'name'}) {
+                $user_str .= ' ' . $user->{'name'};
+            }
+        }
+        say encode_utf8($user_str . ":\n    " . $txt . "\n");
     }
 }

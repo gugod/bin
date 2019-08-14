@@ -1,0 +1,114 @@
+#!/usr/bin/env perl
+use v5.18;
+use warnings;
+use JSON;
+use String::Random;
+use File::Slurp qw(write_file read_file);
+use List::Util qw(first max uniq);
+use Data::Dumper qw(Dumper);
+use Encode qw(encode_utf8);
+use Digest::MD5 qw(md5_hex);
+
+use MCE::Loop;
+MCE::Loop::init { chunk_size => 1 };
+
+sub try_one {
+    my ($re, $str) = @_;
+
+    my $stamp   = md5_hex(encode_utf8( $str) );
+    my $fn_prog = "/tmp/prog-$stamp.pl";
+    my $fn_rx   = "/tmp/rx-$stamp.json";
+
+    my $prog = <<"PROGRAM";
+#!/usr/bin/env perl
+use v5.18;
+use utf8;
+use Regexp::Debugger save_to => "$fn_rx";
+
+my \$str = "$str";
+\$str =~ /$re/;
+PROGRAM
+
+    write_file $fn_prog, encode_utf8($prog);
+
+    my $pid = fork();
+    if ($pid == 0) {
+        close STDERR;
+        close STDOUT;
+        close STDERR;
+        exec $^X, $fn_prog;
+    } else {
+        waitpid($pid, 0);
+    }
+
+    unlink $fn_prog;
+
+    my $matched;
+    my $steps = -1;
+    open my $fh, '<', $fn_rx;
+    while(<$fh>) {
+        chomp;
+        if (/"msg" : ".+(?:matched|failed).+(?:in|after) ([0-9]+) steps"/) {
+            $steps = $1;
+            last;
+        }
+    }
+    close($fh);
+
+    unlink $fn_rx;
+
+    return $steps;
+}
+
+sub try_many {
+    my ($re, @strs) = @_;
+    my %steps  = mce_loop {
+        my $s = $_;
+        my $steps =  try_one($re, $s);
+        MCE->gather($s, $steps);
+        MCE->say("$steps\t$s");
+    } @strs;
+    MCE->say("----");
+    return \%steps;
+}
+
+sub str_enlenghten {
+    my ($re, $str) = @_;
+    my @chars = uniq( (split //, $re) ); # , ( map { chr( rand(96)+34 ) } 0..2 ) );
+    
+    return uniq(map { ($_ . $str, $str . $_) } @chars);
+}
+
+sub largest_set {
+    my $x2n = $_[0];
+    my $y = max(values %$x2n);
+    return first { $x2n->{$_} == $y } keys %$x2n;
+}
+
+my $re = $ARGV[0];
+my @stats;
+my @strs =  ("");
+
+say "# Testing...";
+for (0..9) {
+    my $steps = try_many($re, map { str_enlenghten($re, $_) } @strs);
+    @strs = largest_set($steps);
+    push @stats, [ $steps->{ $strs[0] }, $strs[0] ];
+}
+
+say "# Steps vs Input";
+for (@stats) {
+    say join "\t", @$_;
+}
+
+say "# Conclusion";
+my $n  = $#stats;
+my $r1 = $stats[$n][0] / $stats[0][0];
+my $r2 = length($stats[$n][1]) / length($stats[0][1]);
+
+say "r1 = $r1, r2 = $r2";
+if ($r1 > $r2*2) {
+    say "Likely non-linear";
+} else {
+    say "Seems OK";
+}

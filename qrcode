@@ -5,7 +5,14 @@ use strict;
 use warnings;
 use Imager::QRCode;
 
-my $text = shift || die 'text?';
+my $text;
+if (-p STDIN) {
+    $text = do { local $/; <STDIN> };
+} else {
+    $text = shift;
+}
+$text or die 'text ?';
+
 my $qrcode = Imager::QRCode->new();
 
 my $img = $qrcode->plot($text);

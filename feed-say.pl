@@ -23,6 +23,15 @@ my %voices = (
     Latin => ["Daniel", "Kate", "Oliver", "Serena", "Moria", "Karen", "Lee"],
 );
 
+for (keys %voices) {
+    @{$voices{$_}} = grep { system_has_voice($_) } @{$voices{$_}};
+}
+
+sub system_has_voice {
+    my $voice = $_[0];
+    system('say', '-o', '/dev/null', '-r', '200', '-v', $voice, 'Hi') == 0;
+}
+
 sub guess_proper_voice {
     my ($str) = @_;
     my %freq;
@@ -60,6 +69,7 @@ GetOptions(
     \%opts,
     "o",
     "n",
+    "verbose"
 );
 
 my $striper = HTML::Strip->new;
@@ -76,35 +86,41 @@ for (@feed_uri) {
     }
 
     print_and_tts($feed->title, $file);
+
     sleep 1;
     my @entries = $feed->entries;
     for my $entry (shuffle @entries) {
         my $title = $entry->title;
         $title = decode_utf8($title) unless Encode::is_utf8($title);
-        my $description = $striper->parse($entry->summary->body || $entry->content->body || '');
-        $striper->eof;
-
-        $description = decode_utf8($description) unless Encode::is_utf8($description);
-
-
         my $msg;
-        if (index($description, $title) >= 0) {
-            $msg = $description;
+
+        if ($opts{verbose}) {
+            my $description = $striper->parse($entry->summary->body || $entry->content->body || '');
+            $striper->eof;
+
+            $description = decode_utf8($description) unless Encode::is_utf8($description);
+
+            if (index($description, $title) >= 0) {
+                $msg = $description;
+            } else {
+                $msg = $title . "\N{IDEOGRAPHIC FULL STOP}" . $description;
+            }
+
+            $msg =~ s/$RE{URI}/ /g;
+            # $msg =~ s/[\p{Punct}\p{Space}]{2,}/ /g;
+            # $msg =~ s/\s{2,}/\N{IDEOGRAPHIC FULL STOP}/g;
+            # $msg =~ s/(\p{Han}) (\p{Han})/$1\N{IDEOGRAPHIC FULL STOP}$2/g;
+            $msg =~ s/\p{Space}+\z//;
+            $msg =~ s/\A\p{Space}+//;
+            next if $msg =~ /\A\p{Space}*\z/;
+
+            if ($opts{o} && -d $opts{o}) {
+                $file = $opts{o} . "/feed_$i.m4a"; $i++;
+            }
         } else {
-            $msg = $title . "\N{IDEOGRAPHIC FULL STOP}" . $description;
+            $msg = $title;
         }
 
-        $msg =~ s/$RE{URI}/ /g;
-        # $msg =~ s/[\p{Punct}\p{Space}]{2,}/ /g;
-        # $msg =~ s/\s{2,}/\N{IDEOGRAPHIC FULL STOP}/g;
-        # $msg =~ s/(\p{Han}) (\p{Han})/$1\N{IDEOGRAPHIC FULL STOP}$2/g;
-        $msg =~ s/\p{Space}+\z//;
-        $msg =~ s/\A\p{Space}+//;
-        next if $msg =~ /\A\p{Space}*\z/;
-
-        if ($opts{o} && -d $opts{o}) {
-            $file = $opts{o} . "/feed_$i.m4a"; $i++;
-        }
         if ($opts{n}) {
             say "> $msg";
         } else {

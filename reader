@@ -28,14 +28,29 @@ Pass URLs from argv:
 USAGE
 
 sub extract_as_text {
-    state $ex = HTML::ExtractContent->new;
     my $html = $_[0];
     my $dom = Mojo::DOM->new($html);
+    my $extractor = HTML::ExtractContent->new;
+
+    my $content_dom;
     if (my $el = $dom->at('article')) {
-        return $ex->extract("$el")->as_text;
+        $content_dom = Mojo::DOM->new('<body>' . $extractor->extract("$el")->as_html . '</body>');
     } else {
-        return $ex->extract($html)->as_text;
+        $content_dom = Mojo::DOM->new('<body>' . $extractor->extract($html)->as_html . '</body>');
     }
+
+    my $text = $content_dom->find('body > *')->map('all_text')->map(
+        sub {
+            s/\t/ /g;
+            s/\r\n/\n/g;
+            s/\A\s+//;
+            s/\s+\z//;
+
+            $_ ? $_ : ();
+        }
+    )->join("\n\n");
+
+    return $text;
 }
 
 sub extract_locally {
@@ -66,10 +81,7 @@ sub extract_locally {
         $title = Encode::decode($charset, $title) unless $title && Encode::is_utf8($title);
     }
 
-    my $text = extract_as_text($html)
-        =~ s!^ \S{1,4} $!!xmgr
-        =~ s!\n!\n\n!gr
-        =~ s!\n\n+!\n\n!gr;
+    my $text = extract_as_text($html);
 
     return "$title\n\n$text";
 }

@@ -1,6 +1,5 @@
 package Tokenize;
 use v5.14;
-use strict;
 use Unicode::UCD qw(charscript);
 
 sub normalize_whitespace {

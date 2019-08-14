@@ -1,6 +1,5 @@
 package Fun::P5;
 use v5.18;
-use strict;
 use warnings;
 
 use Data::Dumper qw'Dumper';

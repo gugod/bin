@@ -17,6 +17,8 @@ sub module_path {
 }
 
 sub grok_changed {
+    my $opts = $_[0];
+
     my @changed;
     open(my $fh, 'git status --porcelain . |');
     while (<$fh>) {
@@ -27,7 +29,14 @@ sub grok_changed {
     }
     close($fh);
     if (@changed == 0) {
-        open(my $fh, 'git log -1 --format= --name-status . |');
+        my $cmd;
+        if ($opts->{base}) {
+            $cmd = 'git log --format= --name-status ' . $opts->{base} . '..';
+        } else {
+            $cmd = 'git log -1 --format= --name-status .';
+        }
+
+        open(my $fh, "$cmd |");
         while (<$fh>) {
             chomp;
             if (s/\A[AM]\s+//) {
@@ -55,9 +64,10 @@ GetOptions(
     "r=s",
     "l=s@",
     "L=s@",
+    "base=s",
 );
 
-my @changed = grok_changed();
+my @changed = grok_changed(\%opts);
 
 unless (@changed) {
     exit(0);

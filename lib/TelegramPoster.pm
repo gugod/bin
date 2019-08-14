@@ -1,5 +1,5 @@
 package TelegramPoster;
-use strict;
+use v5.18;
 use warnings;
 use WWW::Telegram::BotAPI;
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
-use strict;
-use feature 'say';
+use v5.18;
 
 open my $out, ">", "index.html";
 

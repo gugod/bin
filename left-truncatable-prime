@@ -1,0 +1,16 @@
+#!/usr/bin/env perl6
+use v6;
+
+sub digits(Int $n) {
+    return 1 + floor(log($n, 10))
+}
+
+sub truncate-left(Int $n, Int $k) {
+    return $n - floor( $n / (10**$k)  ) * 10**$k;
+}
+
+sub is-left-truncatable-prime(Int $n) {
+    return (1..digits($n)).map(-> $k { truncate-left($n, $k) }).map({ .is-prime }).all;
+}
+
+@*ARGS.grep(-> $n { is-left-truncatable-prime(Int($n)) }).map({ .say });

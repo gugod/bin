@@ -1,0 +1,18 @@
+#!/usr/bin/env perl6
+use v6;
+
+my %seen is default(-1) = 0 => 0;
+my $n = 0;
+my $pos = 0;
+
+say $n;
+while True {
+    $pos++;
+    say $n;
+    my $next = %seen{$n} == -1 ?? 0 !! $pos - %seen{$n};
+    %seen{$n} = $pos;
+    $n = $next;
+}
+
+# https://www.youtube.com/watch?v=etMJxB-igrc
+# https://oeis.org/A181391

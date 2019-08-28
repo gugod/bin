@@ -1,24 +1,24 @@
 #!/usr/bin/env perl6
 
 class VanEck {
-    has $!iter = class :: does Iterator {
-        has %!seen is default(-1);
-        has Int $!term = -1;
-        has Int $!pos  = 0;
+    method new {
+        return Seq.new(
+            class :: does Iterator {
+                has %!seen is default(-1);
+                has Int $!term = -1;
+                has Int $!pos  = 0;
 
-        method pull-one {
-            my $next = %!seen{$!term} == -1 ?? 0 !! $!pos - %!seen{$!term};
-            %!seen{$!term} = $!pos++;
-            return $!term = $next;
-        }
-    }.new();
-
-    method seq {
-        return Seq.new( $!iter );
+                method pull-one {
+                    my $next = %!seen{$!term} == -1 ?? 0 !! $!pos - %!seen{$!term};
+                    %!seen{$!term} = $!pos++;
+                    return $!term = $next;
+                }
+            }.new()
+        );
     }
 }
 
-VanEck.new.seq().map({ .say });
+VanEck.new().map({ .say });
 
 # https://www.youtube.com/watch?v=etMJxB-igrc
 # https://oeis.org/A181391

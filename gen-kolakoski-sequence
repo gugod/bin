@@ -1,0 +1,17 @@
+#!/usr/bin/env perl6
+use v6;
+
+my @a = (1,2,2);
+my $term = 2;
+my $m = 3;
+
+.say for @a;
+for 2..* -> $n {
+    $term = $term == 1 ?? 2 !! 1;
+    my $len = @a[$n];
+    @a.push($term) for ^$len;
+    say @a[$m++];
+}
+
+# https://www.numberphile.com/videos/the-kolakoski-sequence
+# https://oeis.org/A000002

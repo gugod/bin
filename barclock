@@ -38,7 +38,7 @@ package BarClock {
         my $t = $self->{t};
         print "\n";
         $self->display_bar("Y2019",   "Y2020",    $t->yday, 365 + ($t->is_leap_year ? 1 : 0));
-        $self->display_bar($t->month, $t->month,  $t->mday, $t->month_last_day);
+        $self->display_bar($t->month, $t->add_months(1)->month,  $t->mday, $t->month_last_day);
         $self->display_bar($t->mday,  $t->mday+1, $t->hour, 24);
         $self->display_bar($t->hour,  $t->hour+1, $t->min,  60);
         $self->display_bar($t->min,   $t->min+1,  $t->sec,  60);

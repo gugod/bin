@@ -1,17 +1,23 @@
 #!/usr/bin/env perl6
+use v6;
 
-sub traverse($dir) {
+my %IGNORE = (
+    "node_modules" => 1,
+    ".git" => 1,
+);
+
+sub find-files($dir) {
     my @stash = $dir;
-
-    while @stash.elems > 0 {
-        @stash = @stash.flatmap(-> $path {
-            my @paths = dir $path;
-            @paths.grep({ .f }).map({ .path.say });
-            @paths.grep({ .d })
-        });
+    gather for dir $dir -> $p {
+        if $p.f {
+            take($p.path)
+        }
+        elsif $p.d && ! %IGNORE{"$p"} {
+            .take for find-files($p.path)
+        }
     }
 }
 
 my $start_dir = @*ARGS[0] // ".";
-$start_dir.say;
-traverse($start_dir);
+
+.say for find-files($start_dir);

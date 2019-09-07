@@ -3,7 +3,7 @@ use v6;
 
 
 sub search(Int $k) {
-    my $bound = 10**15;
+    my $bound = 10**17;
     my @solution;
 
     (0..$bound).first(-> $x {

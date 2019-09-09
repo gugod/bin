@@ -2,19 +2,15 @@
 
 sub num-of-divisors(Int $n) {
     return 2 if $n.is-prime;
-    my $count = 2;
-    for 2..Int($n/2) -> $x {
-        $count++ if $n % $x == 0;
-    }
-    return $count;
+    return 2 + (2..Int($n/2)).race.grep(-> $x { $n % $x == 0 }).elems;
 }
 
 my $current_max = 0;
-(2..*).grep(-> $n {
-    my $divisors = num-of-divisors($n);
-    my $r;
-    $current_max = $divisors if $r = $divisors > $current_max;
-    $r;
-}).map({ .say });
 
-
+for (2..*).hyper.map(-> $n { $n => num-of-divisors($n) }).values -> $it {
+    my ($n, $divisors) = $it.kv;
+    if $divisors > $current_max {
+        $current_max = $divisors ;
+        say $n;
+    }
+}

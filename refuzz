@@ -2,7 +2,7 @@
 use v5.18;
 use warnings;
 use JSON;
-use String::Random;
+use String::Random qw(random_string);
 use File::Slurp qw(write_file read_file);
 use List::Util qw(first max uniq);
 use Data::Dumper qw(Dumper);
@@ -75,8 +75,7 @@ sub try_many {
 sub str_enlenghten {
     my ($re, $str) = @_;
     my @chars = uniq( (split //, $re) ); # , ( map { chr( rand(96)+34 ) } 0..2 ) );
-    
-    return uniq(map { ($_ . $str, $str . $_) } @chars);
+    return (random_string( "." x (length($str)+1) ), uniq(map { ($_ . $str, $str . $_) } @chars));
 }
 
 sub largest_set {

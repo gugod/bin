@@ -1,0 +1,51 @@
+#!/usr/bin/env perl6
+use v6;
+
+
+sub search(Int $k) {
+    my $bound = 10**17;
+    my @solution;
+
+    (0..$bound).first(-> $x {
+        my Int $xcube = $x³;
+        my ($min, $max) = (-$bound, $bound);
+        while $max - $min > 1 {
+            my $y = floor( ($min+$max) /2 );
+            my Int $ycube = $y³;
+
+            # say "Try: $x, $y ($min ... $max)";
+
+            my Int $zcube = $k - $xcube - $ycube;
+            my $z = $zcube.roots(3)[0].re.floor;
+            my $sum = $z³ + $ycube + $xcube;
+
+            if $sum == $k {
+                @solution = ($x, $y, $z);
+                last;
+            }
+            elsif $sum > $k {
+                $max = $y;
+            }
+            else {
+                $min = $y;
+            }
+        }
+
+        @solution;
+    });
+    return @solution;
+}
+
+my @wanted = @*ARGS.map({ .Int });
+
+@wanted.grep(-> $k {
+    $k % 9 != 4|5
+}).race.map(-> $k {
+    my @solution = search( Int($k) );
+    if @solution.elems == 3 {
+        my ($x, $y, $z) = @solution;
+        say "$k = $x³ + $y³ + $z³";
+    } else {
+        say "$k: Unknown";
+    }
+})

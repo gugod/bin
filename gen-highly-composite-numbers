@@ -13,7 +13,6 @@ my $current_max = 0;
 (2..*).grep(-> $n {
     my $divisors = num-of-divisors($n);
     my $r;
-
     $current_max = $divisors if $r = $divisors > $current_max;
     $r;
 }).map({ .say });

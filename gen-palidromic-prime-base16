@@ -1,0 +1,11 @@
+#!/usr/bin/env perl6
+# https://oeis.org/A002113
+
+use v6;
+
+(^Inf)
+.hyper
+.grep(*.is-prime)
+.map(*.base(16))
+.grep(-> $n { "$n" eq "$n".flip })
+.map(*.say)

@@ -12,7 +12,7 @@ sub find-files($dir) {
         if $p.f {
             take($p.path)
         }
-        elsif $p.d && ! %IGNORE{"$p"} {
+        elsif $p.d && ! %IGNORE{$p.basename} {
             .take for find-files($p.path)
         }
     }

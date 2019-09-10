@@ -4,6 +4,6 @@
 use v6;
 
 (^Inf)
+.hyper
 .grep(-> $n { "$n" eq "$n".flip })
 .map(*.say)
-

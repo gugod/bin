@@ -19,4 +19,4 @@ sub find-files($dir) {
 
 my $start_dir = @*ARGS[0] // ".";
 
-.say for find-files2($start_dir);
+.say for find-files($start_dir);

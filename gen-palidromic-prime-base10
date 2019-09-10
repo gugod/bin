@@ -1,9 +1,0 @@
-#!/usr/bin/env perl6
-
-use v6;
-
-(^Inf)
-.hyper( :degree(8) )
-.grep( *.is-prime )
-.grep({ .Str eq .Str.flip })
-.map( *.say );

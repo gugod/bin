@@ -1,0 +1,16 @@
+use v6;
+
+# Palidromic Prime in both base10 and base16
+
+
+(^Inf)
+.hyper
+.grep({ .Str eq .Str.flip })
+.grep(-> $n {
+    my $o = $n.base(16);
+    ("$o" eq "$o".flip)
+})
+.grep(*.is-prime)
+.map(-> $n {
+    say $n ~ "\t" ~ $n.base(16);
+});

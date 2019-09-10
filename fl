@@ -8,16 +8,15 @@ my %IGNORE = (
 
 sub find-files($dir) {
     my @stash = $dir;
-    gather for dir $dir -> $p {
+    dir($dir).flatmap(-> $p {
         if $p.f {
-            take($p.path)
+            $p.path
+        } elsif $p.d && ! %IGNORE{$p.basename} {
+            find-files($p.path)
         }
-        elsif $p.d && ! %IGNORE{$p.basename} {
-            .take for find-files($p.path)
-        }
-    }
+    });
 }
 
 my $start_dir = @*ARGS[0] // ".";
 
-.say for find-files($start_dir);
+.say for find-files2($start_dir);

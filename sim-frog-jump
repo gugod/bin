@@ -1,0 +1,22 @@
+#!/usr/bin/env perl6
+# https://www.youtube.com/watch?v=ZLTyX4zL2Fc
+
+use v6;
+
+sub sim-frog-jump(Int $pads, $frogs) {
+    return (^$frogs).map({
+        my $n = $pads;
+        my $jumps = 0;
+        while $n > 0 {
+            $n -= (1..$n).pick();
+            $jumps++;
+        }
+        $jumps;
+    }).sum() / $frogs;
+}
+
+say "Pads\tAverage";
+(1..100).hyper(:batch(1)).map(-> $pads {
+    my $avg = sim-frog-jump($pads, 10⁶);
+    say "$pads\t$avg";
+});

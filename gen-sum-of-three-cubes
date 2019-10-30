@@ -1,0 +1,30 @@
+#!/usr/bin/env perl6
+use v6;
+
+my $upper_bound = 10000;
+my $bound = 10³⁰;
+
+(3..$bound).race.map(-> $x {
+    my $x_cube = $x³;
+
+    for (2..$x-1).reverse -> $y {
+        my $y_cube = $y³;
+
+        for (1..$y-1).reverse -> $z {
+            my $z_cube = $z³;
+
+            my $sum;
+            $sum = $x_cube + $y_cube + $z_cube;
+            say "$sum = $x³ + $y³ + $z³";
+
+            $sum = $x_cube + $y_cube - $z_cube;
+            say "$sum = $x³ + $y³ - $z³";
+
+            $sum = $x_cube - $y_cube + $z_cube;
+            say "$sum = $x³ - $y³ + $z³";
+
+            $sum = $x_cube - $y_cube - $z_cube;
+            say "$sum = $x³ - $y³ - $z³";
+        }
+    }
+});

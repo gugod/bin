@@ -3,7 +3,7 @@
 sub prime-factorizatiion(Int $n is copy) {
     my @factors;
 
-    for (2..*).grep(*.is-prime) -> $p {
+    for (2..*).hyper.grep(*.is-prime) -> $p {
         my $k = 1;
         while $n % $p == 0 {
             $n = $n div $p;

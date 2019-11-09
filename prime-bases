@@ -1,0 +1,22 @@
+#!/usr/bin/env perl6
+use v6;
+
+my @wanted = @*ARGS;
+
+@wanted.map(-> $wanted {
+    my @bases = (2...36).hyper.grep(-> $base {
+        my $n = try { $wanted.parse-base($base) };
+        $n && $n.is-prime
+    });
+
+    if (@bases > 1) {
+        say "$wanted is a prime number under bases: " ~ @bases.join(", ");
+    }
+    elsif (@bases == 1) {
+        say "$wanted is a prime number under base " ~ @bases[0];
+    }
+    else {
+        say "$wanted is not a prime number under any of base(2)...base(36). Sorry.";
+    }
+
+});

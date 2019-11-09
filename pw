@@ -1,6 +1,10 @@
 #!/usr/bin/env perl6
 
-my @words = open( "/usr/share/dict/words").lines.pick(4);
-@words.append(0..9);
-@words.append(['!','-',',', '@'].pick(*));
+my $n = @*ARGS[0] // 4;
+$n = 4 if $n < 1;
+
+my @words = open( "/usr/share/dict/words").lines.pick( $n );
+@words.append( ("00000".."99999").pick( $n ) );
+@words.append( '!','-',',', '@' );
+
 @words.pick(*).join.say;

@@ -3,8 +3,6 @@ use v5.14;
 use File::Basename qw(basename);
 use HTML::ExtractMain qw( extract_main_html );
 use HTML::ExtractContent;
-use HTML::WikiConverter;
-use HTML::WikiConverter::Markdown;
 use Mojo::UserAgent;
 use JSON;
 use Encode;

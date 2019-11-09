@@ -4,5 +4,5 @@ use v6;
 my @p = (2,3,5,7);
 while @p.elems > 0 {
     .say for @p;
-    @p = @p.flatmap(-> $p { (1..9) <<~>> $p }).grep({ .is-prime });
+    @p = @p.flatmap(-> $p { (1..9) <<~>> $p }).hyper.grep({ .is-prime });
 }

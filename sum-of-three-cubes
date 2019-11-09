@@ -43,7 +43,7 @@ my @wanted = @*ARGS.map({ .Int });
 }).race.map(-> $k {
     my @solution = search( Int($k) );
     if @solution.elems == 3 {
-        my ($x, $y, $z) = @solution;
+        my ($x, $y, $z) = @solution.sort;
         say "$k = $x³ + $y³ + $z³";
     } else {
         say "$k: Unknown";

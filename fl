@@ -1,22 +1,30 @@
 #!/usr/bin/env perl6
 use v6;
 
-my %IGNORE = (
-    "node_modules" => 1,
-    ".git" => 1,
+my $none_of_these = none(
+    '.',
+    '..',
+    'node_modules',
+    '.git'
 );
 
-sub find-files($dir) {
-    my @stash = $dir;
-    dir($dir).flatmap(-> $p {
-        if $p.f {
-            $p.path
-        } elsif $p.d && ! %IGNORE{$p.basename} {
-            find-files($p.path)
+sub find-file($path) {
+    gather {
+        my @todo = $path;
+        while (@todo) {
+            for @todo -> $path {
+                dir($path, test => { "$path/$_".IO.f && !"$path/$_".IO.l })
+                .map(*.path)
+                .map({ take($_) });
+            }
+
+            @todo = @todo.hyper.eager.flatmap: -> $path {
+                dir($path, test => { "$path/$_".IO.d && $_ ~~ $none_of_these })
+                .map(*.path)
+            };
         }
-    });
+    }
 }
 
-my $start_dir = @*ARGS[0] // ".";
-
-.say for find-files($start_dir);
+my $start_path = @*ARGS[0] // '.';
+.say for find-file( $start_path );

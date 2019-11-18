@@ -1,0 +1,12 @@
+#!/usr/bin/env perl6
+
+sub dealwith($num) {
+    say "# " ~ $num ~ " as DateTime";
+
+    my $d = Instant.from-posix($num).DateTime();
+    say $d.in-timezone(0);
+    say $d.in-timezone(8 * 3600);
+    say $d.in-timezone(9 * 3600);
+}
+
+for @*ARGS -> $num { dealwith($num) }

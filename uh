@@ -1,0 +1,88 @@
+#!/usr/bin/env perl
+use v5.18;
+use warnings;
+
+use Mojo::UserAgent;
+use JSON qw< encode_json >;
+use Getopt::Long qw(GetOptionsFromArray);
+
+sub post_new_item {
+    my ($self, $item) = @_;
+
+    my $url = $self->{opts}{feedro} =~ s{\.json$}{/items}r;
+
+    my $ua = Mojo::UserAgent->new;
+
+    my $tx = $ua->post(
+        $url,
+        { Authentication => "Bearer " . $self->{opts}{token} },
+        json => $item,
+    );
+
+    my $res = $tx->result;
+    if ($res->is_error) {
+        say STDERR "Error: " . $res->message;
+        return 1;
+    } elsif ($res->is_success) {
+        say 'Success';
+        return 0;
+    } else {
+        say "Not sure what happened... Response:";
+        say STDERR $res->code;
+        say STDERR $res->body;
+        return 1;
+    }
+}
+
+sub build_item {
+    my ($self) = @_;
+    my %item;
+
+    my @args = @{ $self->{args} };
+
+    if ($args[0] =~ m{^https?://\S+$}) {
+        $item{url} = shift(@args);
+    }
+
+    if (@args == 2) {
+        @item{'title', 'content_text'} = @args[0, 1];
+    } else {
+        my $txt = join ' ', @args;
+        if (length($txt) > 50) {
+            $item{'title'} = substr($txt, 0, 24) . '...';
+            $item{'content_text'} = substr($txt, 0, 24) . '...';
+        } else {
+            $item{'title'} = join ' ', @args;
+        }
+    }
+    return \%item;
+}
+
+sub run {
+    my ($self) = @_;
+    $self->{opts}{feedro} ||= $ENV{UH_FEEDRO_URL};
+    $self->{opts}{token}  ||= $ENV{UH_FEEDRO_TOKEN};
+    $self->{opts}{feedro} or die "Missing required parameter: --feedro <url>";
+    $self->{opts}{token}  or die "Missing required parameter: --token <token>";
+
+    return $self->post_new_item( $self->build_item() );
+}
+
+exit(sub {
+    my @args = @_;
+    my %opts;
+
+    GetOptionsFromArray(
+        \@args,
+        \%opts,
+        "feedro=s",
+        "token=s",
+    );
+
+    utf8::decode($_) for @args;
+
+    (bless {
+        opts => \%opts,
+        args => \@args,
+    })->run();
+}->(@ARGV));

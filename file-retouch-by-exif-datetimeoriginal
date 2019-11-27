@@ -17,7 +17,7 @@ sub main {
     my %plan;
     my $local_offset = Time::Moment->now->offset;
     while (defined( my $file = $iter->() )) {
-        next unless $file =~ / \.jpg \z/xis;
+        next unless $file =~ / \.(jpg|heic) \z/xis;
 
         my $info = ImageInfo($file, 'DateTimeOriginal');
         my $dto = $info->{DateTimeOriginal};
@@ -42,7 +42,11 @@ sub main {
         my $tm_mtime = Time::Moment->from_epoch($mtime);
         if ($tm_mtime != $tm_dto) {
             say "$tm_dto\t$file";
-            File::Touch->new( mtime => $tm_dto->epoch )->touch($file);
+            if ($opts->{n}) {
+                say "DRY RUN: $file => $tm_dto";
+            } else {
+                File::Touch->new( mtime => $tm_dto->epoch )->touch($file);
+            }
         } else {
             say "SKIP: DateTimeOriginal == mtime == $tm_dto\t$file";
         }

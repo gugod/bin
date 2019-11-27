@@ -29,10 +29,17 @@ for my $f (@sources) {
         next if $seen{$tweet->{id}};
         $seen{$tweet->{id}} = 1;
 
-        my $txt = $tweet->{full_text} // $tweet->{text};
+        my $user_str = $tweet->{"user.id"};
+        next unless my $user = $users{ $tweet->{"user.id"} };
+
+        $user_str = '@' . $user->{"screen_name"};
+        if ($user->{"screen_name"} ne $user->{'name'}) {
+            $user_str .= ' ' . $user->{'name'};
+        }
+
+        my $txt = ($tweet->{full_text} // $tweet->{text}) . "\n";
 
         if ($tweet->{entities} && $tweet->{entities}{urls} && @{$tweet->{entities}{urls}}) {
-            $txt .= "\n\n";
             my $i = 0;
             for my $url (map { $_->{expanded_url} } @{$tweet->{entities}{urls}}) {
                 $i++;
@@ -40,17 +47,11 @@ for my $f (@sources) {
             }
         }
 
-        $txt .= "\n" . $tweet->{created_at} . "\n";
+        $txt .= "\n" . $tweet->{created_at} . "\n"
+        ."https://twitter.com/" . $user->{screen_name} . "/status/" .  $tweet->{id} . "\n";
 
         $txt =~ s/\n/\n    /g;
 
-        my $user_str = $tweet->{"user.id"};
-        if (my $user = $users{ $tweet->{"user.id"} }) {
-            $user_str = '@' . $user->{"screen_name"};
-            if ($user->{"screen_name"} ne $user->{'name'}) {
-                $user_str .= ' ' . $user->{'name'};
-            }
-        }
         say encode_utf8($user_str . ":\n    " . $txt . "\n");
     }
 }

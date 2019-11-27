@@ -1,0 +1,4 @@
+#!/usr/bin/env perl6
+use v6;
+my $start = Int( @*ARGS[0] // 2 );
+($start..Inf).grep(*.is-prime).map(*.say)

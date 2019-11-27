@@ -3,7 +3,7 @@
 
 use v6;
 
-sub sim-frog-jump(Int $pads, $frogs) {
+sub avg-frog-jumps(Int $pads, $frogs) {
     return (^$frogs).map({
         my $n = $pads;
         my $jumps = 0;
@@ -17,6 +17,6 @@ sub sim-frog-jump(Int $pads, $frogs) {
 
 say "Pads\tAverage";
 (1..100).hyper(:batch(1)).map(-> $pads {
-    my $avg = sim-frog-jump($pads, 10⁶);
+    my $avg = avg-frog-jumps($pads, 10⁶);
     say "$pads\t$avg";
 });

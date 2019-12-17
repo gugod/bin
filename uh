@@ -44,7 +44,9 @@ sub build_item {
         $item{url} = shift(@args);
     }
 
-    if (@args == 2) {
+    if (@args == 0 && $item{url}) {
+        $item{'title'} = '.';
+    } elsif (@args == 2) {
         @item{'title', 'content_text'} = @args[0, 1];
     } else {
         my $txt = join ' ', @args;

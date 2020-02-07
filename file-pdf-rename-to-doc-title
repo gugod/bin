@@ -1,0 +1,37 @@
+#!/usr/bin/env perl
+use v5.18;
+use PDF::API2;
+
+sub proc {
+    my ($file) = @_;
+    say "[$file] Processing";
+    my $pdf = PDF::API2->open($file);
+    my %info = $pdf->info();
+
+    my $title = $info{'Title'};
+    unless ($title) {
+        say "[$file] Lack of Title";
+        return;
+    }
+
+    say "[$file]: Title = $title";
+
+    my $title_fn = trim($title);
+    unless ($title_fn) {
+        say "[$file] Title trimmed = $title_fn";
+    }
+
+    my $new_file = $title_fn . ' - ' . $file;
+    rename($file, $new_file);
+}
+
+sub trim {
+    my ($str) = @_;
+    $str =~ s/\P{XPosixGraph}+/ /;
+    $str =~ s/ +/ /;
+    $str =~ s/^ //;
+    $str =~ s/ $//;
+    return $str;
+}
+
+proc($_) for grep { /\.pdf\z/i and -f $_ } @ARGV;

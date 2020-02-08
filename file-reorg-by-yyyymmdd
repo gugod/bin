@@ -64,7 +64,7 @@ sub main {
 
         if (-e $new_path) {
             if (is_identical($file, $new_path)) {
-                say("rm $file # duplicate\t$file\t$new_path");
+                say("rm $file # 1. duplicate\t$file\t$new_path");
                 unlink($file);
             } else {
                 my $msg = "File already exists: $new_path (from $file)";
@@ -78,7 +78,7 @@ sub main {
                     $new_path = catfile($dir, "${filename}-${sha1}${ext}");
                     if (-e $new_path) {
                         if (is_identical($file, $new_path)) {
-                            say("rm $file # duplicate\t$file\t$new_path");
+                            say("rm $file # 2. duplicate\t$file\t$new_path");
                             unlink($file);
                         } else {
                             warn "File already exists: $new_path (from $file)";

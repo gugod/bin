@@ -26,59 +26,49 @@ package App::Feed2Txt {
         for my $url (@{ $self->feed_urls }) {
             my $tx = $ua->get("".$url);
             my $xml = $tx->result->dom;
-            # rss
-            $xml->find("item")->each(
+
+            # atom or rss;
+            $xml->find("entry, item")->each(
                 sub {
                     my $el = $_;
-                    my ($author, $published_at);
-                    $author = $_->text if $_ = $el->at("creator");
-                    $published_at = $_->text if $_ = $el->at("date, pubDate");
 
-                    push @entries, {
-                        title => $el->at("title")->text,
-                        content => $el->at("description")->text,
-                        author => $author // 'Unknown',
-                        published_at => $published_at // 'Unknown',
+                    my %entry;
+                    for my $it (["title", "title"],
+                                ["author > name, creator", "author"],
+                                ["updated, published, pubDate", "published_at"],
+                                ["content, summary, description", "content"]) {
+                        my ($csssel, $attr) = @$it;
+                        if (my $el_attr = $el->at($csssel)) {
+                            $entry{$attr} = $el_attr->all_text;
+                        }
                     }
-                }
-            );
 
-            # atom;
-            $xml->find("entry")->each(
-                sub {
-                    my $el = $_;
-                    my ($author, $published_at);
-                    $author = $_->text if $_ = $el->at("author > name");
-                    $published_at = $_->text if $_ = $el->at("updated");
+                    $entry{link} = $_->attr("href") if $_ = $el->at('link[rel="alternate"]');
 
-                    push @entries, {
-                        title => $el->at("title")->text,
-                        content => $el->at("content")->text,
-                        author => $author // '(Unknown)',
-                        published_at => $published_at // '(Unknown)',
+                    if ($entry{title} && $entry{content}) {
+                        push @entries, \%entry;
                     }
                 }
             );
         }
 
+        my $border = (" " x30).(join(" ",("~")x8)).(" "x30);
         for my $e (@entries) {
             my $txt = $self->render($e);
             utf8::encode($txt);
-            print $txt;
+            print $txt . "\n\n$border\n\n";
         }
     }
 
     sub render {
         my ($self, $vars) = @_;
-        my $border = (" " x30).(join(" ",("~")x8)).(" "x30);
-        return ($border . "\n" .
-                'Title: ' . $vars->{title} . "\n" .
-                'Author: ' . $vars->{author} . "\n" .
-                "published_at: " . $vars->{published_at} . "\n" .
-                "\n" .
-                html2text($vars->{content}) .
-                "\n\n" .
-                $border . "\n\n");
+
+        my @lines = ("Title: $vars->{title}");
+        push @lines, "Author: $vars->{author}" if $vars->{author};
+        push @lines, "Published at: $vars->{published_at}" if $vars->{published_at};
+        push @lines, "Link: $vars->{link}" if $vars->{link};
+        push @lines, "\n" . html2text($vars->{content}) . "\n";
+        return join "\n", @lines;
     }
 };
 

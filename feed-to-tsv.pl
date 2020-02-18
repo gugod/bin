@@ -49,8 +49,12 @@ sub fetch_and_print {
             my $el = $_;
             my %o = (
                 title => $el->at("title") // '',
-                link  => $el->at("link")->attr("href") // '',
             );
+
+            if (my $link_el = $el->at("link")) {
+                $o{link} = $link_el->attr("href");
+            }
+
             for my $k (keys %o) {
                 $o{$k} = $o{$k}->text if ref($o{$k});
                 $o{$k} =~ s/\s+/ /g;

@@ -1,13 +1,10 @@
 #!/usr/bin/env perl
 use v5.14;
 use File::Basename qw(basename);
-use HTML::ExtractMain qw( extract_main_html );
-use HTML::ExtractContent;
-use Mojo::UserAgent;
+
 use JSON;
-use Encode;
-use URI;
-use URI::Escape qw(uri_escape);
+use Encode 'encode_utf8';
+use NewsExtractor;
 
 $SIG{__DIE__} = sub {
     require Devel::StackTrace;
@@ -26,62 +23,21 @@ Pass URLs from argv:
 USAGE
 
 sub extract_as_text {
-    my $html = $_[0];
-    my $dom = Mojo::DOM->new($html);
-    my $extractor = HTML::ExtractContent->new;
-
-    my $content_dom;
-    if (my $el = $dom->at('article')) {
-        $content_dom = Mojo::DOM->new('<body>' . $extractor->extract("$el")->as_html . '</body>');
-    } else {
-        $content_dom = Mojo::DOM->new('<body>' . $extractor->extract($html)->as_html . '</body>');
-    }
-
-    my $text = $content_dom->find('body > *')->map('all_text')->map(
-        sub {
-            s/\t/ /g;
-            s/\r\n/\n/g;
-            s/\A\s+//;
-            s/\s+\z//;
-
-            $_ ? $_ : ();
-        }
-    )->join("\n\n");
-
-    return $text;
-}
-
-sub extract_locally {
     my $url = shift;
-    my $ua = Mojo::UserAgent->new->max_redirects(10);
-    my $tx = $ua->get($url);
 
-    my $base_url = URI->new($url);
-    my $dom = $tx->res->dom;
-    my $content_type = $tx->res->headers->content_type;
+    my ($error, $article) = NewsExtractor->new( url => $url )->download->parse;
 
-    my $charset;
-    if ($content_type =~ m!charset=(.+)[;\s]?!) {
-        $charset = $1;
-    }
-    if (!$charset) {
-        if (my $meta_el = $dom->find("head meta[http-equiv=Content-Type]")->first) {
-            ($charset) = $meta_el->{content} =~ m{charset=([^\s;]+)};
-        }
-    }
-    $charset ||= "utf-8";
-
-    my $html = Encode::decode($charset, $tx->res->body);
-
-    my $title = $dom->find("title");
-    if ($title->size > 0) {
-        $title = $title->[0]->text;
-        $title = Encode::decode($charset, $title) unless $title && Encode::is_utf8($title);
+    my $json = JSON->new->pretty->canonical->utf8;
+    if ($error) {
+	die $json->encode({
+	    url => $url,
+	    DownloadFailure => { message => $error->message, debug => $error->debug }});
     }
 
-    my $text = extract_as_text($html);
+    my $title = $article->headline;
+    my $text = $article->article_body;
 
-    return "$title\n\n$text";
+    return $title ."\n=====\n\n" . $text;
 }
 
-say encode_utf8( extract_locally($url) );
+say encode_utf8( extract_as_text($url) );

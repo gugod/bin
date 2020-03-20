@@ -1,0 +1,28 @@
+#!/usr/bin/env perl 
+# https://files.smidsrod.no/perlbloat.pl.txt
+
+use strict;
+use warnings;
+
+sub memory_rss {
+    my $pid = $$;
+    my ($ps) = grep /\b${pid}$/, `ps -o rss -o pid`;
+    my ($rss) = $ps =~ /^\s*([0-9]+)\s/;
+    return $rss;
+}
+
+for my $module (@ARGV) {
+    my $mem_before = memory_rss();
+
+    if (eval "require $module") {
+        eval {
+            $module->import;
+        };
+    } else {
+        warn("$module failed to be loadd: $@\n");
+        next;
+    }
+
+    my $mem_after = memory_rss();
+    print "$module\t".( $mem_after - $mem_before)."\n";
+}

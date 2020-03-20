@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+## dependencies: Term::Size Term::ANSIScreen
 use v5.18;
 use warnings;
 use integer;

@@ -12,8 +12,9 @@ local $SIG{'WINCH'} = sub {
 kill 'WINCH', $$;
 
 print(
-    locate(1+rand($rows),1+rand($cols)),
+    locate( 1+rand($rows), 1+rand($cols) ),
     colored(
-        chr(32+rand(127-32)),
-        qw(black red green yellow blue magenta cyan white)[rand(8)])
+        chr( 32 + rand(127-32) ),
+        qw(black red green yellow blue magenta cyan white)[rand(8)]
+    )
 ) while 1;

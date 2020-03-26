@@ -1,0 +1,13 @@
+#!/bin/bash
+
+file=$1
+
+echo "# BEFORE"
+ls -l $file
+
+gzip -d $file
+fn=$(basename $file .gz)
+zopfli -50 $fn && rm $fn
+
+echo "# AFTER"
+ls -l $file

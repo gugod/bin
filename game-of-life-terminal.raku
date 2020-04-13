@@ -123,6 +123,15 @@ class GameOfLife {
     }
 }
 
-sub MAIN( Str :$cell = "█", Int :$cell-width = 1) {
-    GameOfLife.new( :$cell, :$cell-width ).bang().run();
+sub MAIN( Str :$cell = "█", Int :$cell-width ) {
+    my $w = 1;
+    if $cell-width.defined {
+        $w = $cell-width;
+    } else {
+        # Extremely poor wcswidth() here.
+        $w = ($cell.ord >= 0x1100 ?? 2 !! 1);
+    }
+
+    my $game = GameOfLife.new( :$cell, cell-width => $w );
+    $game.run();
 }

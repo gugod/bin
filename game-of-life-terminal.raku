@@ -17,6 +17,7 @@ class GameOfLife {
 
     has $!T;
     has @!lifes;
+    has @!neighbours;
     has @!changes;
 
     has $!cols;
@@ -24,10 +25,8 @@ class GameOfLife {
 
     submethod BUILD {
         $!T = Terminal::Print.new();
-
         $!cols = $!T.columns;
         $!rows = $!T.rows;
-        @!lifes = (^$!rows).map({[ (^$!cols).map({ 0 }) ]});
     }
 
     method paint {
@@ -40,33 +39,41 @@ class GameOfLife {
     }
 
     method bang {
+        @!lifes = (^$!rows).map({[ (^$!cols).map({ 0 }) ]});
+        @!neighbours = (^$!rows).map({[ (^$!cols).map({ 0 }) ]});
+
         (^($!rows * $!cols / 7)).map({
             my $y = (^$!rows).pick;
             my $x = (^$!cols).pick;
             if @!lifes[$y][$x] == 0 {
                 @!lifes[$y][$x] = 1;
                 @!changes.push($y, $x, 1);
+                self.notify-neighbours($y, $x, 1);
             }
         });
 
         return self;
     }
 
-    method nextgen {
-        sub count-neighbours($y, $x) {
-            my $n = 0 - @!lifes[$y][$x];
-            for ($y-1, $y, $y+1).grep({ 0 <= $_ < $!rows }) -> $y {
-                for ($x-1, $x, $x+1).grep({ 0 <= $_ < $!cols }) -> $x {
-                    $n += @!lifes[$y][$x];
-                }
-            }
-            return $n;
-        }
+    method neighbours($y, $x) {
+        my @r = ($y-1, $y, $y+1).grep({ 0 <= $_ < $!rows });
+        my @c = ($x-1, $x, $x+1).grep({ 0 <= $_ < $!cols });
+        return (@r X @c).grep({ ($_[0] != $y || $_[1] != $x) })
+    }
 
+    method notify-neighbours($y, $x, $v) {
+        my $d = $v == 0 ?? -1 !! 1;
+        for self.neighbours($y, $x) {
+            my ($y, $x) = $_[0, 1];
+            @!neighbours[$y][$x] += $d;
+        }
+    }
+
+    method nextgen {
         @!changes = ();
         for ^$!rows -> $y {
             for ^$!cols -> $x {
-                my $n = count-neighbours($y, $x);
+                my $n = @!neighbours[$y][$x];
                 if @!lifes[$y][$x] == 0 {
                     if $n == 3 {
                         @!changes.push($y, $x, 1);
@@ -81,6 +88,7 @@ class GameOfLife {
 
         @!changes.map({
             @!lifes[$^a][$^b] = $^c;
+            self.notify-neighbours($^a, $^b, $^c);
         });
 
         return self;
@@ -94,11 +102,16 @@ class GameOfLife {
         my $supplies  = Supply.merge($in-supply, $timer);
 
         $!T.initialize-screen;
+        self.bang;
         react {
             whenever $supplies -> $_ {
                 when Tick          { self.paint.nextgen }
                 # 'q' or Ctrl-C to quit.
                 when 'q' | chr(3)  { done               }
+                when 'b' | '!'     {
+                    self.bang;
+                    $!T.clear-screen;
+                }
             }
         }
         $!T.shutdown-screen;

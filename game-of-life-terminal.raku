@@ -34,13 +34,14 @@ class GameOfLife {
         @!changes.map({
             $!T.print-cell($^b, $^a, @char[$^c]);
         });
-
+        @!changes = ();
         return self;
     }
 
     method bang {
         @!lifes = (^$!rows).map({[ (^$!cols).map({ 0 }) ]});
         @!neighbours = (^$!rows).map({[ (^$!cols).map({ 0 }) ]});
+        @!changes = ();
 
         (^($!rows * $!cols / 7)).map({
             my $y = (^$!rows).pick;
@@ -70,18 +71,17 @@ class GameOfLife {
     }
 
     method nextgen {
-        @!changes = ();
-        for ^$!rows -> $y {
-            for ^$!cols -> $x {
-                my $n = @!neighbours[$y][$x];
-                if @!lifes[$y][$x] == 0 {
-                    if $n == 3 {
-                        @!changes.push($y, $x, 1);
-                    }
-                } else {
-                    unless 2 <= $n <= 3 {
-                        @!changes.push($y, $x, 0);
-                    }
+        for (^$!rows) X (^$!cols) {
+            my ($y, $x) = $_;
+
+            my $n = @!neighbours[$y][$x];
+            if @!lifes[$y][$x] == 0 {
+                if $n == 3 {
+                    @!changes.push($y, $x, 1);
+                }
+            } else {
+                unless 2 <= $n <= 3 {
+                    @!changes.push($y, $x, 0);
                 }
             }
         }
@@ -109,8 +109,8 @@ class GameOfLife {
                 # 'q' or Ctrl-C to quit.
                 when 'q' | chr(3)  { done               }
                 when 'b' | '!'     {
-                    self.bang;
                     $!T.clear-screen;
+                    self.bang;
                 }
             }
         }

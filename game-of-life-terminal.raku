@@ -1,6 +1,8 @@
 #!/usr/bin/env raku
 #
-# A naive Game of Life in Terminal. Hit 'q' or Ctrl-C to end the game.
+# A naive Game of Life in Terminal.
+#   Hit 'b' or '!' to restart.
+#   Hit 'q' or Ctrl-C to end the game.
 #
 # In memory of John Conway.
 #

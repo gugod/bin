@@ -1,7 +1,8 @@
 #!/usr/bin/env raku
 #
-# A naive Game of Life in Terminal.
-# Runs in inf loop. C-c to exit.
+# A naive Game of Life in Terminal. Ctrl-C to exit.
+#
+# In memory of John Conway.
 #
 # LICENSE: CC0
 #   To the extent possible under law, Kang-min Liu has waived all
@@ -17,18 +18,19 @@ class GameOfLife {
     has @!lifes;
     has @!changes;
 
+    has $!cols;
+    has $!rows;
+
     submethod BUILD {
         $!T = Terminal::Print.new();
 
-        my $c = $!T.columns;
-        my $r = $!T.rows;
-        @!lifes = (^$r).map({[ (^$c).map({ 0 }) ]});
+        $!cols = $!T.columns;
+        $!rows = $!T.rows;
+        @!lifes = (^$!rows).map({[ (^$!cols).map({ 0 }) ]});
     }
 
     method paint {
         my @char = (" ", "█");
-        # my @char = (" ", "#");
-
         @!changes.map({
             $!T.print-cell($^b, $^a, @char[$^c]);
         });
@@ -37,17 +39,14 @@ class GameOfLife {
     }
 
     method bang {
-        my $r = @!lifes.elems;
-        my $c = @!lifes[0].elems;
-
-        (^($r*$c/7)).map({
-            my $y = (^$r).pick;
-            my $x = (^$c).pick;
+        (^($!rows * $!cols / 7)).map({
+            my $y = (^$!rows).pick;
+            my $x = (^$!cols).pick;
             @!lifes[$y][$x] = 1;
         });
 
-        for ^$r -> $y {
-            for ^$c -> $x {
+        for ^$!rows -> $y {
+            for ^$!cols -> $x {
                 if @!lifes[$y][$x] == 1 {
                     @!changes.push($y, $x, 1);
                 }
@@ -58,13 +57,10 @@ class GameOfLife {
     }
 
     method nextgen {
-        my $r = @!lifes.elems;
-        my $c = @!lifes[0].elems;
-
         sub count-neighbours($y, $x) {
             my $n = 0 - @!lifes[$y][$x];
-            for ($y-1, $y, $y+1).grep({ 0 <= $_ < $r }) -> $y {
-                for ($x-1, $x, $x+1).grep({ 0 <= $_ < $c }) -> $x {
+            for ($y-1, $y, $y+1).grep({ 0 <= $_ < $!rows }) -> $y {
+                for ($x-1, $x, $x+1).grep({ 0 <= $_ < $!cols }) -> $x {
                     $n += @!lifes[$y][$x];
                 }
             }
@@ -72,8 +68,8 @@ class GameOfLife {
         }
 
         @!changes = ();
-        for ^$r -> $y {
-            for ^$c -> $x {
+        for ^$!rows -> $y {
+            for ^$!cols -> $x {
                 my $n = count-neighbours($y, $x);
                 if @!lifes[$y][$x] == 0 {
                     if $n == 3 {

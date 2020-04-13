@@ -18,6 +18,7 @@ class GameOfLife {
     use Terminal::Print::RawInput;
 
     has Str $.cell is required;
+    has Int $.cell-width = 1;
 
     has $!T;
     has @!lifes;
@@ -29,14 +30,14 @@ class GameOfLife {
 
     submethod TWEAK {
         $!T = Terminal::Print.new();
-        $!cols = $!T.columns;
+        $!cols = $!T.columns / $!cell-width;
         $!rows = $!T.rows;
     }
 
     method paint {
         my @char = (" ", $!cell);
         @!changes.map({
-            $!T.print-cell($^b, $^a, @char[$^c]);
+            $!T.print-cell($^b * $!cell-width, $^a, @char[$^c]);
         });
         @!changes = ();
         return self;
@@ -122,6 +123,6 @@ class GameOfLife {
     }
 }
 
-sub MAIN( Str :$cell = "█") {
-    GameOfLife.new( :$cell ).bang().run();
+sub MAIN( Str :$cell = "█", Int :$cell-width = 1) {
+    GameOfLife.new( :$cell, :$cell-width ).bang().run();
 }

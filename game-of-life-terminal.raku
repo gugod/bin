@@ -42,16 +42,11 @@ class GameOfLife {
         (^($!rows * $!cols / 7)).map({
             my $y = (^$!rows).pick;
             my $x = (^$!cols).pick;
-            @!lifes[$y][$x] = 1;
-        });
-
-        for ^$!rows -> $y {
-            for ^$!cols -> $x {
-                if @!lifes[$y][$x] == 1 {
-                    @!changes.push($y, $x, 1);
-                }
+            if @!lifes[$y][$x] == 0 {
+                @!lifes[$y][$x] = 1;
+                @!changes.push($y, $x, 1);
             }
-        }
+        });
 
         return self;
     }

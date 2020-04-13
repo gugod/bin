@@ -1,6 +1,6 @@
 #!/usr/bin/env raku
 #
-# A naive Game of Life in Terminal. Ctrl-C to exit.
+# A naive Game of Life in Terminal. Hit 'q' or Ctrl-C to end the game.
 #
 # In memory of John Conway.
 #
@@ -13,6 +13,7 @@ use v6;
 
 class GameOfLife {
     use Terminal::Print;
+    use Terminal::Print::RawInput;
 
     has $!T;
     has @!lifes;
@@ -87,12 +88,19 @@ class GameOfLife {
 
 
     method run {
+        class Tick { }
+        my $in-supply = raw-input-supply;
+        my $timer     = Supply.interval(.1).map: { Tick };
+        my $supplies  = Supply.merge($in-supply, $timer);
+
         $!T.initialize-screen;
-
-        loop {
-            self.paint.nextgen;
+        react {
+            whenever $supplies -> $_ {
+                when Tick          { self.paint.nextgen }
+                # 'q' or Ctrl-C to quit.
+                when 'q' | chr(3)  { done               }
+            }
         }
-
         $!T.shutdown-screen;
     }
 }

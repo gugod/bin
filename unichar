@@ -1,0 +1,19 @@
+#!/usr/bin/env raku
+
+# A program that prints a character with the given char name.
+#
+#    > unichar 'cat face'
+#    🐱
+#
+# LICENSE: CC0
+#   To the extent possible under law, Kang-min Liu has waived all
+#   copyright and related or neighboring rights to unichar. This work
+#   is published from: Taiwan.
+
+sub MAIN(Str $charname) {
+    if (my $c = uniparse($charname)) {
+       say $c;
+    } else {
+       exit(1)
+    }
+}

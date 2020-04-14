@@ -62,9 +62,11 @@ class GameOfLife {
     }
 
     method neighbours($y, $x) {
-        my @r = ($y-1, $y, $y+1).grep({ 0 <= $_ < $!rows });
-        my @c = ($x-1, $x, $x+1).grep({ 0 <= $_ < $!cols });
-        return (@r X @c).grep({ ($_[0] != $y || $_[1] != $x) })
+        ((-1,-1), (-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0), (1,1)).map(
+            { $_[0] + $y, $_[1] + $x }
+        ).grep(
+            { 0 <= $_[0] < $!rows && 0 <= $_[1] < $!cols }
+        )
     }
 
     method notify-neighbours($y, $x, $v) {

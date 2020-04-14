@@ -126,14 +126,22 @@ class GameOfLife {
 }
 
 sub MAIN( Str :$cell = "█", Int :$cell-width ) {
+
+    my $c;
+    if my $match = $cell.match(/^\\c\[(.+)\]$/) {
+        $c = uniparse( $match[0].Str ) || "█";
+    } else {
+        $c = $cell.substr(0,1);
+    }
+
     my $w = 1;
     if $cell-width.defined {
         $w = $cell-width;
     } else {
         # Extremely poor wcswidth() here.
-        $w = ($cell.ord >= 0x1100 ?? 2 !! 1);
+        $w = ($c.ord >= 0x1100 ?? 2 !! 1);
     }
 
-    my $game = GameOfLife.new( :$cell, cell-width => $w );
+    my $game = GameOfLife.new( cell => $c, cell-width => $w );
     $game.run();
 }

@@ -34,10 +34,14 @@ sub extract_as_text {
 	    DownloadFailure => { message => $error->message, debug => $error->debug }});
     }
 
-    my $title = $article->headline;
-    my $text = $article->article_body;
-
-    return $title ."\n=====\n\n" . $text;
+    return join(
+        "\n",
+        "Headline: " . $article->headline,
+        "Dateline: " . ($article->dateline || "(unknown)"),
+        "Journalist: " . ($article->journalist || "(unknown)"),
+        "\n",
+        $article->article_body,
+    );
 }
 
 say encode_utf8( extract_as_text($url) );

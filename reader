@@ -5,10 +5,16 @@ use File::Basename qw(basename);
 use JSON;
 use Encode 'encode_utf8';
 use NewsExtractor;
+use Devel::StackTrace;
 
 $SIG{__DIE__} = sub {
-    require Devel::StackTrace;
+    my ($err) = @_;
+
+    print "# Error\n";
+    print $err;
+    print "## Stacktrace\n";
     print Devel::StackTrace->new->as_string;
+    print "-----\n";
     exit;
 };
 
@@ -24,14 +30,23 @@ USAGE
 
 sub extract_as_text {
     my $url = shift;
-
-    my ($error, $article) = NewsExtractor->new( url => $url )->download->parse;
-
     my $json = JSON->new->pretty->canonical->utf8;
+
+    my $download = NewsExtractor->new( url => $url )->download or die $json->encode({
+        url => $url,
+        DownloadFailure => {
+            message => "Download Failure"
+        }
+    });
+
+    my ($error, $article) = $download->parse;
     if ($error) {
 	die $json->encode({
 	    url => $url,
-	    DownloadFailure => { message => $error->message, debug => $error->debug }});
+	    ParseFailure => {
+                message => $error->message,
+                debug => $error->debug
+            }});
     }
 
     return join(

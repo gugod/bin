@@ -3,6 +3,8 @@
 # A naive Game of Life in Terminal.
 #   Hit 'b' or '!' to restart.
 #   Hit 'q' or Ctrl-C to end the game.
+#   Hit 'p' to pause
+#   When paused, hit <space> to advance to next generation.
 #
 # In memory of John Conway.
 #
@@ -107,13 +109,23 @@ class GameOfLife {
         my $in-supply = raw-input-supply;
         my $timer     = Supply.interval(.1).map: { Tick };
         my $supplies  = Supply.merge($in-supply, $timer);
+        my $paused = False;
 
         $!T.initialize-screen;
         self.bang;
         react {
             whenever $supplies -> $_ {
-                when Tick          { self.paint.nextgen }
-                # 'q' or Ctrl-C to quit.
+                when Tick          {
+                    self.paint.nextgen unless $paused;
+                }
+                when 'p'           {
+                    $paused = !$paused;
+                }
+                when ' '           {
+                    if $paused {
+                        self.paint.nextgen;
+                    }
+                }
                 when 'q' | chr(3)  { done               }
                 when 'b' | '!'     {
                     $!T.clear-screen;

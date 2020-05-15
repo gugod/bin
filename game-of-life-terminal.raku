@@ -23,14 +23,14 @@ class GameOfLife {
     has $!T;
     has @!lifes;
     has @!neighbours;
-    has @!changes;
+    has Int @!changes;
 
-    has $!cols;
-    has $!rows;
+    has Int $!cols;
+    has Int $!rows;
 
     submethod TWEAK {
         $!T = Terminal::Print.new();
-        $!cols = $!T.columns / $!cell-width;
+        $!cols = ($!T.columns / $!cell-width).floor;
         $!rows = $!T.rows;
     }
 

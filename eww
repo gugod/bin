@@ -1,0 +1,3 @@
+#!/bin/sh
+url=$1
+emacsclient -n -e '(eww-new-buffer-with-url "'$url'")'

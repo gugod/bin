@@ -1,0 +1,14 @@
+#!/usr/bin/env perl
+use strict;
+use String::Random;
+
+my $regex = $ARGV[0] // '.*';
+utf8::decode($regex);
+
+my $gen = String::Random->new( max => 1024 );
+my $out;
+while(1) {
+    $out = $gen->randregex($regex) . "\n";
+    utf8::encode($out);
+    print $out;
+}

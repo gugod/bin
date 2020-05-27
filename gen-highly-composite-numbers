@@ -1,8 +1,36 @@
-#!/usr/bin/env perl6
+#!/usr/bin/env raku
+
+sub prime-factorizatiion(Int $n is copy) {
+    my @primes = (2...*).grep(*.is-prime);
+    my @factors;
+
+    for @primes -> $p {
+        my $k = 1;
+        while $n % $p == 0 {
+            $n = $n div $p;
+            $k++;
+        }
+        $k -= 1;
+
+        if $k > 0 {
+            push @factors, $p => $k;
+        }
+
+        if $n == 1 {
+            last;
+        }
+
+        if $n.is-prime {
+            push @factors, $n => 1;
+            last;
+        };
+    }
+
+    return @factors;
+}
 
 sub num-of-divisors(Int $n) {
-    return 2 if $n.is-prime;
-    return 2 + (2..Int($n/2)).race.grep(-> $x { $n % $x == 0 }).elems;
+    return prime-factorizatiion($n).map({ .value + 1 }).reduce(&[*]);
 }
 
 my $current_max = 0;
@@ -11,6 +39,6 @@ for (2..*).hyper.map(-> $n { $n => num-of-divisors($n) }).values -> $it {
     my ($n, $divisors) = $it.kv;
     if $divisors > $current_max {
         $current_max = $divisors ;
-        say $n;
+        say "$n, with $divisors divisors";
     }
 }

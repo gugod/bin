@@ -1,7 +1,7 @@
 #!/usr/bin/env raku
 
-sub prime-factorizatiion(Int $n is copy) {
-    my @primes = (2...*).grep(*.is-prime);
+sub prime-factorization(Int $n is copy) {
+    state @primes = (2...*).grep(*.is-prime);
     my @factors;
 
     for @primes -> $p {
@@ -30,15 +30,13 @@ sub prime-factorizatiion(Int $n is copy) {
 }
 
 sub num-of-divisors(Int $n) {
-    return prime-factorizatiion($n).map({ .value + 1 }).reduce(&[*]);
+    return [*] prime-factorization($n).map({ .value + 1 });
 }
 
 my $current_max = 0;
 
-for (2..*).hyper.map(-> $n { $n => num-of-divisors($n) }).values -> $it {
-    my ($n, $divisors) = $it.kv;
-    if $divisors > $current_max {
-        $current_max = $divisors ;
-        say "$n, with $divisors divisors";
-    }
-}
+(2..*).map(
+    { $^n => num-of-divisors($^n) }
+).grep(
+    { (.value > $current_max) and ($current_max = .value)}
+).map(*.say);

@@ -1,29 +1,21 @@
 #!/usr/bin/env raku
 
 sub prime-factorization(Int $n is copy) {
-    state @primes = (2...*).grep(*.is-prime);
+    state @primes = (2..*).grep(*.is-prime);
     my @factors;
 
+    my $sqrt_n = $n.sqrt();
     for @primes -> $p {
-        my $k = 1;
+        last if $n == 1 or $p > $sqrt_n;
+
+        my $k = 0;
         while $n % $p == 0 {
             $n = $n div $p;
             $k++;
         }
-        $k -= 1;
-
         if $k > 0 {
             push @factors, $p => $k;
         }
-
-        if $n == 1 {
-            last;
-        }
-
-        if $n.is-prime {
-            push @factors, $n => 1;
-            last;
-        };
     }
 
     return @factors;

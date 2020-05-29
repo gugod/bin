@@ -1,16 +1,34 @@
-#!/usr/bin/env perl6
+#!/usr/bin/env raku
+
+sub prime-factorization(Int $n is copy) {
+    state @primes = (2..*).grep(*.is-prime);
+    my @factors;
+
+    my $sqrt_n = $n.sqrt();
+    for @primes -> $p {
+        last if $n == 1 or $p > $sqrt_n;
+
+        my $k = 0;
+        while $n % $p == 0 {
+            $n = $n div $p;
+            $k++;
+        }
+        if $k > 0 {
+            push @factors, $p => $k;
+        }
+    }
+
+    return @factors;
+}
 
 sub num-of-divisors(Int $n) {
-    return 2 if $n.is-prime;
-    return 2 + (2..Int($n/2)).race.grep(-> $x { $n % $x == 0 }).elems;
+    return [*] prime-factorization($n).map({ .value + 1 });
 }
 
 my $current_max = 0;
 
-for (2..*).hyper.map(-> $n { $n => num-of-divisors($n) }).values -> $it {
-    my ($n, $divisors) = $it.kv;
-    if $divisors > $current_max {
-        $current_max = $divisors ;
-        say $n;
-    }
-}
+(2..*).map(
+    { $^n => num-of-divisors($^n) }
+).grep(
+    { (.value > $current_max) and ($current_max = .value)}
+).map(*.say);

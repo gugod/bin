@@ -16,7 +16,7 @@ Empty cell should be filled with "0".
     050020810
     008970540
 
-    sudoku-soluciotns.pl < board.txt
+    sudoku-soluciotns.raku < board.txt
 
 =end comment
 

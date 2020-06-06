@@ -57,6 +57,27 @@ sub possible(@board, $r, $c, $n) {
 }
 
 sub solve(@board) {
+    my $continue = True;
+    my @empty;
+    while $continue {
+        $continue = False;
+        @empty = ((^9) X (^9)).grep(-> [$r,$c] { @board[$r][$c] == 0 });
+        for @empty -> [$r,$c] {
+            my @choices = (1..9).grep({ possible(@board, $r, $c, $^n) });
+            if @choices.elems == 1 {
+                @board[$r][$c] = @choices[0];
+                $continue = True;
+            }
+        }
+    }
+    if @empty.elems == 0 {
+        show(@board);
+    } else {
+        solve-recursive(@board)
+    }
+}
+
+sub solve-recursive(@board) {
     my ($r,$c) = ((^9) X (^9)).first(-> [$r,$c] { @board[$r][$c] == 0 });
     unless (defined($r) && defined($c)) {
         show(@board);
@@ -64,7 +85,7 @@ sub solve(@board) {
     }
     for (1..9).grep({ possible(@board, $r, $c, $^n) }) -> $n {
         @board[$r][$c] = $n;
-        solve(@board);
+        solve-recursive(@board);
         @board[$r][$c] = 0;
     }
 }

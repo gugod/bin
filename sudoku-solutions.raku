@@ -58,10 +58,11 @@ sub possible(@board, $r, $c, $n) {
 
 sub solve(@board) {
     my $continue = True;
+    my @cells = (^9) X (^9);
     my @empty;
     while $continue {
         $continue = False;
-        @empty = ((^9) X (^9)).grep(-> [$r,$c] { @board[$r][$c] == 0 });
+        @empty = @cells.grep(-> [$r,$c] { @board[$r][$c] == 0 });
         for @empty -> [$r,$c] {
             my @choices = (1..9).grep({ possible(@board, $r, $c, $^n) });
             if @choices.elems == 1 {

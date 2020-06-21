@@ -17,7 +17,7 @@ sub main {
     my %plan;
     my $local_offset = Time::Moment->now->offset;
     while (defined( my $file = $iter->() )) {
-        next unless $file =~ / \.(jpg|heic) \z/xis;
+        next unless $file =~ / \.(jpg|mpo|heic) \z/xis;
 
         my $info = ImageInfo($file, 'DateTimeOriginal');
         my $dto = $info->{DateTimeOriginal};

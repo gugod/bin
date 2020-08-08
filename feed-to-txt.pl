@@ -7,7 +7,14 @@ package App::Feed2Txt {
     use XML::Loy;
     use URI;
     use Mojo::UserAgent;
+    use NewsExtractor;
     use Importer 'NewsExtractor::TextUtil' => ('html2text', 'normalize_whitespace');
+
+    has 'output' => (
+        is => 'ro',
+        required => 1,
+        isa => Str,
+    );
 
     has 'feed_urls' => (
         is => 'ro',
@@ -43,7 +50,7 @@ package App::Feed2Txt {
                         }
                     }
 
-                    $entry{link} = $_->attr("href") if $_ = $el->at('link[rel="alternate"]');
+                    $entry{link} = $_->attr("href") if $_ = $el->at('link[rel="alternate"]') // $el->at('link[href]');
 
                     if ($entry{title} && $entry{content}) {
                         push @entries, \%entry;
@@ -52,19 +59,21 @@ package App::Feed2Txt {
             );
         }
 
+        open(my $ofh, '>', $self->output());
         my $border = (" " x30).(join(" ",("~")x8)).(" "x30);
         for my $e (@entries) {
             my $txt = $self->render($e);
             utf8::encode($txt);
-            print $txt . "\n\n$border\n\n";
+            print $ofh $txt . "\n\n$border\n\n";
         }
+        close($ofh);
     }
 
     sub render {
         my ($self, $vars) = @_;
 
         my @lines = ("Title: $vars->{title}");
-        push @lines, "Author: $vars->{author}" if $vars->{author};
+        push @lines, "Author: " . html2text($vars->{author}) if $vars->{author};
         push @lines, "Published at: $vars->{published_at}" if $vars->{published_at};
         push @lines, "Link: $vars->{link}" if $vars->{link};
         push @lines, "\n" . html2text($vars->{content}) . "\n";
@@ -72,7 +81,16 @@ package App::Feed2Txt {
     }
 };
 
+use Getopt::Long qw(GetOptions);
 # main
+my %opts;
+GetOptions(
+    \%opts,
+    "o=s",
+);
+die "Required '-o' option to be /path/of/output.txt\n" unless $opts{o} and not -e $opts{o};
+
 App::Feed2Txt->new(
     feed_urls => [ @ARGV ],
+    output    => $opts{o},
 )->run();

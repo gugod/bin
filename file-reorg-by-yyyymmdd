@@ -19,6 +19,13 @@ sub sha1_digest {
     return $sha1->hexdigest;
 }
 
+sub is_same_inode {
+    my ($file1, $file2) = @_;
+    my @s1 = stat($file1);
+    my @s2 = stat($file2);
+    return ($s1[0] == $s2[0] and $s1[1] eq $s2[1])
+}
+
 sub looks_identical {
     my ($file1, $file2) = @_;
     my $file1_size = (stat($file1))[7];
@@ -63,10 +70,14 @@ sub main {
         my $new_path = catfile($new_dir, $filename);
 
         if (-e $new_path) {
-            if (looks_identical($file, $new_path)) {
-                say("rm $file # 1. duplicate\t$file\t$new_path");
-                ## unlink($file);
-            } else {
+            if (is_same_inode($file, $new_path)) {
+                say("ignore # 1. identical\t$file\t$new_path");
+            }
+            elsif (looks_identical($file, $new_path)) {
+                say("rm $file # 2. duplicate\t$file\t$new_path");
+                unlink($file);
+            }
+            else {
                 my $msg = "File already exists: $new_path (from $file)";
 
                 if ($opts->{'ignore-existing'}) {
@@ -77,10 +88,14 @@ sub main {
                     my ($filename, $dir, $ext) = fileparse($new_path, qr/\.[^.]*/);
                     $new_path = catfile($dir, "${filename}-${sha1}${ext}");
                     if (-e $new_path) {
-                        if (looks_identical($file, $new_path)) {
-                            say("rm $file # 2. duplicate\t$file\t$new_path");
-                            ## unlink($file);
-                        } else {
+                        if (is_same_inode($file, $new_path)) {
+                            say("ignore # 3. identical\t$file\t$new_path");
+                        }
+                        elsif (looks_identical($file, $new_path)) {
+                            say("rm $file # 4. duplicate\t$file\t$new_path");
+                            unlink($file);
+                        }
+                        else {
                             warn "File already exists: $new_path (from $file)";
                         }
                     }

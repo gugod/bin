@@ -1,4 +1,12 @@
 #!/usr/bin/env perl
+#
+# Barclock -- display current datetime as progress bars
+#
+# LICENSE: CC0
+#   To the extent possible under law, Kang-min Liu has waived all
+#   copyright and related or neighboring rights to barclock.
+#   This work is published from: Taiwan.
+
 use v5.18;
 use utf8;
 use warnings;

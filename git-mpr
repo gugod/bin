@@ -1,0 +1,2 @@
+#!/bin/bash
+exec git merge --no-edit --no-ff origin/pr/$1

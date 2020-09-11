@@ -11,6 +11,12 @@ package App::Feed2Epub {
     use URI;
     use HTML::Scrubber;
 
+    has 'output' => (
+        is => 'ro',
+        required => 1,
+        isa => Str
+    );
+
     has 'feeds' => (
         is => 'ro',
         required => 1,
@@ -55,10 +61,10 @@ package App::Feed2Epub {
     <title><: $title :></title>
 </head>
 <body>
-: for $entries -> $entry {
-    <h3><: $entry.title :></h3>
-    <div><: $entry.content :></div>
-: }
+  <article>
+    <h3><: $title :></h3>
+    <div><: $content :></div>
+  </article>
 </body></html>
 EOF
 
@@ -89,11 +95,20 @@ EOF
             }
         }
 
-        $epub->pack_zip("o.epub");
+        $epub->pack_zip( $self->output() );
     }
 };
 
+use Getopt::Long qw(GetOptions);
 # main
+my %opts;
+GetOptions(
+    \%opts,
+    "o=s",
+);
+die "Required '-o' option to be /path/of/output.epub\n" unless $opts{o} and not -e $opts{o};
+
 App::Feed2Epub->new(
     feeds => [ @ARGV ],
+    output => $opts{o},
 )->run();

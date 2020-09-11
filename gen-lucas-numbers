@@ -1,0 +1,16 @@
+#!/usr/bin/env raku
+
+# Lucas number
+# https://en.wikipedia.org/wiki/Lucas_number#mw-head
+#
+# Bascially, Fibbonacci number with 2 random values in the head..
+
+my ($x, $y) = ((1..1000).pick(), (1..1000).pick());
+my $z;
+
+for 1..100 {
+    $z = $x + $y;
+    my $ratio = $z/$y;
+    say $ratio ~ "\t" ~ $z;
+    ($x,$y) = ($y,$z);
+}

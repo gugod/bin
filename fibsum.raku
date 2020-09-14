@@ -1,4 +1,11 @@
 #!/usr/bin/env raku
+#
+# fibsum.raku -- display all solutions of fibsum($N)
+#
+# LICENSE: CC0
+#   To the extent possible under law, Kang-min Liu has waived all
+#   copyright and related or neighboring rights to fibsum.raku.
+#   This work is published from: Taiwan.
 
 my @fib = 1, 2, { $^a + $^b } ... *;
 

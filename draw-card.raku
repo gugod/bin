@@ -2,11 +2,10 @@
 
 my @cards = (['♠', '♣', '♡', '♢'] X (1...10, 'J', 'Q', 'K')).pick(*);
 
+say "Hit <RET> to draw next card...";
 while @cards.elems > 0 {
-    say "Hit <RET> to draw next card...";
     $*IN.get;
-
-    say "\n" ~ @cards.shift().join(" ") ~ "\n";
+    say @cards.shift().join(" ");
 }
 
 say "No more cards";

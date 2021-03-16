@@ -2,6 +2,7 @@
 use v5.14;
 use warnings;
 use Getopt::Long 'GetOptions';
+use File::Temp 'tempfile';
 use Imager::QRCode;
 
 my %opts;
@@ -15,13 +16,17 @@ if ($opts{o}) {
         die "Output $opts{o} already exist\n";
     }
     $output = $opts{o};
-} else {
-    $output = "qrcode.png";
-    my $c = 1;
-    while (-f $output) {
-        $c += 1;
-        $output = "qrcode_" . $c . ".png";
-    }
+}
+
+my %progs = (
+    'linux' => 'xdg-open',
+    'darwin' => 'open'
+);
+
+my $prog = $progs{$^O};
+
+unless ($prog || $opts{o}) {
+    die "It looks like there is no way to open the output.";
 }
 
 my $text;
@@ -36,8 +41,19 @@ my $qrcode = Imager::QRCode->new();
 
 my $img = $qrcode->plot($text);
 
-$img->write( file => $output ) or die Imager->errstr;
+my $fh;
 
-my $prog = ($^O eq 'linux') ? 'xdg-open' : 'open';
+if ($output) {
+    open( $fh, '>', $output ) or die $!;
+} else {
+    ($fh, $output) = tempfile( "qrcode_XXXXXXXX", TMPDIR => 1, SUFFIX => '.png' );
+}
 
-system($prog, $output);
+$img->write( fh => $fh, type => "png" ) or die Imager->errstr;
+close($fh);
+
+if ($prog) {
+    system($prog, $output);
+    sleep(1);
+    unlink($output);
+}

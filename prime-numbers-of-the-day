@@ -1,0 +1,14 @@
+#!/usr/bin/env raku
+
+sub prime-numbers-in(Range $t) {
+    $t.grep({ $^n.is-prime })
+}
+
+sub today-timestamp-range {
+    my $today = DateTime.now().truncated-to("day");
+    my $t0 = $today.posix;
+    my $t1 = $today.later( :day<1> ).posix;
+    return $t0..^$t1
+}
+
+say prime-numbers-in( today-timestamp-range ).join(" ");

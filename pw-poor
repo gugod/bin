@@ -1,5 +1,3 @@
 #!/usr/bin/env raku
 
-my $length = @*ARGS[0] // 20;
-my @chars = ( 'a'...'z', 'A'...'Z', '0'...'9');
-(1..$length).map({ @chars.pick(1) }).join("").say;
+('a'...'z', 'A'...'Z', '0'...'9').roll(@*ARGS[0] // 20).join("").say;

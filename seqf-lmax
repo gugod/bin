@@ -1,0 +1,14 @@
+#!/usr/bin/env raku
+
+sub MAIN(Int :$k = 1) {
+    my $max = -Inf;
+    my $field = $k - 1;
+    for $*IN.lines -> $line {
+        my @fields = $line.split(/\s+/);
+        my $n = @fields[$field];
+        if $n > $max {
+            say $line;
+            $max = $n;
+        }
+    }
+}

@@ -1,0 +1,7 @@
+#!/usr/bin/env raku
+sub MAIN (Int $upper = 2**128) {
+    my $range = 0..$upper;
+    loop {
+        say $range.pick();
+    }
+}

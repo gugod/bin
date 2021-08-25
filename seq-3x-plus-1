@@ -1,0 +1,15 @@
+#!/usr/bin/env raku
+
+sub MAIN(Int $seed) {
+    my SetHash $seen = SetHash.new;
+    my Int $n = $seed;
+    while ! $seen{ $n } {
+        $seen{ $n } = True;
+        say $n;
+        if $n %% 2 {
+            $n = $n div 2;
+        } else {
+            $n = 3 * $n + 1;
+        }
+    }
+}

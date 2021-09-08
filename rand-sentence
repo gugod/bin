@@ -5,7 +5,7 @@ use JSON::PP qw(decode_json);
 
 my $http = HTTP::Tiny->new;
 
-my $response  = $http->get('http://more.handlino.com/sentences.json?corpus=tweets')
+my $response  = $http->get('https://more.iter.tw/sentences.json')
     or die "Unable to get document: $!";
 
 my $x = decode_json($response->{content});

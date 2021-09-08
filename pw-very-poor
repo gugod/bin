@@ -1,0 +1,3 @@
+#!/usr/bin/env raku
+
+('a'...'z', '0'...'9').roll(@*ARGS[0] // 20).join("").say;

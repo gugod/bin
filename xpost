@@ -1,0 +1,119 @@
+#!/usr/bin/env perl
+use Mojo::Base -signatures;
+package XPost::Item {
+    use Mojo::Base -base, -signatures;
+    has "timestamp";
+    has "content";
+    use overload '""' => \&toStr;
+    sub toStr {
+        $_[0]->content;
+    }
+};
+
+package XPost::Collection {
+    use Mojo::Base "Mojo::Collection", -signatures;
+    sub exclude ($self, $other) {
+        my %seen;
+        $other->each(sub { $seen{$_} = 1 });
+        $self->grep(sub { ! $seen{$_} });
+    }
+};
+
+package main {
+    use Mojo::UserAgent ();
+    use Twitter::API ();
+    use YAML ("LoadFile");
+    use Getopt::Long ("GetOptions");
+    use Encode ("encode_utf8", "decode_utf8");
+
+    sub fetch_twtxt_collection($url) {
+        my $res = Mojo::UserAgent->new->get($url)->result;
+        my @x = map {
+            my @x = split /\t/, $_;
+            XPost::Item->new( "timestamp" => $x[0], "content" => $x[1] );
+        } grep { /\t/ } split /\n/, decode_utf8 $res->body;
+        if (@x > 5) {
+            splice(@x, 0, -5);
+        }
+        return XPost::Collection->new(@x);
+    }
+
+    sub twitter($config) {
+        return Twitter::API->new_with_traits(
+            "traits"              => "Enchilada",
+            "consumer_key"        => $config->{"consumer_key"},
+            "consumer_secret"     => $config->{"consumer_secret"},
+            "access_token"        => $config->{"access_token"},
+            "access_token_secret" => $config->{"access_token_secret"},
+        );
+    }
+
+    sub fetch_twitter_collection($config) {
+        my $twitter = twitter($config);
+        my $timeline = $twitter->user_timeline();
+
+        return XPost::Collection->new(@$timeline)->map(
+            sub {
+                my $it = $_;
+
+                delete $it->{"user"};
+
+                my $raw_text = $it->{"text"};
+                for (sort { $b->{"indices"}[0] <=>  $a->{"indices"}[0] } @{ $it->{"entities"}{"urls"} }) {
+                    next if index($_->{"expanded_url"}, $_->{"display_url"}) >= 0;
+
+                    my $offset = $_->{"indices"}[0];
+                    my $length = $_->{"indices"}[1] - $_->{"indices"}[0];
+
+                    substr($raw_text, $offset, $length) = $_->{"expanded_url"};
+                }
+
+                return XPost::Item->new(
+                    "timestamp" => $it->{"created_at"},
+                    "content" => $raw_text,
+                );
+        });
+    }
+
+    sub post_twitter($config, $item) {
+        my $twitter = twitter($config);
+        say ">>> " . encode_utf8($item->content);
+
+        my $r = $twitter->update($item->content);
+        say "https://twitter.com/" . $r->{"user"}{"screen_name"} . "/status/" . $r->{"id_str"};
+    }
+
+    # main
+    my %args;
+    GetOptions(
+        \%args,
+        "yes",
+        "delay=n",
+        "twtxt=s",
+        "twitter-config=s",
+    );
+
+    defined($args{"twtxt"}) or die "Missing twtxt URL: --twtxt <url>";
+    defined($args{"twitter-config"}) or die "Missing twitter config: --twitter-config <url>";
+
+    $args{"delay"} //= 6;
+    my $twtxt_collection = fetch_twtxt_collection( $args{"twtxt"} );
+
+    my $config = LoadFile($args{"twitter-config"});
+    my $twitter_collection = fetch_twitter_collection($config);
+
+    my $to_tweet = $twtxt_collection->exclude($twitter_collection);
+    say $to_tweet->size . " new posts";
+
+    $to_tweet->each(
+        sub {
+            my ($item) = @_;
+            if ($args{"yes"}) {
+                post_twitter($config, $item);
+                sleep($args{"delay"});
+            } else {
+                say encode_utf8(">>> " . $item->content);
+            }
+        }
+    );
+}

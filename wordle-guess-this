@@ -1,0 +1,68 @@
+#!/usr/bin/env raku
+
+my @five-letter-words = "/usr/share/dict/words".IO.lines.grep(*.chars == 5).map(*.lc).unique;
+
+sub score (@guess, @answer) {
+    # 0 - unused
+    # 1 - used elsewhere
+    # 2 - used here
+    my @scores = @guess.kv.map(
+        -> $i, $c {
+            @answer[$i] eq $c ?? 2 !! $c eq @answer.any ?? 1 !! 0;
+        }
+    );
+    return @scores;
+}
+
+sub next-guess (@guess, @score) {
+    my @guessed;
+    my @include;
+    state @board = (0..4).map({ ["a"..."z"] });
+    for @score.kv -> $i, $v {
+        if $v == 2 {
+            @board[$i] = $[ @guess[$i] ];
+        }
+        elsif $v == 1 {
+            @board[$i] = @board[$i].grep({ $_ ne @guess[$i] }).Array;
+            @include.push(@guess[$i]);
+        }
+        elsif $v == 0 {
+            for 0..4 -> $j {
+                @board[$j] = @board[$j].grep({ $_ ne @guess[$i] }).Array;
+            }
+        }
+    }
+
+    if @include.elems {
+        @five-letter-words = @five-letter-words.grep({ .index( @include.all() ).defined })
+    }
+
+    @five-letter-words = @five-letter-words.grep(
+        -> $word {
+            (0..4).map(-> $i {
+                $word.substr($i, 1) eq @board[$i].any();
+            }).all.so
+        }
+    );
+
+    my $word = @five-letter-words.pick(1);
+    @guessed.push($word);
+    return $word.comb;
+}
+
+sub MAIN (Str $answer) {
+    my @answer = $answer.lc.comb;
+    my @guess = next-guess($[], $[]);
+    my @score = score(@guess, @answer);
+    my $step = 1;
+    while $step < 6 && !(@score.all == 2) {
+        say $step, ": ", @guess, " => ", @score;
+        @guess = next-guess(@guess, @score);
+        @score = score(@guess, @answer);
+        $step++;
+    }
+    say $step, ": ", @guess, " => ", @score;
+    unless @score.all == 2 {
+        say "answer: $answer";
+    }
+}

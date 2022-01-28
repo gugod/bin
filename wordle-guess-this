@@ -18,17 +18,17 @@ sub play (Str $answer) {
         return @scores;
     }
 
-    my sub next-guess (@guess, @score) {
-        my @guessed;
-        my @include;
+    my sub next-guess ($step, @guess, @score) {
+        state @guessed-chars;
         state @board = (0..4).map({ ["a"..."z"] });
         for @score.kv -> $i, $v {
             if $v == 2 {
                 @board[$i] = $[ @guess[$i] ];
+                @guessed-chars.push(@guess[$i]);
             }
             elsif $v == 1 {
                 @board[$i] = @board[$i].grep({ $_ ne @guess[$i] }).Array;
-                @include.push(@guess[$i]);
+                @guessed-chars.push(@guess[$i]);
             }
             elsif $v == 0 {
                 for 0..4 -> $j {
@@ -37,31 +37,32 @@ sub play (Str $answer) {
             }
         }
 
-        if @include.elems {
-            @five-letter-words = @five-letter-words.grep({ .index( @include.all() ).defined })
+        my sub good-by-the-board ($word) {
+            (0..4).map(-> $i {
+                              $word.substr($i, 1) eq @board[$i].any();
+                          }).all.so
         }
 
-        @five-letter-words = @five-letter-words.grep(
-            -> $word {
-                (0..4).map(-> $i {
-                                  $word.substr($i, 1) eq @board[$i].any();
-                              }).all.so
-            }
-        );
+        @five-letter-words = @five-letter-words.grep(&good-by-the-board);
 
-        my $word = @five-letter-words.pick(1);
-        @guessed.push($word);
-        return $word.comb;
+        if @guessed-chars.elems > 0 {
+            @five-letter-words = @five-letter-words.grep({ .index( @guessed-chars.unique().all() ).defined })
+        }
+
+        my @candidates = $step < 3
+                          ?? @five-letter-words.grep({ .comb.unique.elems == 5 })
+                          !! @five-letter-words;
+
+        return @candidates.pick().comb();
     }
 
-    my @guess = next-guess($[], $[]);
+    my @guess = next-guess(1, $[], $[]);
     my @score = score(@guess);
     my $step = 1;
     while $step < 6 && !(@score.all == 2) {
         say $step, ": ", @guess, " => ", @score;
-        @guess = next-guess(@guess, @score);
+        @guess = next-guess($step++, @guess, @score);
         @score = score(@guess);
-        $step++;
     }
     say $step, ": ", @guess, " => ", @score;
 

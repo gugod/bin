@@ -1,68 +1,87 @@
 #!/usr/bin/env raku
 
-my @five-letter-words = "/usr/share/dict/words".IO.lines.grep(*.chars == 5).map(*.lc).unique;
+my @all-five-letter-words = "/usr/share/dict/words".IO.lines.grep(*.chars == 5).map(*.lc).unique.Array;
 
-sub score (@guess, @answer) {
-    # 0 - unused
-    # 1 - used elsewhere
-    # 2 - used here
-    my @scores = @guess.kv.map(
-        -> $i, $c {
-            @answer[$i] eq $c ?? 2 !! $c eq @answer.any ?? 1 !! 0;
-        }
-    );
-    return @scores;
-}
+sub play (Str $answer) {
+    my @five-letter-words = @all-five-letter-words;
+    my @answer = $answer.lc.comb;
 
-sub next-guess (@guess, @score) {
-    my @guessed;
-    my @include;
-    state @board = (0..4).map({ ["a"..."z"] });
-    for @score.kv -> $i, $v {
-        if $v == 2 {
-            @board[$i] = $[ @guess[$i] ];
-        }
-        elsif $v == 1 {
-            @board[$i] = @board[$i].grep({ $_ ne @guess[$i] }).Array;
-            @include.push(@guess[$i]);
-        }
-        elsif $v == 0 {
-            for 0..4 -> $j {
-                @board[$j] = @board[$j].grep({ $_ ne @guess[$i] }).Array;
+    my sub score (@guess) {
+        # 0 - unused
+        # 1 - used elsewhere
+        # 2 - used here
+        my @scores = @guess.kv.map(
+            -> $i, $c {
+                @answer[$i] eq $c ?? 2 !! $c eq @answer.any ?? 1 !! 0;
+            }
+        );
+        return @scores;
+    }
+
+    my sub next-guess (@guess, @score) {
+        my @guessed;
+        my @include;
+        state @board = (0..4).map({ ["a"..."z"] });
+        for @score.kv -> $i, $v {
+            if $v == 2 {
+                @board[$i] = $[ @guess[$i] ];
+            }
+            elsif $v == 1 {
+                @board[$i] = @board[$i].grep({ $_ ne @guess[$i] }).Array;
+                @include.push(@guess[$i]);
+            }
+            elsif $v == 0 {
+                for 0..4 -> $j {
+                    @board[$j] = @board[$j].grep({ $_ ne @guess[$i] }).Array;
+                }
             }
         }
-    }
 
-    if @include.elems {
-        @five-letter-words = @five-letter-words.grep({ .index( @include.all() ).defined })
-    }
-
-    @five-letter-words = @five-letter-words.grep(
-        -> $word {
-            (0..4).map(-> $i {
-                $word.substr($i, 1) eq @board[$i].any();
-            }).all.so
+        if @include.elems {
+            @five-letter-words = @five-letter-words.grep({ .index( @include.all() ).defined })
         }
-    );
 
-    my $word = @five-letter-words.pick(1);
-    @guessed.push($word);
-    return $word.comb;
-}
+        @five-letter-words = @five-letter-words.grep(
+            -> $word {
+                (0..4).map(-> $i {
+                                  $word.substr($i, 1) eq @board[$i].any();
+                              }).all.so
+            }
+        );
 
-sub MAIN (Str $answer) {
-    my @answer = $answer.lc.comb;
+        my $word = @five-letter-words.pick(1);
+        @guessed.push($word);
+        return $word.comb;
+    }
+
     my @guess = next-guess($[], $[]);
-    my @score = score(@guess, @answer);
+    my @score = score(@guess);
     my $step = 1;
     while $step < 6 && !(@score.all == 2) {
         say $step, ": ", @guess, " => ", @score;
         @guess = next-guess(@guess, @score);
-        @score = score(@guess, @answer);
+        @score = score(@guess);
         $step++;
     }
     say $step, ": ", @guess, " => ", @score;
-    unless @score.all == 2 {
-        say "answer: $answer";
+
+    return @score.all == 2 ?? $step !! 0;
+}
+
+sub MAIN (Str $answer, Int :$rounds = 1) {
+    unless $answer.chars == 5 && ($answer ∈ @all-five-letter-words) {
+        say("The answer must be a 5-char word in dictionary.");
+        exit(0);
     }
+
+    my %stats;
+    for 1..$rounds -> $i {
+        say "# Round $i";
+        my $steps = play($answer);
+        say $steps == 0 ?? "lost" !! "win", "\n";
+        %stats{$steps} += 1;
+    }
+
+    say $rounds - %stats{"0"}, " wins, ", %stats{"0"}, " losts";
+    say %stats.pairs.sort({ $^a.key <=> $^b.key }).map({ .key ~ ": " ~ .value }).join("\n");
 }

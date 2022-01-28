@@ -19,6 +19,7 @@ sub play (Str $answer) {
     }
 
     my sub next-guess ($step, @guess, @score) {
+        state @guessed;
         state @guessed-chars;
         state @board = (0..4).map({ ["a"..."z"] });
         for @score.kv -> $i, $v {
@@ -53,7 +54,10 @@ sub play (Str $answer) {
                           ?? @five-letter-words.race.grep({ .comb.unique.elems == 5 })
                           !! @five-letter-words;
         @candidates = @five-letter-words if @candidates.elems == 0;
-        return @candidates.pick().comb();
+
+        my $guess = @candidates.grep(* ne @guessed.any).pick();
+        @guessed.push($guess);
+        return $guess.comb();
     }
 
     my @guess = next-guess(1, $[], $[]);
@@ -83,6 +87,8 @@ sub MAIN (Str $answer, Int :$rounds = 1) {
         %stats{$steps} += 1;
     }
 
-    say $rounds - %stats{"0"}, " wins, ", %stats{"0"}, " losts";
-    say %stats.pairs.sort({ $^a.key <=> $^b.key }).map({ .key ~ ": " ~ .value }).join("\n");
+    if $rounds > 1 {
+        say $rounds - %stats{"0"}, " wins, ", %stats{"0"}, " losts";
+        say %stats.pairs.sort({ $^a.key <=> $^b.key }).map({ .key ~ ": " ~ .value }).join("\n");
+    }
 }

@@ -1,0 +1,24 @@
+#!/usr/bin/env raku
+
+sub MAIN {
+    my @steps = [0, 0, 1];
+
+    for 3..* -> Int $seed {
+        my $n = $seed;
+        my $steps = 0;
+        @steps[$seed] = 0;
+        my @seq;
+        repeat {
+            $steps++;
+            if $n %% 2 {
+                $n = $n div 2;
+            } else {
+                $n = 3 * $n + 1;
+            }
+            @seq.push($n);
+        } while ! @steps[$n];
+        @steps[$seed] = $steps + (@steps[$n] // 0);
+        say "$seed\t@steps[$seed]";
+
+    }
+}

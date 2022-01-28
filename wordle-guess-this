@@ -1,6 +1,6 @@
 #!/usr/bin/env raku
 
-my @all-five-letter-words = "/usr/share/dict/words".IO.lines.grep(*.chars == 5).map(*.lc).unique.Array;
+my @all-five-letter-words = "/usr/share/dict/words".IO.lines.race.grep(*.chars == 5).map(*.lc).unique.Array;
 
 sub play (Str $answer) {
     my @five-letter-words = @all-five-letter-words;
@@ -43,16 +43,16 @@ sub play (Str $answer) {
                           }).all.so
         }
 
-        @five-letter-words = @five-letter-words.grep(&good-by-the-board);
+        @five-letter-words = @five-letter-words.race.grep(&good-by-the-board);
 
         if @guessed-chars.elems > 0 {
-            @five-letter-words = @five-letter-words.grep({ .index( @guessed-chars.unique().all() ).defined })
+            @five-letter-words = @five-letter-words.race.grep({ .index( @guessed-chars.unique().all() ).defined })
         }
 
         my @candidates = $step < 3
-                          ?? @five-letter-words.grep({ .comb.unique.elems == 5 })
+                          ?? @five-letter-words.race.grep({ .comb.unique.elems == 5 })
                           !! @five-letter-words;
-
+        @candidates = @five-letter-words if @candidates.elems == 0;
         return @candidates.pick().comb();
     }
 
@@ -75,7 +75,7 @@ sub MAIN (Str $answer, Int :$rounds = 1) {
         exit(0);
     }
 
-    my %stats;
+    my %stats = (0..6).map({ $_ => 0 });
     for 1..$rounds -> $i {
         say "# Round $i";
         my $steps = play($answer);

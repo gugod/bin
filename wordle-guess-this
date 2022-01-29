@@ -60,35 +60,58 @@ sub play (Str $answer) {
         return $guess.comb();
     }
 
+    my @guesses;
     my @guess = next-guess(1, $[], $[]);
+    @guesses.push( @guess.join );
     my @score = score(@guess);
+    my $won = (@score.all == 2);
     my $step = 1;
-    while $step < 6 && !(@score.all == 2) {
-        say $step, ": ", @guess, " => ", @score;
-        @guess = next-guess($step++, @guess, @score);
-        @score = score(@guess);
-    }
-    say $step, ": ", @guess, " => ", @score;
 
-    return @score.all == 2 ?? $step !! 0;
+    while $step < 6 && !$won {
+        @guess = next-guess($step++, @guess, @score);
+        @guesses.push( @guess.join );
+        @score = score(@guess);
+        $won = (@score.all == 2);
+    }
+
+    my $win-steps = $won ?? $step !! 0;
+    return ($win-steps, @guesses);
 }
 
-sub MAIN (Str $answer, Int :$rounds = 1) {
-    unless $answer.chars == 5 && ($answer ∈ @all-five-letter-words) {
-        say("The answer must be a 5-char word in dictionary.");
-        exit(0);
-    }
-
+sub play-many-rounds (Str $answer, Int $rounds, Bool :$quiet) {
     my %stats = (0..6).map({ $_ => 0 });
+    my @results;
     for 1..$rounds -> $i {
-        say "# Round $i";
-        my $steps = play($answer);
-        say $steps == 0 ?? "lost" !! "win", "\n";
+        my ($steps, @guesses) = play($answer);
         %stats{$steps} += 1;
+        @results.push([ $i,($steps != 0 ?? "WIN" !! "LOST"), $steps, @guesses ]);
     }
 
-    if $rounds > 1 {
-        say $rounds - %stats{"0"}, " wins, ", %stats{"0"}, " losts";
-        say %stats.pairs.sort({ $^a.key <=> $^b.key }).map({ .key ~ ": " ~ .value }).join("\n");
+    unless $quiet {
+        for @results -> @res {
+            my ($round, $win-or-lost, $steps, @guesses) = @res;
+            say join("\t", $answer, $round, $win-or-lost, $steps, @guesses.join(" "));
+        }
+
+        if $rounds > 1 {
+            say join("\t", $answer, "WINS", $rounds - %stats{"0"});
+            say join("\t", $answer, "LOSTS", %stats{"0"});
+            say join("\t", $answer, "STATS", (1..6).map({ %stats{$^n} }).join(","));
+        }
+    }
+
+    return $rounds - %stats{"0"};
+}
+
+sub MAIN (Str :$answer, Int :$rounds = 1, Bool :$random-answer = False) {
+    if $answer.defined {
+        unless $answer.chars == 5 && ($answer ∈ @all-five-letter-words) {
+            say("The answer must be a 5-char word in the dictionary.");
+            exit(0);
+        }
+        play-many-rounds($answer, $rounds);
+    }
+    elsif $random-answer {
+        play-many-rounds(@all-five-letter-words.pick(), $rounds);
     }
 }

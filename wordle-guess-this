@@ -50,18 +50,18 @@ sub play (Str $answer, Str @initial-guesses is copy) {
             @five-letter-words = @five-letter-words.race.grep({ .index( @guessed-chars.unique().all() ).defined })
         }
 
+        my $guess;
+
         if @initial-guesses.elems > 0 {
-            my $guess = @initial-guesses.shift;
-            @guessed.push($guess);
-            return $guess.comb();
+            $guess = @initial-guesses.shift;
+        } else {
+            my @candidates = $step < 3
+                              ?? @five-letter-words.race.grep({ .comb.unique.elems == 5 })
+                              !! @five-letter-words;
+            @candidates = @five-letter-words if @candidates.elems == 0;
+            $guess = @candidates.grep(* ne @guessed.any).pick();
         }
 
-        my @candidates = $step < 3
-                          ?? @five-letter-words.race.grep({ .comb.unique.elems == 5 })
-                          !! @five-letter-words;
-        @candidates = @five-letter-words if @candidates.elems == 0;
-
-        my $guess = @candidates.grep(* ne @guessed.any).pick();
         @guessed.push($guess);
         return $guess.comb();
     }
@@ -110,7 +110,7 @@ sub play-many-rounds (Str $answer, Int $rounds, Str @initial-guesses, Bool :$qui
 }
 
 sub MAIN (Str :$answer, Int :$rounds = 1, Bool :$random-answer = False, Str :$initial-guesses = "") {
-    my Str @initial-guesses = $initial-guesses.split(",");
+    my Str @initial-guesses = $initial-guesses.comb(/<[ a .. z] > **5/);
 
     if $answer.defined {
         unless $answer.chars == 5 && ($answer ∈ @all-five-letter-words) {

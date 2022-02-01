@@ -2,7 +2,7 @@
 
 my @all-five-letter-words = "/usr/share/dict/words".IO.lines.race.grep(*.chars == 5).map(*.lc).unique.Array;
 
-sub play (Str $answer) {
+sub play (Str $answer, Str @initial-guesses is copy) {
     my @five-letter-words = @all-five-letter-words;
     my @answer = $answer.lc.comb;
 
@@ -50,6 +50,12 @@ sub play (Str $answer) {
             @five-letter-words = @five-letter-words.race.grep({ .index( @guessed-chars.unique().all() ).defined })
         }
 
+        if @initial-guesses.elems > 0 {
+            my $guess = @initial-guesses.shift;
+            @guessed.push($guess);
+            return $guess.comb();
+        }
+
         my @candidates = $step < 3
                           ?? @five-letter-words.race.grep({ .comb.unique.elems == 5 })
                           !! @five-letter-words;
@@ -78,11 +84,11 @@ sub play (Str $answer) {
     return ($win-steps, @guesses);
 }
 
-sub play-many-rounds (Str $answer, Int $rounds, Bool :$quiet) {
+sub play-many-rounds (Str $answer, Int $rounds, Str @initial-guesses, Bool :$quiet) {
     my %stats = (0..6).map({ $_ => 0 });
     my @results;
     for 1..$rounds -> $i {
-        my ($steps, @guesses) = play($answer);
+        my ($steps, @guesses) = play($answer, @initial-guesses);
         %stats{$steps} += 1;
         @results.push([ $i,($steps != 0 ?? "WIN" !! "LOST"), $steps, @guesses ]);
     }
@@ -103,15 +109,17 @@ sub play-many-rounds (Str $answer, Int $rounds, Bool :$quiet) {
     return $rounds - %stats{"0"};
 }
 
-sub MAIN (Str :$answer, Int :$rounds = 1, Bool :$random-answer = False) {
+sub MAIN (Str :$answer, Int :$rounds = 1, Bool :$random-answer = False, Str :$initial-guesses = "") {
+    my Str @initial-guesses = $initial-guesses.split(",");
+
     if $answer.defined {
         unless $answer.chars == 5 && ($answer ∈ @all-five-letter-words) {
             say("The answer must be a 5-char word in the dictionary.");
             exit(0);
         }
-        play-many-rounds($answer, $rounds);
+        play-many-rounds($answer, $rounds, @initial-guesses);
     }
     elsif $random-answer {
-        play-many-rounds(@all-five-letter-words.pick(), $rounds);
+        play-many-rounds(@all-five-letter-words.pick(), $rounds, @initial-guesses);
     }
 }

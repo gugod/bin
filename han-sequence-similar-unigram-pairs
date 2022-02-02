@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+use v5.18;
+use strict;
+use warnings;
+use File::Slurp qw(read_file);
+use Encode qw(decode_utf8);
+use JSON::XS qw(decode_json);
+
+use constant HAN_SEQUENCE_UNIGRAM_REVERSE_INDEX => "$ENV{HOME}/var/han-sequence-unigram-reverse-index.json";
+
+sub prepare_skipgram_count {
+    my ($stash) = @_;
+    my $idx = $stash->{idx};
+
+    my %skipgram_count;
+
+    my @tokens = keys %$idx;
+    for my $i (0 ... $#tokens-1) {
+        for my $j ( $i+1 ... $#tokens) {
+            my ($tok1, $tok2) = @tokens[$i, $j];
+
+            my %seen;
+            for my $tok ($tok1, $tok2) {
+                for (@{$idx->{$tok}}) {
+                    my ($doc_id, $pos) = @$_;
+                    push @{$seen{$doc_id}}, $pos;
+                }
+            }
+
+            for my $doc_id (grep { $seen{$_} == 2 } keys %seen) {
+                $skipgram_count{"$tok1 $tok2"}++;
+            }
+        }
+    }
+
+    $stash->{skipgram_count} = \%skipgram_count;
+}
+
+
+sub looks_similar {
+    my ($stash, $ug1, $ug2) = @_;
+    my $idx = $stash->{idx};
+
+    my $f1 = @{ $idx->{$ug1} };
+    my $f2 = @{ $idx->{$ug2} };
+
+    return 0;
+}
+
+my $content = read_file(HAN_SEQUENCE_UNIGRAM_REVERSE_INDEX);
+my $idx = decode_json($content);
+undef $content;
+
+binmode STDOUT, ":utf8";
+
+my $stash = { idx => $idx };
+
+prepare_skipgram_count($stash);
+
+for (keys %{$stash->{skipgram_count}}) {
+    say $_ . "\t" . $stash->{skipgram_count}{$_};
+}
+
+# my @unigrams = keys %$idx;
+# say "There are " . (0+ @unigrams) . " unigrams";
+# for my $i (0 ... $#unigrams-1) {
+#     for my $j ( $i+1 ... $#unigrams) {
+#         my ($ug1, $ug2) = @unigrams[$i, $j];
+#         if (looks_similar($stash, $ug1, $ug2)) {
+#             print join("\t", $ug1, $ug2) . "\n";
+#         }
+#     }
+# }

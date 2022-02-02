@@ -1,0 +1,44 @@
+#!/usr/bin/env perl
+
+use v5.18;
+use strict;
+use warnings;
+use JSON::PP qw(encode_json);
+use Encode ('decode_utf8', 'encode_utf8');
+
+use constant HAN_SEQUENCE_LOOKUP => "$ENV{HOME}/var/han-sequence-lookup.tsv";
+use constant HAN_SEQUENCE_UNIGRAM_REVERSE_INDEX => "$ENV{HOME}/var/han-sequence-unigram-reverse-index.json";
+
+my %lookup;
+
+open my $fh, "<", HAN_SEQUENCE_LOOKUP;
+while (<$fh>) {
+    chomp;
+    my $line = decode_utf8($_);
+    my ($id, $s) = split /\t/, $line, 2;
+    $lookup{$s} = $id;
+}
+close($fh);
+          
+my %idx;
+
+for my $s (keys %lookup) {
+    my $id = $lookup{$s};
+    my @unigrams = split("", $s);
+    for my $pos ( 0 ... $#unigrams ) {
+        my $ug = $unigrams[$pos];
+        push @{ $idx{$ug} }, [$id, $pos];
+    }
+}
+
+for my $ug (keys %idx) {
+    if (@{ $idx{$ug} } < 3) {
+        delete $idx{$ug};
+    } else {
+        @{ $idx{$ug} } = sort { ($a->[0] <=> $b->[0]) || ($a->[1] <=> $b->[1]) } @{ $idx{$ug} };
+    }
+}
+
+open $fh, ">", HAN_SEQUENCE_UNIGRAM_REVERSE_INDEX;
+print $fh encode_json( \%idx );
+close($fh);

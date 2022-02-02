@@ -1,0 +1,31 @@
+#!/usr/bin/env perl
+use v5.26;
+use strict;
+use warnings;
+
+use Getopt::Long 'GetOptions';
+use YAML;
+use JSON::PP;
+use Mojo::DOM;
+use Mastodon::Client;
+
+my %opts;
+GetOptions(
+    \%opts,
+    "c=s",
+);
+$opts{c} // die "Missing `-c <config.yml>`";
+my $message = shift(@ARGV) or die "Missing message";
+
+my $mastodon_secret = YAML::LoadFile($opts{c});
+
+my $client = Mastodon::Client->new(
+    instance        => $mastodon_secret->{instance},
+    name            => $mastodon_secret->{name},
+    client_id       => $mastodon_secret->{client_id},
+    client_secret   => $mastodon_secret->{client_secret},
+    access_token    => $mastodon_secret->{access_token},
+    coerce_entities => 1,
+);
+
+$client->post_status($message);

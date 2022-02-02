@@ -20,6 +20,7 @@ package XPost::Collection {
 };
 
 package main {
+    use Mojo::JSON qw(encode_json);
     use Mojo::UserAgent ();
     use Twitter::API ();
     use YAML ("LoadFile");
@@ -50,21 +51,17 @@ package main {
 
     sub fetch_twitter_collection($config) {
         my $twitter = twitter($config);
-        my $timeline = $twitter->user_timeline();
+        my $timeline = $twitter->user_timeline({ "count" => 200 });
 
         return XPost::Collection->new(@$timeline)->map(
             sub {
                 my $it = $_;
-
                 delete $it->{"user"};
 
                 my $raw_text = $it->{"text"};
                 for (sort { $b->{"indices"}[0] <=>  $a->{"indices"}[0] } @{ $it->{"entities"}{"urls"} }) {
-                    next if index($_->{"expanded_url"}, $_->{"display_url"}) >= 0;
-
                     my $offset = $_->{"indices"}[0];
                     my $length = $_->{"indices"}[1] - $_->{"indices"}[0];
-
                     substr($raw_text, $offset, $length) = $_->{"expanded_url"};
                 }
 
@@ -77,8 +74,6 @@ package main {
 
     sub post_twitter($config, $item) {
         my $twitter = twitter($config);
-        say ">>> " . encode_utf8($item->content);
-
         my $r = $twitter->update($item->content);
         say "https://twitter.com/" . $r->{"user"}{"screen_name"} . "/status/" . $r->{"id_str"};
     }
@@ -105,14 +100,18 @@ package main {
     my $to_tweet = $twtxt_collection->exclude($twitter_collection);
     say $to_tweet->size . " new posts";
 
+    my $posted = 0;
+    my $dry = $args{"yes"} ? "" :"#DRY";
     $to_tweet->each(
         sub {
             my ($item) = @_;
+
+            say encode_utf8("$dry>>> " . $item->content);
+
             if ($args{"yes"}) {
+                sleep($args{"delay"}) if $posted;
                 post_twitter($config, $item);
-                sleep($args{"delay"});
-            } else {
-                say encode_utf8(">>> " . $item->content);
+                $posted++;
             }
         }
     );

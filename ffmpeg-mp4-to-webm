@@ -1,0 +1,7 @@
+#!/bin/bash
+
+INPUT="$1"
+OUTPUT=$(basename $INPUT .mp4).webm
+
+ffmpeg -i $INPUT -c:v libvpx-vp9 -b:v 0 -crf 30 -pass 1 -an -f webm /dev/null && \
+    ffmpeg -i $INPUT -c:v libvpx-vp9 -b:v 0 -crf 30 -pass 2 -c:a libopus $OUTPUT

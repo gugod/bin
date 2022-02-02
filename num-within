@@ -1,0 +1,7 @@
+#!/usr/bin/env raku
+my ($from, $until) = @*ARGS[0, 1];
+for $*IN.lines() -> $num {
+    if $from <= $num < $until {
+        say $num
+    }
+}

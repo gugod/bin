@@ -33,33 +33,67 @@ use Getopt::Long;
 use Image::ExifTool;
 use Image::ExifTool::Location;
 
+sub build_filter_camera {
+    my ($opts) = @_;
+
+    my $camera = lc($opts->{camera});
+    return sub {
+        my ($exif, $info) = @_;
+        my $x = $info->{'Camera Model Name'};
+
+        return 0 unless $x;
+        return index(lc($x), $camera) >= 0;
+    };
+}
+
+sub build_filter_latlng {
+    my ($opts) = @_;
+
+    my $distance = $opts->{distance};
+    my ($lat, $long) = split(',', $opts->{ll}, 2);
+
+    my $gis = GIS::Distance->new();
+    return sub {
+        my ($exif, undef) = @_;
+        return 0 unless $exif->HasLocation;
+
+        my ($image_lat, $image_long) = $exif->GetLocation;
+        my $d = $gis->distance($lat, $long, $image_lat, $image_long)->kilometre;
+
+        return $d < $distance;
+    };
+}
+
 sub main {
     my ($opts, $args) = @_;
     my (@paths) = @$args;
 
     pod2usage({ -verbose => 2 }) if $opts->{help};
-    pod2usage({ -verbose => 1 }) unless @paths && $opts->{ll} && $opts->{distance};
-
-    my $distance = $opts->{distance};
-    my ($lat, $long) = split(',', $opts->{ll}, 2);
-    pod2usage({ -verbose => 1 })  unless defined($lat) && defined($long);
 
     my $iter = File::Next::files(+{ file_filter => sub { /\.jpg\z/i } }, @paths );
-    my $gis = GIS::Distance->new();
+
+    my @filters;
+
+    if ($opts->{ll}) {
+        push(@filters, build_filter_latlng($opts));
+    }
+    if ($opts->{camera}) {
+        push(@filters, build_filter_camera($opts));
+    }
+
+    my $filter = sub {
+        my @x = @_[0,1];
+        for my $f (@filters) {
+            return 0 unless $f->(@x);
+        }
+        return 1;
+    };
 
     while (my $file = $iter->()) {
         my $exif = Image::ExifTool->new;
-        $exif->ExtractInfo($file);
-        next unless $exif->HasLocation;
-
-        my ($image_lat, $image_long) = $exif->GetLocation;
-        my $d = $gis->distance($lat, $long, $image_lat, $image_long)->kilometre;
-
-        # say "$file\t$d";
-
-        next unless $d < $distance;
-
-        say "$file\t$d";
+        my $info = $exif->ImageInfo($file);
+        next unless $filter->( $exif, $info );
+        say "$file";
     }
 }
 
@@ -69,5 +103,6 @@ GetOptions(
     'help|h',
     'll=s',
     'distance=n',
+    'camera=s',
 ) || pod2usage({ -verbose => 1 });
 main(\%opts, [@ARGV]);

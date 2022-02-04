@@ -1,0 +1,16 @@
+#!/usr/bin/env perl
+use v5.26;
+use Getopt::Long qw(GetOptions);
+use File::Slurper qw(read_text);
+use XML::Loy;
+
+## main
+my ($file) = @ARGV;
+my $o = read_text($file);
+my $xml = XML::Loy->new($o);
+$xml->find('outline')->each(
+    sub {
+        return unless $_->{xmlUrl};
+        say $_->{xmlUrl};
+    }
+);

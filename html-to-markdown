@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+
+use v5.28;
+use Mojo::DOM;
+use HTML::FormatMarkdown;
+
+my $html = do { local $/; <<>> };
+my $dom = Mojo::DOM->new($html);
+$dom->find("script")->map('remove');
+
+my $markdown = HTML::FormatMarkdown->format_string($dom->to_string);
+
+say $markdown;

@@ -10,59 +10,68 @@ use File::Touch;
 use Image::ExifTool qw(:Public);
 use Time::Moment;
 
+sub tm_from_exif {
+    my ($info, $tag, $offset) = @_;
+
+    my $tm;
+    my $dto = $info->{$tag};
+
+    return unless $dto && $dto =~ /\A [12][0-9]{3}:[0-9]{2}:[0-9]{2} \s [0-9]{2}:[0-9]{2}:[0-9]{2} ([\+\-][0-9]{2}:[0-9]{2})? \z/x;
+
+    my @exif_dto = $dto =~ m/([\+\-]|[0123456789]+)/g;
+
+    if ($exif_dto[6] && $exif_dto[7] && $exif_dto[8]) {
+        my $sign = $exif_dto[6] eq '-' ? -1 : 1;
+        my $hh = 0 + $exif_dto[7];
+        my $mm = 0 + $exif_dto[8];
+
+        $offset = ($sign eq '-' ? -1 : 1) * $hh * 60 + $mm;
+    }
+
+    $tm = Time::Moment->new(
+        year       => $exif_dto[0],
+        month      => $exif_dto[1],
+        day        => $exif_dto[2],
+        hour       => $exif_dto[3],
+        minute     => $exif_dto[4],
+        second     => $exif_dto[5],
+        # nanosecond => 0,
+        offset     => $offset,
+    );
+
+    return $tm;
+}
+
 sub main {
     my ($opts, $args) = @_;
     my @input = grep { -f || -d } @{ $opts->{i} };
     my $iter = File::Next::files(@input);
     my %plan;
-    my $local_offset = Time::Moment->now->offset;
-    while (defined( my $file = $iter->() )) {
-        next unless $file =~ / \.(jpg|mpo|heic|m4v) \z/xis;
 
-        my $info = ImageInfo($file, 'DateTimeOriginal');
-        my $dto = $info->{DateTimeOriginal};
-        if (! $dto) {
-            say "SKIP: no DateTimeOriginal\t$file";
+    while (defined( my $file = $iter->() )) {
+        next unless $file =~ / \.(jpg|mpo|heic|m4v|mp4) \z/xis;
+
+        my $info = ImageInfo($file, 'DateTimeOriginal', 'CreateDate');
+
+        my $tm_exif = tm_from_exif($info, 'DateTimeOriginal', Time::Moment->now->offset)
+            // tm_from_exif($info, 'CreateDate', 0);
+
+        if (! $tm_exif) {
+            say "SKIP: $file\tLack of DateTime in exif (DateTimeOriginal / CreateDate)";
             next;
         }
 
-        say "DateTimeoOriginal=$dto\t$file";
-
-        next unless $dto =~ /\A [12][0-9]{3}:[0-9]{2}:[0-9]{2} \s [0-9]{2}:[0-9]{2}:[0-9]{2} ([\+\-][0-9]{2}:[0-9]{2})? \z/x;
-
-        my @exif_dto = $dto =~ m/([\+\-]|[0123456789]+)/g;
-
-        my $offset = $local_offset;
-        if ($exif_dto[6] && $exif_dto[7] && $exif_dto[8]) {
-            my $sign = $exif_dto[6] eq '-' ? -1 : 1;
-            my $hh = 0 + $exif_dto[7];
-            my $mm = 0 + $exif_dto[8];
-
-            $offset = ($sign eq '-' ? -1 : 1) * $hh * 60 + $mm;
-        }
-
-        my $tm_dto = Time::Moment->new(
-            year       => $exif_dto[0],
-            month      => $exif_dto[1],
-            day        => $exif_dto[2],
-            hour       => $exif_dto[3],
-            minute     => $exif_dto[4],
-            second     => $exif_dto[5],
-            # nanosecond => 0,
-            offset     => $offset,
-        );
-
         my $mtime = (stat($file))[9];
         my $tm_mtime = Time::Moment->from_epoch($mtime);
-        if ($tm_mtime != $tm_dto) {
-            say "$tm_dto\t$file";
+        if ($tm_mtime != $tm_exif) {
+            say "$tm_exif\t$file";
             if ($opts->{n}) {
-                say "DRY RUN: $file => $tm_dto";
+                say "DRY RUN: $file => $tm_exif";
             } else {
-                File::Touch->new( mtime => $tm_dto->epoch )->touch($file);
+                File::Touch->new( mtime => $tm_exif->epoch )->touch($file);
             }
         } else {
-            say "SKIP: DateTimeOriginal == mtime == $tm_dto\t$file";
+            say "SKIP: exif time == mtime == $tm_exif\t$file";
         }
     }
 }

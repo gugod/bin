@@ -37,6 +37,8 @@ for my $g (keys %pic_groups) {
         my $f2 = sprintf("%s/pic-%05d.jpg", $output_dir, $counter);
         symlink($f, $f2);
     }
+
+    say "ffmpeg -i /tmp/gopro-timelapse/$g/pic-\%05d.jpg -r 30 -s 1920x1080 -b:v 0 $g.1080p.m4v";
 }
 
 __END__

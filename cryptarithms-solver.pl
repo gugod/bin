@@ -3,24 +3,22 @@ use v5.36;
 use builtin qw( true );
 use List::Util qw( uniq );
 
-while (my $expr = <DATA>) {
-    chomp($expr);
-    solveCryptarithm($expr);
+if (@ARGV) {
+    solveCryptarithm($_) for @ARGV;
+}
+else {
+    while (my $expr = <>) {
+        chomp($expr);
+        solveCryptarithm($expr);
+    }
 }
 exit();
 
 sub solveCryptarithm ($cryptExpr) {
     say "# $cryptExpr";
-    for my $plainExpr ( solutions($cryptExpr) ) {
+    for my $plainExpr ( decryptarithm($cryptExpr) ) {
         say $plainExpr;
     }
-}
-
-sub solutions ($expr) {
-    my @words = $expr =~ m/([A-Z]+)/g;
-    my @letters = uniq map { split // } @words;
-    my %isNonZeroLetter = map { substr($_, 0, 1), true } @words;
-    return decryptarithm($expr, \@letters, \%isNonZeroLetter);
 }
 
 sub plaintextfy ($cryptext, $digitFromLetter) {
@@ -38,7 +36,24 @@ sub exclude($bag, $throwAways) {
     [ grep { ! $toThrow{$_} } @$bag ]
 }
 
-sub decryptarithm ($cryptExpr, $letters, $isNonZeroLetter, $digitFromLetter = {}, $digitsUnassigned = [0..9]) {
+
+sub comb ($re, $str) { $str =~ m/($re)/g }
+
+sub distinctLetters ($str) { uniq comb qr/[A-Z]/, $str }
+
+sub firstLetters ($str) { comb qr/([A-Z])[A-Z]*/, $str }
+
+sub ArrayRef (@args) { [ @args ] }
+
+sub HashSet (@args) { +{ map { $_ => true } @args } }
+
+sub decryptarithm (
+    $cryptExpr,
+    $letters          = ArrayRef( distinctLetters $cryptExpr ),
+    $isNonZeroLetter  = HashSet( firstLetters $cryptExpr ),
+    $digitFromLetter  = {},
+    $digitsUnassigned = [0..9]
+) {
     my @unboundLetters = grep { ! exists $digitFromLetter->{$_} } @$letters;
 
     if (@unboundLetters == 0) {
@@ -75,4 +90,3 @@ MEMO + FROM = HOMER
 FORTY + TEN + TEN = SIXTY
 SEND + MORE = MONEY
 NUMBER + NUMBER = PUZZLE
-PINE * APPLE = PINEAPPLE

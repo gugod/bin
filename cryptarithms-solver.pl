@@ -7,12 +7,8 @@ if (@ARGV) {
     solveCryptarithm($_) for @ARGV;
 }
 else {
-    while ( my $expr = <> ) {
-        chomp($expr);
-        solveCryptarithm($expr);
-    }
+    die "Give me some cryptarithm puzzles in \@ARGV\n";
 }
-exit();
 
 sub solveCryptarithm ($cryptExpr) {
     say "# $cryptExpr";
@@ -27,41 +23,26 @@ sub exclude ( $bag, $throwAways ) {
     [grep { !$toThrow{$_} } @$bag];
 }
 
-sub extend ( $hashref, $k, $v ) {
-    +{ %$hashref, $k, $v }
-}
-
 sub comb ( $re, $str ) { $str =~ m/($re)/g }
 
 sub distinctLetters ($str) { uniq comb qr/[A-Z]/, $str }
 
 sub firstLetters ($str) { comb qr/([A-Z])[A-Z]*/, $str }
 
-sub ArrayRef (@args) { [@args] }
-
-sub SetHashRef (@args) {
-    +{ map { $_ => true } @args }
-}
-
 sub bindLetter ( $c, $vals, $f ) {
     map { $f->($_) } @$vals;
 }
 
 sub plaintextfy ( $cryptext, $digitFromLetter ) {
-    my $plaintext = $cryptext;
-    for my $c ( keys %$digitFromLetter ) {
-        my $d = $digitFromLetter->{$c};
-        $plaintext =~ s/$c/$d/g;
-    }
-    return $plaintext;
+    join "", map { $digitFromLetter->{$_} // $_ } split //, $cryptext
 }
 
 sub decryptarithm (
     $cryptExpr,
-    $letters          = ArrayRef( distinctLetters $cryptExpr ),
-    $isNonZeroLetter  = SetHashRef( firstLetters $cryptExpr ),
-    $digitFromLetter  = {},
-    $digitsUnassigned = [0 .. 9]
+    $letters         = [distinctLetters $cryptExpr ],
+    $isNonZeroLetter = +{ map { $_ => true } firstLetters $cryptExpr },
+    $digitFromLetter = +{},
+    $digitAssigned   = +{},
     )
 {
     my $unboundLetter = first { !exists $digitFromLetter->{$_} } @$letters;
@@ -74,15 +55,15 @@ sub decryptarithm (
         return eval($evalExpr) ? $plainExpr : ();
     }
 
-    my $possibleDigits = $isNonZeroLetter->{$unboundLetter} ? exclude( $digitsUnassigned, [0] ) : $digitsUnassigned;
+    my @possibleDigits = grep { not $digitAssigned->{$_} } ( ( $isNonZeroLetter->{$unboundLetter} ? 1 : 0 ) .. 9 );
 
-    bindLetter $unboundLetter, $possibleDigits, sub ($d) {
+    map {
         decryptarithm(
             $cryptExpr, $letters, $isNonZeroLetter,
-            extend( $digitFromLetter, $unboundLetter, $d ),
-            exclude( $digitsUnassigned, [$d] ),
+            +{ %$digitFromLetter, $unboundLetter, $_ },
+            +{ %$digitAssigned,   $_,             true },
         )
-    }
+    } @possibleDigits;
 }
 
 __DATA__

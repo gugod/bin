@@ -56,11 +56,10 @@ class GameOfLife {
             if @!lifes[$y][$x] == 0 {
                 @!lifes[$y][$x] = 1;
                 @!changes.push($y, $x, 1);
-                self.notify-neighbours($y, $x, 1);
             }
         });
 
-        return self;
+        return self.commit;
     }
 
     method neighbours($y, $x) {
@@ -139,9 +138,7 @@ class GameOfLife {
                     $paused = !$paused;
                 }
                 when ' '           {
-                    if $paused {
-                        self.nextgen;
-                    }
+                    self.nextgen if $paused
                 }
                 when 'q' | chr(3)  { done               }
                 when 'b' | '!'     {

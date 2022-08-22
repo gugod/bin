@@ -79,6 +79,14 @@ class GameOfLife {
         }
     }
 
+    method commit {
+        @!changes.map({
+            @!lifes[$^a][$^b] = $^c;
+            self.notify-neighbours($^a, $^b, $^c);
+        });
+        return self;
+    }
+
     method nextgen {
         for (^$!rows) X (^$!cols) {
             my ($y, $x) = $_;
@@ -95,14 +103,22 @@ class GameOfLife {
             }
         }
 
-        @!changes.map({
-            @!lifes[$^a][$^b] = $^c;
-            self.notify-neighbours($^a, $^b, $^c);
-        });
-
-        return self;
+        return self.commit;
     }
 
+    method spawn-random-life {
+        my $lifes = 0;
+        while $lifes == 0 {
+            my $y = (^$!rows).pick;
+            my $x = (^$!cols).pick;
+
+            unless @!lifes[$y][$x] == 1 {
+                @!changes.push($y, $x, 1);
+                $lifes++;
+            }
+        }
+        return self.commit;
+    }
 
     method run {
         class Tick { }
@@ -116,20 +132,24 @@ class GameOfLife {
         react {
             whenever $supplies -> $_ {
                 when Tick          {
-                    self.paint.nextgen unless $paused;
+                    self.paint;
+                    self.nextgen unless $paused;
                 }
                 when 'p'           {
                     $paused = !$paused;
                 }
                 when ' '           {
                     if $paused {
-                        self.paint.nextgen;
+                        self.nextgen;
                     }
                 }
                 when 'q' | chr(3)  { done               }
                 when 'b' | '!'     {
                     $!T.clear-screen;
                     self.bang;
+                }
+                when 'a' {
+                    self.spawn-random-life;
                 }
             }
         }

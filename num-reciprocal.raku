@@ -1,20 +1,17 @@
 #!/usr/bin/env raku
 
-sub reciprocal ( Int $n, Bool $wantDigits = False ) {
+sub reciprocal ( Int $n, Bool $want-digits = False ) {
     my %seen := {};
     my $pos = 0;
     my @digits;
     my Int $remainder = 1;
 
     until %seen{$remainder}:exists {
-        %seen{$remainder} = $pos;
+        %seen{$remainder} = $pos++;
 
-        if $wantDigits {
-            @digits.push: $remainder div $n;
-        }
+        @digits.push( $remainder div $n ) if $want-digits;
 
         $remainder = $remainder % $n * 10;
-        $pos++;
     }
 
     return ( @digits, %seen{$remainder}, $pos );

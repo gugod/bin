@@ -35,10 +35,10 @@ sub looks_identical {
     open my $fh2, "<", $file2;
     my ($block1, $block2) = ("", "");
     my $offset = 0;
-    my $block_size = 4 * 1024 * 1024; # 4MB at a time.
+    my $block_size = 512 * 1024;
     while(($offset < $file1_size) && ($block1 eq $block2)) {
-        read $fh1, $block1, $block_size, $offset;
-        read $fh2, $block2, $block_size, $offset;
+        read $fh1, $block1, $block_size;
+        read $fh2, $block2, $block_size;
         $offset += $block_size;
     }
     return 0 if $offset < $file1_size;

@@ -1,0 +1,3 @@
+#!/usr/bin/env raku
+
+$*IN.comb(/\w+/).grep(-> $s { $s.chars > 1 && $s eq $s.flip })>>.say;

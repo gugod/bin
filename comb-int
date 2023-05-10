@@ -1,0 +1,27 @@
+#!/usr/bin/env raku
+
+# my multi method is-palindrome(Str:D $s) {
+#     $s eq $s.flip
+# }
+
+my method is-palindrome() {
+    self eq self.flip()
+}
+
+sub MAIN (
+    Bool :$unique = False,
+    Bool :$prime = False,
+    Bool :$palindrome = False,
+    Bool :$binary-palindrome = False,
+    Bool :$base8-palindrome = False,
+    Bool :$base16-palindrome = False,
+) {
+    my $seq = $*IN.comb(/ <[0..9]>+ /)>>.Int;
+    $seq.=grep({ .is-prime }) if $prime;
+    $seq.=grep({ .&is-palindrome }) if $palindrome;
+    $seq.=grep({ .base(2).&is-palindrome }) if $binary-palindrome;
+    $seq.=grep({ .base(8).&is-palindrome }) if $base8-palindrome;
+    $seq.=grep({ .base(16).&is-palindrome }) if $base16-palindrome;
+    $seq.=unique() if $unique;
+    $seq.map({ .say });
+}

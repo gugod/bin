@@ -1,7 +1,21 @@
 #!/bin/bash
 
-for _file in $*
-do
-    _date=$(git log -1 --format=%ai $_file)
-    touch --date="$_date" $_file
-done
+function retouch() {
+    file=shift
+    _date=$(git log -1 --format=%ai "$_file")
+    touch --date="$_date" "$_file"
+    echo "DONE touch --date=\"$_date\" $_file"
+}
+
+if [[ $# -gt 0 ]]; then
+    for _file in $*
+    do
+        if [[ -f "$_file" ]]; then
+            retouch $_file
+        else
+            echo "Not a file: $_file"
+        fi
+    done
+else
+    echo "Require some file names"
+fi

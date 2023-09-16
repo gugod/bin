@@ -1,0 +1,7 @@
+#!/usr/bin/env raku
+
+sub MAIN ( Bool :$unique = False ) {
+    my $seq = $*IN.comb(/\w+/);
+    $seq.=unique() if $unique;
+    $seq.map({ .say });
+}

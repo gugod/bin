@@ -5,7 +5,7 @@ use warnings;
 my $whatever = shift(@ARGV) or die "Cannot edit without an argument.";
 
 my $RE_int  = qr{[1-9][0-9]*};
-my $RE_path = qr{.+}u;
+my $RE_path = qr{[^:]+}u;
 
 my ($path, $line, $column);
 

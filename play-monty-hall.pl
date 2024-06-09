@@ -1,38 +1,25 @@
+#!/usr/bin/env perl
 use v5.38;
 use feature 'class';
 no warnings 'experimental::class';
 
 class Game {
-    my $doors = 3;
+    field $doors :param;
     field $winningDoor = 1 + int rand($doors);
-    field $chosenDoor;
 
+    method doors { $doors }
     method winningDoor { $winningDoor }
 
-    method chosenDoor($v) {
-        $chosenDoor = $v if defined($v)
-    }
-
     method loosingDoors {
-        die "Missing: chosenDoor" unless defined($chosenDoor);
-        my %untold = map { $_ => 1 } ($winningDoor, $chosenDoor);
-        while ((keys %untold) == 1) {
-            my $door = 1 + int rand($doors);
-            $untold{$door} = 1;
-        }
-        grep { ! $untold{$_} } (1..$doors);
+        grep { $_ != $winningDoor } (1..$doors);
     }
-
-    method win {
-        die "Missing: chosenDoor" unless defined($chosenDoor);
-        $chosenDoor == $winningDoor
-    }
-}
+};
 
 class FirstChoicePlayer {
-    field $doors = 3;
+    field $doors :param;
     field $firstChoice = 1 + int rand($doors);
     field @loosingDoors;
+
     method doors { $doors }
     method addLoosingDoors ($n) { push @loosingDoors, $n }
     method loosingDoors () { @loosingDoors }
@@ -48,34 +35,54 @@ class ChangeChoicePlayer :isa(FirstChoicePlayer) {
         die "Illegal state" if @choices != 1;
         return $choices[0];
     }
-}
+};
 
-sub sim_one_round($playerClass) {
-    my $player = $playerClass->new;
-    my $game = Game->new;
+class GameMaster {
+    field $doors :param;
+    method playWith ($player) {
+        die "No player ?" unless defined $player;
 
-    $game->chosenDoor( $player->firstChoice );
+        my $game = Game->new( doors => $doors );
 
-    for my $door ($game->loosingDoors()) {
-        $player->addLoosingDoors($door)
+        my %untold = map { $_ => 1 } ($game->winningDoor, $player->firstChoice);
+        while ((keys %untold) == 1) {
+            my $door = 1 + int rand($doors);
+            $untold{$door} = 1;
+        }
+        my @revealLoosingDoors = grep { ! $untold{$_} } (1..$doors);
+
+        for my $door (@revealLoosingDoors) {
+            $player->addLoosingDoors($door)
+        }
+
+        my $finalChoice = $player->finalChoice();
+
+        return $finalChoice == $game->winningDoor;
     }
+};
 
-    $game->chosenDoor( $player->finalChoice() );
-
-    $game;
+sub playOneRound($playerClass) {
+    my $doors = 3;
+    my $gm = GameMaster->new( doors => $doors );
+    my $player = $playerClass->new( doors => $doors );
+    return $gm->playWith( $player );
 }
 
-sub sim ($roundsToPlay, $playerClass) {
+sub play ($rounds, $playerClass) {
     my $wins = 0;
-    for (1 .. $roundsToPlay) {
-        my $game = sim_one_round($playerClass);
-        $wins++ if $game->win();
+    for (1 .. $rounds) {
+        my $win = playOneRound($playerClass);
+        $wins++ if $win;
     }
     return $wins;
 }
 
-my $rounds = 1000000;
-for my $playerClass ("ChangeChoicePlayer", "FirstChoicePlayer") {
-    my $wins = sim($rounds, $playerClass);
-    say "$playerClass wins $wins / $rounds";
+sub sim ($rounds) {
+    for my $playerClass ("FirstChoicePlayer", "ChangeChoicePlayer") {
+        my $wins = play($rounds, $playerClass);
+        my $pWin = $wins / $rounds;
+        say "$playerClass wins $wins / $rounds. p(win) = $pWin";
+    }
 }
+
+sim(shift // 1000);

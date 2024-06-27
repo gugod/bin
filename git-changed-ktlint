@@ -1,0 +1,9 @@
+#!/bin/bash
+
+files=$(git status --porcelain | cut -c4- | egrep '.kt$')
+
+if [[ "$files" != "" ]]; then
+    set -x
+    ktlint -F $files
+    set +x
+fi

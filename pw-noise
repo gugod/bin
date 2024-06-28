@@ -1,0 +1,8 @@
+#!/usr/bin/env raku
+
+my $n = @*ARGS[0] // 127;
+$n = 127 if $n < 1;
+
+my @seeds = ( |("A".."Z"), |("a".."z"), |("0".."9"), '<', '>', '&', '+');
+
+(^$n).map({ @seeds.pick(1) }).join.say;

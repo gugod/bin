@@ -1,0 +1,22 @@
+#!/usr/bin/env raku
+
+sub MAIN() {
+    my @numbers := $*IN.lines.map({ .Num }).Array;
+    printHistogram(makeHistogram(@numbers));
+    return 0;
+}
+
+sub printHistogram (%histogram) {
+    for %histogram.keys.sort({ $^a <=> $^b }) -> $k {
+        say "$k\t%histogram{$k}";
+    }
+}
+
+sub makeHistogram (@numbers) {
+    my %histogram;
+    for @numbers -> $n {
+        my $bucket = 10 * ($n div 10);
+        (%histogram{$bucket} //= 0)++;
+    }
+    return %histogram;
+}
